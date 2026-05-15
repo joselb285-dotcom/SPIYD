@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitor de Incendios - Argentina · Regla 30-30-30</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-velocity/dist/leaflet-velocity.min.css"/>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Segoe UI',Arial,sans-serif; background:#111; }
+    #mapa { height:100vh; width:100%; }
+
+    /* ── Panel ─────────────────────────────────────────────── */
+    .panel {
+      position:absolute; top:10px; left:10px; z-index:1000;
+      background:rgba(13,15,20,0.94); color:#e0e0e0;
+      padding:14px; border-radius:12px;
+      box-shadow:0 4px 28px rgba(0,0,0,0.7);
+      min-width:320px; max-width:400px;
+      max-height:calc(100vh - 20px); overflow-y:auto;
+      border:1px solid rgba(255,255,255,0.07);
+    }
+    .panel::-webkit-scrollbar { width:4px; }
+    .panel::-webkit-scrollbar-thumb { background:rgba(255,100,0,0.4); border-radius:4px; }
+
+    .panel-title { margin:0 0 2px; font-size:15px; font-weight:700; color:#fff; }
+    .panel-subtitle { font-size:11px; color:#f57c00; margin-bottom:12px; letter-spacing:.5px; }
+
+    .panel label { display:block; margin-top:8px; font-size:11px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.5px; }
+    .panel select { width:100%; margin-top:3px; padding:6px 9px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.06); color:#e0e0e0; font-size:12px; }
+    .panel select option { background:#1a1d23; color:#e0e0e0; }
+
+    /* ── Botones ──────────────────────────────────────────── */
+    .btn-group { display:flex; flex-direction:column; gap:5px; margin-top:10px; }
+    .btn {
+      padding:7px 10px; border-radius:7px; border:none; cursor:pointer;
+      font-size:12px; font-weight:600; transition:opacity .15s,transform .1s;
+    }
+    .btn:hover { opacity:.85; transform:translateY(-1px); }
+    .btn:active { transform:translateY(0); }
+    .btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+    .btn-fire   { background:#b71c1c; color:#fff; }
+    .btn-smn    { background:#0d47a1; color:#fff; }
+    .btn-clima  { background:#1b5e20; color:#fff; }
+    .btn-agua   { background:#006064; color:#fff; }
+    .btn-veg    { background:#33691e; color:#fff; }
+    .btn-inpe   { background:#e65100; color:#fff; }
+    .btn-fwi    { background:#6a1b9a; color:#fff; }
+    .btn-ia     { background:linear-gradient(135deg,#6a1b9a,#0d47a1); color:#fff; }
+    .fila { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+    .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
+
+    /* ── Capas toggle ─────────────────────────────────────── */
+    .capas-section { margin-top:10px; padding:9px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.06); }
+    .capas-titulo  { font-size:10px; font-weight:700; color:#666; text-transform:uppercase; letter-spacing:.7px; margin-bottom:7px; }
+    .capa-toggle   { display:flex; align-items:center; gap:7px; padding:3px 0; font-size:11px; color:#bbb; cursor:pointer; }
+    .capa-toggle input[type=checkbox] { width:13px; height:13px; accent-color:#f57c00; cursor:pointer; margin:0; }
+    .capa-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+    /* ── Contadores ───────────────────────────────────────── */
+    .contadores { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:9px; }
+    .contador-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:7px; padding:7px 5px; text-align:center; }
+    .contador-num   { font-size:18px; font-weight:700; color:#fff; display:block; }
+    .contador-label { font-size:9px; color:#666; text-transform:uppercase; letter-spacing:.4px; }
+    .riesgo-badge   { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; margin-top:5px; }
+
+    /* ── Estado ───────────────────────────────────────────── */
+    .estado-box { margin-top:8px; font-size:11px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:7px; color:#999; line-height:1.4; }
+    .estado-box.ok   { border-left:3px solid #388e3c; }
+    .estado-box.warn { border-left:3px solid #f57c00; }
+    .estado-box.err  { border-left:3px solid #e53935; }
+
+    /* ── Indicadores 30-30-30 ─────────────────────────────── */
+    .regla-panel { margin-top:10px; padding:9px; background:rgba(255,87,34,0.07); border:1px solid rgba(255,87,34,0.2); border-radius:8px; }
+    .regla-titulo { font-size:11px; font-weight:700; color:#ff7043; text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px; }
+    .regla-indicadores { display:flex; gap:5px; }
+    .regla-item { flex:1; text-align:center; padding:7px 3px; border-radius:6px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); transition:background .3s,border-color .3s; }
+    .regla-item.activo { background:rgba(229,57,53,0.18); border-color:rgba(229,57,53,0.5); }
+    .regla-item .valor    { font-size:16px; font-weight:700; color:#fff; display:block; }
+    .regla-item .etiqueta { font-size:9px;  color:#777; }
+    .regla-item .cond     { font-size:9px;  color:#f57c00; }
+    .zonas-criticas { margin-top:5px; font-size:11px; color:#bbb; text-align:center; }
+    .zonas-criticas strong { color:#ff5722; }
+
+    /* ── Secciones colapsables ────────────────────────────── */
+    .seccion { margin-top:10px; }
+    .seccion-header { display:flex; justify-content:space-between; align-items:center; cursor:pointer; padding:7px 9px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.07); font-size:11px; font-weight:700; color:#bbb; text-transform:uppercase; letter-spacing:.5px; user-select:none; }
+    .seccion-header:hover { background:rgba(255,255,255,0.06); }
+    .seccion-chevron { transition:transform .2s; font-size:9px; }
+    .seccion-chevron.abierto { transform:rotate(180deg); }
+    .seccion-body { margin-top:5px; display:none; }
+    .seccion-body.abierto { display:block; }
+
+    /* ── Alertas ──────────────────────────────────────────── */
+    .alerta-item { border-bottom:1px solid rgba(255,255,255,0.07); padding:7px 0; margin-top:3px; }
+    .alerta-item:last-child { border-bottom:none; }
+    .alerta-titulo { font-weight:bold; margin-bottom:3px; font-size:11px; color:#e0e0e0; }
+    .alerta-meta   { font-size:10px; color:#666; }
+    .nivel-rojo     { border-left:4px solid #e53935; padding-left:7px; background:rgba(229,57,53,0.07); }
+    .nivel-naranja  { border-left:4px solid #fb8c00; padding-left:7px; background:rgba(251,140,0,0.07); }
+    .nivel-amarillo { border-left:4px solid #fdd835; padding-left:7px; background:rgba(253,216,53,0.07); }
+    .nivel-verde    { border-left:4px solid #43a047; padding-left:7px; background:rgba(67,160,71,0.07); }
+    .badge { display:inline-block; padding:1px 7px; font-size:10px; border-radius:999px; color:#fff; margin-left:5px; font-weight:700; }
+    .badge-rojo    { background:#b71c1c; }
+    .badge-naranja { background:#e65100; }
+    .badge-amarillo{ background:#827717; }
+    .badge-verde   { background:#2e7d32; }
+
+    /* ── Panel IA ─────────────────────────────────────────── */
+    .ia-resultado { margin-top:7px; padding:9px; background:rgba(106,27,154,0.1); border:1px solid rgba(106,27,154,0.3); border-radius:7px; font-size:11px; line-height:1.55; color:#ddd; white-space:pre-wrap; }
+    .ia-loading   { display:flex; align-items:center; gap:7px; color:#9c64c4; font-size:11px; padding:7px 0; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner { width:13px; height:13px; border:2px solid rgba(156,100,196,.3); border-top-color:#9c64c4; border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
+
+    /* ── Leyendas ─────────────────────────────────────────── */
+    .leyenda { margin-top:10px; font-size:11px; }
+    .leyenda strong { color:#888; text-transform:uppercase; font-size:10px; letter-spacing:.5px; }
+    .leyenda-item   { display:flex; align-items:center; gap:7px; margin-top:4px; color:#bbb; }
+    .color   { width:12px; height:12px; border-radius:50%; display:inline-block; border:1px solid rgba(255,255,255,0.15); flex-shrink:0; }
+    .cbox    { width:16px; height:11px; border-radius:3px; display:inline-block; flex-shrink:0; }
+
+    /* ── Indicadores de agua/veg ──────────────────────────── */
+    .data-badge { display:inline-block; padding:1px 6px; font-size:10px; border-radius:999px; margin-left:4px; }
+    .db-agua { background:rgba(0,96,100,0.4); color:#80deea; border:1px solid #006064; }
+    .db-veg  { background:rgba(27,94,32,0.4); color:#a5d6a7; border:1px solid #1b5e20; }
+
+    .hr { border:none; border-top:1px solid rgba(255,255,255,0.06); margin:10px 0; }
+
+    /* ── Marcadores de agua personalizados ────────────────── */
+    .agua-marker { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,0.5); box-shadow:0 2px 6px rgba(0,0,0,0.6); }
+    .veg-marker  { width:18px; height:18px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; border:1px solid rgba(255,255,255,0.2); box-shadow:0 1px 4px rgba(0,0,0,0.4); }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="panel-title">🔥 Monitor de Incendios — Argentina</div>
+    <div class="panel-subtitle">REGLA 30-30-30 · AGUA · VEGETACIÓN · TOPOGRAFÍA</div>
+
+    <label>Ventana temporal</label>
+    <select id="dias">
+      <option value="1">Últimas 24 h</option>
+      <option value="2">Últimos 2 días</option>
+      <option value="3">Últimos 3 días</option>
+      <option value="4">Últimos 4 días</option>
+      <option value="5">Últimos 5 días</option>
+    </select>
+
+    <label>Recarga automática</label>
+    <select id="autoRefresh">
+      <option value="0">Desactivada</option>
+      <option value="60000">Cada 1 minuto</option>
+      <option value="300000" selected>Cada 5 minutos</option>
+      <option value="600000">Cada 10 minutos</option>
+    </select>
+
+    <!-- Capas activas -->
+    <div class="capas-section">
+      <div class="capas-titulo">Capas visibles</div>
+      <label class="capa-toggle"><input type="checkbox" id="togFocos" checked><span class="capa-dot" style="background:#c62828;"></span>Focos NASA (VIIRS/MODIS)</label>
+      <label class="capa-toggle"><input type="checkbox" id="togRiesgo"><span class="capa-dot" style="background:#ff7043;"></span>Zonas 30-30-30</label>
+      <label class="capa-toggle"><input type="checkbox" id="togViento"><span class="capa-dot" style="background:#29b6f6;"></span>Animación de viento</label>
+      <label class="capa-toggle"><input type="checkbox" id="togSMN" checked><span class="capa-dot" style="background:#fdd835;"></span>Alertas SMN</label>
+      <label class="capa-toggle"><input type="checkbox" id="togAgua"><span class="capa-dot" style="background:#00acc1;"></span>Fuentes de agua</label>
+      <label class="capa-toggle"><input type="checkbox" id="togVeg"><span class="capa-dot" style="background:#66bb6a;"></span>Vegetación</label>
+      <label class="capa-toggle"><input type="checkbox" id="togINPE"><span class="capa-dot" style="background:#ff8f00;"></span>Focos INPE (GOES-16/METOP)</label>
+      <label class="capa-toggle"><input type="checkbox" id="togFWI"><span class="capa-dot" style="background:#ab47bc;"></span>FWI — Índice de peligro</label>
+      <label class="capa-toggle"><input type="checkbox" id="togTopo"><span class="capa-dot" style="background:#bdbdbd;"></span>Topografía / Relieve</label>
+      <label class="capa-toggle"><input type="checkbox" id="togRoads"><span class="capa-dot" style="background:#ffb74d;"></span>Caminos de acceso</label>
+      <label class="capa-toggle"><input type="checkbox" id="togRadarEstaciones" checked><span class="capa-dot" style="background:#e1f5fe;border:1px solid #29b6f6;"></span>Estaciones radar SMN/INVAP</label>
+    </div>
+
+    <!-- Botones -->
+    <div class="btn-group">
+      <div class="fila">
+        <button class="btn btn-fire" id="btnCargar">🛰 Cargar focos</button>
+        <button class="btn btn-smn"  id="btnSMN">📡 Alertas SMN</button>
+      </div>
+      <button class="btn btn-clima" id="btnClima">🌡 Clima y viento (Open-Meteo)</button>
+      <div class="fila">
+        <button class="btn btn-agua" id="btnAgua">💧 Fuentes de agua</button>
+        <button class="btn btn-veg"  id="btnVeg">🌿 Vegetación</button>
+      </div>
+      <button class="btn btn-fire" id="btnGOES_RT" style="background:linear-gradient(135deg,#b71c1c,#e65100);position:relative;">
+        🛰 GOES-16 Tiempo Real <span id="goesRtBadge" style="display:none;position:absolute;top:-5px;right:-5px;background:#ff1744;color:#fff;font-size:9px;padding:1px 5px;border-radius:999px;font-weight:700;">LIVE</span>
+      </button>
+      <div class="fila">
+        <button class="btn btn-inpe" id="btnINPE">🛰 Focos INPE</button>
+        <button class="btn btn-fwi"  id="btnFWI">🔥 Calcular FWI</button>
+      </div>
+      <button class="btn btn-ia" id="btnIA">🤖 Análisis IA completo</button>
+    </div>
+
+    <!-- Contadores -->
+    <div class="contadores" style="grid-template-columns:repeat(3,1fr);">
+      <div class="contador-item" style="border-color:rgba(255,23,68,0.4);">
+        <span class="contador-num" id="numGOES" style="color:#ff5252;">—</span>
+        <span class="contador-label" style="color:#ff5252;">GOES RT</span>
+      </div>
+      <div class="contador-item">
+        <span class="contador-num" id="numFocos">—</span>
+        <span class="contador-label">NASA</span>
+      </div>
+      <div class="contador-item">
+        <span class="contador-num" id="numINPE" style="color:#ff8f00;">—</span>
+        <span class="contador-label">INPE</span>
+      </div>
+      <div class="contador-item">
+        <span class="contador-num" id="numZonas" style="color:#ff5722;">—</span>
+        <span class="contador-label">30-30-30</span>
+      </div>
+      <div class="contador-item">
+        <span class="contador-num" id="numFWI" style="color:#ab47bc;">—</span>
+        <span class="contador-label">FWI máx.</span>
+      </div>
+      <div class="contador-item">
+        <span class="contador-num" id="numAgua" style="color:#00acc1;">—</span>
+        <span class="contador-label">Agua</span>
+      </div>
+      <div class="contador-item">
+        <span class="contador-num" id="numVeg" style="color:#66bb6a;">—</span>
+        <span class="contador-label">Veg.</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:5px;">
+      <span class="riesgo-badge" id="riesgoBadge" style="background:#333;color:#777;">RIESGO: —</span>
+    </div>
+
+    <div class="estado-box" id="estado">Presioná "Cargar focos" para iniciar.</div>
+
+    <!-- Indicadores 30-30-30 -->
+    <div class="regla-panel">
+      <div class="regla-titulo">⚡ Regla 30-30-30 — estado actual</div>
+      <div class="regla-indicadores">
+        <div class="regla-item" id="ri-temp">
+          <span class="valor" id="val-temp">—</span>
+          <span class="etiqueta">Temp máx.</span>
+          <span class="cond">&gt;30 °C</span>
+        </div>
+        <div class="regla-item" id="ri-viento">
+          <span class="valor" id="val-viento">—</span>
+          <span class="etiqueta">Viento máx.</span>
+          <span class="cond">&gt;30 km/h</span>
+        </div>
+        <div class="regla-item" id="ri-humedad">
+          <span class="valor" id="val-humedad">—</span>
+          <span class="etiqueta">Humedad mín.</span>
+          <span class="cond">&lt;30 %</span>
+        </div>
+      </div>
+      <div class="zonas-criticas" id="zonasCriticas">Cargá clima para ver zonas de riesgo.</div>
+    </div>
+
+    <hr class="hr">
+
+    <!-- SMN -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secSMN')">
+        <span>📋 Alertas SMN</span><span class="seccion-chevron" id="chev-secSMN">▼</span>
+      </div>
+      <div class="seccion-body" id="secSMN">
+        <div id="resumenSMN" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Alertas SMN".</div>
+        <div id="listaAlertasSMN" style="margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <!-- Agua -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secAgua')">
+        <span>💧 Fuentes de agua <span id="aguaCount" class="data-badge db-agua" style="display:none;"></span></span>
+        <span class="seccion-chevron" id="chev-secAgua">▼</span>
+      </div>
+      <div class="seccion-body" id="secAgua">
+        <div id="aguaResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Fuentes de agua".</div>
+        <div id="aguaLista" style="margin-top:4px;font-size:11px;"></div>
+      </div>
+    </div>
+
+    <!-- Vegetación -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secVeg')">
+        <span>🌿 Vegetación <span id="vegCount" class="data-badge db-veg" style="display:none;"></span></span>
+        <span class="seccion-chevron" id="chev-secVeg">▼</span>
+      </div>
+      <div class="seccion-body" id="secVeg">
+        <div id="vegResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Vegetación".</div>
+        <div id="vegLista" style="margin-top:4px;font-size:11px;"></div>
+      </div>
+    </div>
+
+    <!-- INPE -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secINPE')">
+        <span>🛰 Focos INPE <span id="inpeCount" class="data-badge" style="display:none;background:rgba(230,81,0,.4);color:#ffcc80;border:1px solid #e65100;"></span></span>
+        <span class="seccion-chevron" id="chev-secINPE">▼</span>
+      </div>
+      <div class="seccion-body" id="secINPE">
+        <div id="inpeResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Focos INPE".</div>
+        <div id="inpeLista"   style="margin-top:4px;font-size:11px;"></div>
+      </div>
+    </div>
+
+    <!-- Radar -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secRadar')">
+        <span>📡 Radar meteorológico SMN/INVAP</span><span class="seccion-chevron" id="chev-secRadar">▼</span>
+      </div>
+      <div class="seccion-body" id="secRadar">
+        <div style="margin-top:5px;">
+          <!-- Botones capas radar -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-bottom:6px;">
+            <button id="btnGOES" onclick="toggleCapaRadar('goes')" style="padding:5px 3px;background:#01579b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;">🛰 GOES-16</button>
+            <button id="btnPrecip" onclick="cargarPrecipitacion()" style="padding:5px 3px;background:#1565c0;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;">🌧 Precipit.</button>
+            <button id="btnRadarRV" onclick="toggleRadarRainViewer()" style="padding:5px 3px;background:#1a237e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;">📡 Radar</button>
+            <button onclick="ocultarTodasCapasRadar()" style="padding:5px 3px;background:rgba(255,255,255,0.07);color:#aaa;border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;font-size:10px;">✕ Ocultar</button>
+          </div>
+          <div id="radarStatus" style="font-size:11px;color:#666;padding:3px 0;line-height:1.5;">Seleccioná una capa para activar.</div>
+          <div id="radarEstInfo" style="margin-top:4px;font-size:11px;color:#888;line-height:1.5;">
+            Hacé clic en una estación 📡 para ver el clima en tiempo real.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FWI -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secFWI')">
+        <span>🔥 FWI — Índice de peligro</span>
+        <span class="seccion-chevron" id="chev-secFWI">▼</span>
+      </div>
+      <div class="seccion-body" id="secFWI">
+        <div id="fwiResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Calcular FWI".</div>
+        <div id="fwiLista"   style="margin-top:4px;font-size:11px;"></div>
+      </div>
+    </div>
+
+    <!-- IA -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secIA')">
+        <span>🤖 Análisis IA</span><span class="seccion-chevron" id="chev-secIA">▼</span>
+      </div>
+      <div class="seccion-body" id="secIA">
+        <div id="iaResultado" style="margin-top:5px;font-size:11px;color:#555;">Cargá focos + clima, luego presioná "Análisis IA".</div>
+      </div>
+    </div>
+
+    <hr class="hr">
+
+    <!-- Leyendas -->
+    <div class="leyenda">
+      <strong>Focos NASA — confianza</strong>
+      <div class="leyenda-item"><svg width="14" height="21" viewBox="0 0 20 30"><path d="M10 1C8 5,3 9,3 15c0 4,2 7,4 8c-1-3,.5-6,1-7c0 3,1 6,2 7c1-1,2-4,2-7c.5 1,2 4,1 7c2-1,4-4,4-8c0-4-2-8-7-13Z" fill="#b71c1c"/><path d="M10 13c-2 3-3 6-3 8c0 3,1.5 5,3 5s3-2,3-5c0-2-1-5-3-8Z" fill="#ff6d00" opacity=".9"/></svg> Alta (&ge;80%) — llama grande</div>
+      <div class="leyenda-item"><svg width="11" height="17" viewBox="0 0 20 30"><path d="M10 1C8 5,3 9,3 15c0 4,2 7,4 8c-1-3,.5-6,1-7c0 3,1 6,2 7c1-1,2-4,2-7c.5 1,2 4,1 7c2-1,4-4,4-8c0-4-2-8-7-13Z" fill="#e65100"/><path d="M10 13c-2 3-3 6-3 8c0 3,1.5 5,3 5s3-2,3-5c0-2-1-5-3-8Z" fill="#ffd54f" opacity=".9"/></svg> Media (50-79%)</div>
+      <div class="leyenda-item"><svg width="8" height="12" viewBox="0 0 20 30"><path d="M10 1C8 5,3 9,3 15c0 4,2 7,4 8c-1-3,.5-6,1-7c0 3,1 6,2 7c1-1,2-4,2-7c.5 1,2 4,1 7c2-1,4-4,4-8c0-4-2-8-7-13Z" fill="#f57f17"/><path d="M10 13c-2 3-3 6-3 8c0 3,1.5 5,3 5s3-2,3-5c0-2-1-5-3-8Z" fill="#fff176" opacity=".9"/></svg> Baja (&lt;50%)</div>
+    </div>
+
+    <div class="leyenda" style="margin-top:8px;">
+      <strong>Regla 30-30-30</strong>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(229,57,53,.5);border:1px solid #e53935;"></span>Crítico — 3/3</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(255,143,0,.4);border:1px solid #fb8c00;"></span>Alto — 2/3</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(253,216,53,.3);border:1px solid #fdd835;"></span>Moderado — 1/3</div>
+    </div>
+
+    <div class="leyenda" style="margin-top:8px;">
+      <strong>Fuentes de agua</strong>
+      <div class="leyenda-item"><span style="font-size:14px;">🌊</span>Río / Arroyo / Canal</div>
+      <div class="leyenda-item"><span style="font-size:14px;">💧</span>Lago / Embalse / Laguna</div>
+      <div class="leyenda-item"><span style="font-size:14px;">⛲</span>Manantial / Pozo</div>
+      <div class="leyenda-item"><span style="font-size:14px;">🔴</span>Hidrante / Tanque</div>
+    </div>
+
+    <div class="leyenda" style="margin-top:8px;">
+      <strong>Focos INPE (GOES-16 / METOP)</strong>
+      <div class="leyenda-item"><span style="font-size:13px;">🟠</span>GOES-16 — Geoestacionario (10 min)</div>
+      <div class="leyenda-item"><span style="font-size:13px;">🟡</span>AQUA / TERRA / NOAA-20</div>
+      <div class="leyenda-item"><span style="font-size:13px;">🟣</span>METOP-B / METOP-C</div>
+    </div>
+
+    <div class="leyenda" style="margin-top:8px;">
+      <strong>FWI — Índice de peligro de incendio</strong>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(76,175,80,.5);border:1px solid #4caf50;"></span>Muy bajo (&lt;5)</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(255,235,59,.5);border:1px solid #fdd835;"></span>Moderado (5-12)</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(255,152,0,.5);border:1px solid #ff9800;"></span>Alto (12-24)</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(244,67,54,.5);border:1px solid #f44336;"></span>Muy alto (24-38)</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(156,39,176,.6);border:1px solid #9c27b0;"></span>Extremo (&gt;38)</div>
+    </div>
+
+    <div class="leyenda" style="margin-top:8px;">
+      <strong>Vegetación — riesgo de incendio</strong>
+      <div class="leyenda-item"><span class="color" style="background:#827717;"></span>Matorral / Brezal (MUY ALTO)</div>
+      <div class="leyenda-item"><span class="color" style="background:#1b5e20;"></span>Bosque / Monte (ALTO)</div>
+      <div class="leyenda-item"><span class="color" style="background:#558b2f;"></span>Pastizal / Pradera (ALTO)</div>
+      <div class="leyenda-item"><span class="color" style="background:#795548;"></span>Agrícola / Viñedo (MOD.)</div>
+      <div class="leyenda-item"><span class="color" style="background:#006064;"></span>Humedal (BAJO)</div>
+    </div>
+
+    <div class="leyenda" style="margin-top:8px;">
+      <strong>Radares meteorológicos SMN/INVAP</strong>
+      <div class="leyenda-item"><span style="font-size:13px;">📡</span>Estación radar (14 en red SMN)</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(41,182,246,.08);border:1px solid #29b6f6;"></span>Radio de cobertura (~240 km)</div>
+      <div class="leyenda-item"><span class="cbox" style="background:rgba(41,182,246,.5);"></span>Precipitación live (RainViewer)</div>
+    </div>
+
+    <div style="margin-top:10px;font-size:9px;color:#333;text-align:center;">
+      NASA FIRMS · Open-Meteo · OSM/Overpass · SMN Argentina · RainViewer · Claude IA
+    </div>
+  </div>
+
+  <div id="mapa"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+  <script src="https://unpkg.com/leaflet-velocity/dist/leaflet-velocity.min.js"></script>
+
+  <script>
+    // ── Constantes ──────────────────────────────────────────────────────────
+    const BACKEND  = '';
+
+    const FUENTES_NASA = ['VIIRS_SNPP_NRT','VIIRS_NOAA20_NRT','VIIRS_NOAA21_NRT','MODIS_NRT'];
+
+    const PROVINCIAS = [
+      "Buenos Aires","Catamarca","Chaco","Chubut","Córdoba","Corrientes",
+      "Entre Ríos","Formosa","Jujuy","La Pampa","La Rioja","Mendoza",
+      "Misiones","Neuquén","Río Negro","Salta","San Juan","San Luis",
+      "Santa Cruz","Santa Fe","Santiago del Estero","Tierra del Fuego","Tucumán"
+    ];
+
+    // ── Mapa ────────────────────────────────────────────────────────────────
+    const mapa = L.map('mapa').setView([-38.4, -63.6], 4);
+
+    const MT = '__MAPTILER_KEY__';
+    const basemaps = {
+      "🛰 Satelital": L.tileLayer(
+        `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MT}`,
+        { attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:20, maxNativeZoom:20 }
+      ),
+      "🗺 Calles": L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+        { attribution:'&copy; CARTO &copy; OSM', subdomains:'abcd', maxZoom:19, maxNativeZoom:19 }
+      ),
+      "⛰ Terreno": L.tileLayer(
+        `https://api.maptiler.com/maps/topo-v2/{z}/{x}/{y}.png?key=${MT}`,
+        { attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; OpenStreetMap', maxZoom:19, maxNativeZoom:19 }
+      )
+    };
+    basemaps["🛰 Satelital"].addTo(mapa);
+
+    // ── Capas de overlay ────────────────────────────────────────────────────
+    const clusterFocos  = L.markerClusterGroup({ spiderfyOnMaxZoom:true, showCoverageOnHover:false, zoomToBoundsOnClick:true, chunkedLoading:true, maxClusterRadius:50 });
+    const capasAlertaSMN = L.layerGroup();
+    const capaRiesgo30   = L.layerGroup();
+    const capaAgua       = L.layerGroup();
+    const capaVeg        = L.layerGroup();
+    const capaINPE       = L.layerGroup();
+    const capaFWI        = L.layerGroup();
+    const capaRadarEstaciones = L.layerGroup();
+    const capaGOES_RT = L.layerGroup();
+
+    // Hillshade / topografía (MapTiler — hillshade transparente sobre cualquier capa)
+    const topoOverlay = L.tileLayer(
+      `https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=${MT}`,
+      { opacity:0.4, attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>', maxZoom:19, maxNativeZoom:14, errorTileUrl:'' }
+    );
+
+    // Caminos (CartoDB labels — más liviano que OSM completo)
+    const roadsOverlay = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
+      { opacity:0.7, attribution:'&copy; CARTO', subdomains:'abcd', maxZoom:19 }
+    );
+
+    mapa.addLayer(clusterFocos);
+    mapa.addLayer(capasAlertaSMN);
+
+    let capasViento = null;
+
+    L.control.layers(basemaps, {
+      "🔥 Focos NASA":         clusterFocos,
+      "📋 Alertas SMN":        capasAlertaSMN,
+      "⚡ Zonas 30-30-30":     capaRiesgo30,
+      "💧 Fuentes de agua":    capaAgua,
+      "🌿 Vegetación":         capaVeg,
+      "🛰 Focos INPE":         capaINPE,
+      "🔥 FWI":                capaFWI,
+      "⛰ Topografía/Relieve": topoOverlay,
+      "🛣 Caminos de acceso":  roadsOverlay,
+      "📡 Radares SMN/INVAP":  capaRadarEstaciones,
+      "🔴 GOES-16 Tiempo Real": capaGOES_RT
+    }, { position:'topright', collapsed:true }).addTo(mapa);
+
+    // ── Estado global ────────────────────────────────────────────────────────
+    let geojsonArg    = null;
+    let datosClima    = [];
+    let datosAgua     = [];
+    let datosVeg      = [];
+    let datosINPE     = [];
+    let datosFWI      = [];
+    let firePts       = [];   // [{lat,lon,conf}]
+    let firesBBox     = null; // {s,w,n,e}
+    let intervaloAR   = null;
+    let ultimoFocos   = 0;
+    const ultimoSMN   = { total:0, rojo:0, naranja:0, amarillo:0, verde:0 };
+
+    const colorAlerta = {
+      rojo:     { color:'#d32f2f', fillColor:'#d32f2f', fillOpacity:.35, weight:2 },
+      naranja:  { color:'#f57c00', fillColor:'#f57c00', fillOpacity:.28, weight:2 },
+      amarillo: { color:'#fbc02d', fillColor:'#fbc02d', fillOpacity:.25, weight:2 },
+      verde:    { color:'#388e3c', fillColor:'#388e3c', fillOpacity:.15, weight:1 }
+    };
+
+    // ── Utilidades ──────────────────────────────────────────────────────────
+    const normProv = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+
+    function parseCSV(txt) {
+      const ls = txt.trim().split('\n');
+      if (ls.length < 2) return [];
+      const enc = ls[0].split(',').map(x => x.trim());
+      return ls.slice(1).map(l => { const v = l.split(','); const o = {}; enc.forEach((e,i) => o[e]=(v[i]||'').trim()); return o; });
+    }
+
+    function toggleSeccion(id) {
+      document.getElementById(id).classList.toggle('abierto');
+      document.getElementById('chev-'+id).classList.toggle('abierto');
+    }
+
+    function setEstado(msg, tipo='') {
+      const el = document.getElementById('estado');
+      el.textContent = msg;
+      el.className   = 'estado-box' + (tipo ? ' '+tipo : '');
+    }
+
+    function badgeNivel(n) {
+      const c = { rojo:'badge-rojo', naranja:'badge-naranja', amarillo:'badge-amarillo', verde:'badge-verde' };
+      const l = { rojo:'Rojo', naranja:'Naranja', amarillo:'Amarillo', verde:'Info' };
+      return `<span class="badge ${c[n]||'badge-verde'}">${l[n]||n}</span>`;
+    }
+
+    // Distancia Haversine en km
+    function haversineKm(la1, lo1, la2, lo2) {
+      const R = 6371, dL = (la2-la1)*Math.PI/180, dO = (lo2-lo1)*Math.PI/180;
+      const a = Math.sin(dL/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dO/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function distAlFocoMin(lat, lon) {
+      if (!firePts.length) return null;
+      return Math.min(...firePts.map(p => haversineKm(lat, lon, p.lat, p.lon)));
+    }
+
+    // ── GeoJSON provincias ──────────────────────────────────────────────────
+    const GJ_URLS = [
+      'https://raw.githubusercontent.com/juanmansilla/Argentina-Geojson/master/argentina-provincias.geojson',
+      'https://api.allorigins.win/raw?url=https%3A%2F%2Finfra.datos.gob.ar%2Fcatalog%2Fotros%2Fdataset%2F2%2Fdistribution%2F2.4%2Fdownload%2Fprovincias.geojson'
+    ];
+    async function cargarGeoJSON() {
+      if (geojsonArg) return geojsonArg;
+      for (const u of GJ_URLS) {
+        try { const r = await fetch(u); if (!r.ok) continue; const d = await r.json(); if (d?.features?.length) { geojsonArg = d; return d; } } catch(e) {}
+      }
+      return null;
+    }
+    function estaEnArg(lat, lng) {
+      if (!geojsonArg) return true;
+      return geojsonArg.features.some(f => turf.booleanPointInPolygon(turf.point([lng,lat]), f));
+    }
+    function nomFeat(p) { return p.nombre||p.name||p.NAME||''; }
+
+    // ── Icono llama SVG ──────────────────────────────────────────────────────
+    function flameIcon(outerColor, innerColor, size) {
+      const h = Math.round(size * 1.5);
+      return L.divIcon({
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${h}"
+                    viewBox="0 0 20 30"
+                    style="filter:drop-shadow(0 0 3px ${outerColor}cc);">
+          <!-- cuerpo de la llama -->
+          <path d="M10 1
+                   C 8 5, 3 9, 3 15
+                   C 3 19, 5 22, 7 23
+                   C 6 20, 7.5 17, 8 16
+                   C 8 19, 9 22, 10 23
+                   C 11 22, 12 19, 12 16
+                   C 12.5 17, 14 20, 13 23
+                   C 15 22, 17 19, 17 15
+                   C 17 11, 15 7, 10 1 Z"
+                fill="${outerColor}"/>
+          <!-- núcleo interior -->
+          <path d="M10 13
+                   C 8 16, 7 19, 7 21
+                   C 7 24, 8.5 26, 10 26
+                   C 11.5 26, 13 24, 13 21
+                   C 13 19, 12 16, 10 13 Z"
+                fill="${innerColor}" opacity="0.92"/>
+        </svg>`,
+        iconSize:   [size, h],
+        iconAnchor: [size / 2, h],
+        popupAnchor:[0, -h],
+        className:  ''
+      });
+    }
+
+    // ── Radar SMN/INVAP ──────────────────────────────────────────────────────
+    const RADAR_ESTACIONES = [
+      { nombre:'Ezeiza',              lat:-34.820, lon:-58.530, tipo:'INVAP C-band', provincia:'Buenos Aires',    km:240 },
+      { nombre:'Córdoba',             lat:-31.440, lon:-64.190, tipo:'INVAP C-band', provincia:'Córdoba',         km:240 },
+      { nombre:'Resistencia',         lat:-27.460, lon:-59.050, tipo:'INVAP C-band', provincia:'Chaco',           km:240 },
+      { nombre:'Paraná',              lat:-31.780, lon:-60.480, tipo:'INVAP C-band', provincia:'Entre Ríos',      km:240 },
+      { nombre:'Santa Rosa',          lat:-36.570, lon:-64.270, tipo:'INVAP C-band', provincia:'La Pampa',        km:240 },
+      { nombre:'Mar del Plata',       lat:-38.000, lon:-57.580, tipo:'SMN C-band',   provincia:'Buenos Aires',    km:240 },
+      { nombre:'Neuquén',             lat:-38.950, lon:-68.130, tipo:'SMN C-band',   provincia:'Neuquén',         km:240 },
+      { nombre:'Bariloche',           lat:-41.150, lon:-71.160, tipo:'INVAP C-band', provincia:'Río Negro',       km:200 },
+      { nombre:'Iguazú',              lat:-25.730, lon:-54.450, tipo:'INVAP C-band', provincia:'Misiones',        km:240 },
+      { nombre:'Comodoro Rivadavia',  lat:-45.780, lon:-67.500, tipo:'SMN C-band',   provincia:'Chubut',          km:240 },
+      { nombre:'Río Grande',          lat:-53.780, lon:-67.760, tipo:'SMN C-band',   provincia:'Tierra del Fuego',km:200 },
+      { nombre:'Salta',               lat:-24.850, lon:-65.480, tipo:'INVAP C-band', provincia:'Salta',           km:240 },
+      { nombre:'Paso de los Libres',  lat:-29.680, lon:-57.080, tipo:'SMN C-band',   provincia:'Corrientes',      km:240 },
+      { nombre:'Mendoza',             lat:-32.830, lon:-68.780, tipo:'INVAP C-band', provincia:'Mendoza',         km:240 },
+    ];
+
+    // ── Capas radar: GOES-16 (NASA GIBS) + IMERG precipitación ─────────────────
+    const GIBS_WMS = 'https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi';
+    let capaGOES      = null;
+    let capaPrecipMap = L.layerGroup();
+    let radarRefreshTimer = null;
+
+    function crearCapaGOES() {
+      if (capaGOES) mapa.removeLayer(capaGOES);
+      capaGOES = L.tileLayer.wms(GIBS_WMS, {
+        layers:        'GOES-East_ABI_GeoColor',
+        format:        'image/jpeg',
+        transparent:   false,
+        version:       '1.1.1',
+        opacity:       0.85,
+        maxZoom:       19,
+        maxNativeZoom: 7,
+        attribution:   'NASA GIBS / NOAA GOES-East',
+        zIndex:        490
+      });
+    }
+
+    window.toggleCapaRadar = function(tipo) {
+      if (tipo === 'goes') {
+        if (capaGOES && mapa.hasLayer(capaGOES)) {
+          mapa.removeLayer(capaGOES);
+          document.getElementById('btnGOES').style.opacity = '0.5';
+          document.getElementById('radarStatus').textContent = 'GOES-16 ocultado.';
+        } else {
+          crearCapaGOES(); mapa.addLayer(capaGOES);
+          document.getElementById('btnGOES').style.opacity = '1';
+          document.getElementById('radarStatus').innerHTML = '✅ <b style="color:#80deea;">GOES-16 activo</b> · imagen satelital más reciente';
+        }
+      }
+    };
+
+    window.cargarPrecipitacion = async function() {
+      const btn = document.getElementById('btnPrecip');
+      const sta = document.getElementById('radarStatus');
+      if (mapa.hasLayer(capaPrecipMap)) {
+        mapa.removeLayer(capaPrecipMap);
+        btn.style.opacity = '0.5';
+        sta.textContent = 'Precipitación ocultada.';
+        return;
+      }
+      btn.disabled = true; btn.textContent = '⏳';
+      sta.textContent = 'Consultando precipitación…';
+      try {
+        const datos = await fetch(`${BACKEND}/precipitacion`).then(r => r.json());
+        capaPrecipMap.clearLayers();
+        let maxP = 0, conLluvia = 0;
+        datos.forEach(p => {
+          const v = p.precip_mm || 0;
+          if (v > maxP) maxP = v;
+          if (v > 0) conLluvia++;
+          // Color: 0=sin lluvia gris, 0.1-1=azul claro, 1-5=azul, 5-15=verde, 15-30=amarillo, >30=rojo
+          let color, r, opacity;
+          if      (v <= 0)   { color='#37474f'; r=8000; opacity=0.12; }
+          else if (v < 0.5)  { color='#90caf9'; r=14000; opacity=0.45; }
+          else if (v < 2)    { color='#1565c0'; r=18000; opacity=0.55; }
+          else if (v < 5)    { color='#00897b'; r=22000; opacity=0.65; }
+          else if (v < 15)   { color='#f9a825'; r=26000; opacity=0.75; }
+          else if (v < 30)   { color='#e65100'; r=30000; opacity=0.80; }
+          else               { color='#b71c1c'; r=34000; opacity=0.90; }
+          const c = L.circle([p.lat, p.lon], {
+            radius: r, color, fillColor: color,
+            weight: 0, fillOpacity: opacity
+          });
+          c.bindPopup(`<div style="font-family:monospace;font-size:11px;">
+            <b style="color:#90caf9;">🌧 Precipitación</b><br>
+            Lat ${p.lat} / Lon ${p.lon}<br>
+            Ahora: <b>${v} mm/h</b><br>
+            Lluvia: ${p.rain} mm · Chubascos: ${p.shower} mm<br>
+            Próx. 3h: ${p.prox3h} mm
+          </div>`);
+          capaPrecipMap.addLayer(c);
+        });
+        mapa.addLayer(capaPrecipMap);
+        btn.disabled = false; btn.textContent = '🌧 Precipit.'; btn.style.opacity = '1';
+        sta.innerHTML = `✅ <b style="color:#90caf9;">Precipitación cargada</b><br>
+          <span style="font-size:10px;color:#666;">${conLluvia} zonas con lluvia · máx ${maxP} mm/h · <span style="color:#37474f;">■</span> seco <span style="color:#1565c0;">■</span> leve <span style="color:#00897b;">■</span> mod. <span style="color:#e65100;">■</span> fuerte</span>`;
+      } catch(e) {
+        sta.textContent = '❌ Error al cargar precipitación.';
+        btn.disabled = false; btn.textContent = '🌧 Precipit.';
+      }
+    };
+
+    window.toggleRadarRainViewer = async function() {
+      const btn = document.getElementById('btnRadarRV');
+      if (radarTileLayer && mapa.hasLayer(radarTileLayer)) {
+        mapa.removeLayer(radarTileLayer);
+        btn.style.opacity = '0.5';
+        document.getElementById('radarStatus').textContent = 'Radar ocultado.';
+        return;
+      }
+      btn.textContent = '⏳';
+      const ok = await cargarRadarRainViewer();
+      btn.textContent = '📡 Radar';
+      btn.style.opacity = ok ? '1' : '0.5';
+      if (!ok) document.getElementById('radarStatus').textContent = '❌ Sin datos de radar disponibles.';
+      else document.getElementById('radarStatus').innerHTML = '✅ <b style="color:#80deea;">Radar activo</b> · RainViewer';
+    };
+
+    window.ocultarTodasCapasRadar = function() {
+      if (capaGOES) mapa.removeLayer(capaGOES);
+      if (mapa.hasLayer(capaPrecipMap)) mapa.removeLayer(capaPrecipMap);
+      if (radarTileLayer && mapa.hasLayer(radarTileLayer)) mapa.removeLayer(radarTileLayer);
+      if (radarRefreshTimer) { clearInterval(radarRefreshTimer); radarRefreshTimer = null; }
+      document.getElementById('btnGOES').style.opacity    = '0.5';
+      document.getElementById('btnPrecip').style.opacity  = '0.5';
+      document.getElementById('btnRadarRV').style.opacity = '0.5';
+      document.getElementById('radarStatus').textContent  = 'Capas ocultadas.';
+    };
+
+    // ── RainViewer radar tiles ────────────────────────────────────────────────
+    let radarTileLayer = null;
+    let radarTimestamp = null;
+
+    async function cargarRadarRainViewer() {
+      try {
+        const data = await fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json());
+        const frames = data.radar?.past || [];
+        if (!frames.length) return false;
+        const last = frames[frames.length - 1];
+        radarTimestamp = last.time;
+        if (radarTileLayer) mapa.removeLayer(radarTileLayer);
+        radarTileLayer = L.tileLayer(
+          `https://tilecache.rainviewer.com${last.path}/256/{z}/{x}/{y}/2/1_1.png`,
+          { opacity: 0.6, maxZoom: 19, maxNativeZoom: 12, zIndex: 480,
+            attribution: 'RainViewer' }
+        );
+        mapa.addLayer(radarTileLayer);
+        const fecha = new Date(radarTimestamp * 1000).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+        document.getElementById('radarEstInfo').innerHTML =
+          `🌧 <b style="color:#29b6f6;">Radar activo</b> — dato de las ${fecha}<br>
+           <span style="font-size:10px;color:#666;">Verde=leve · Amarillo=mod · Rojo=intenso</span>`;
+        return true;
+      } catch(e) { return false; }
+    }
+
+    async function fetchClimaEstacion(lat, lon) {
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,rain,showers,windspeed_10m,winddirection_10m,weathercode,cloudcover,relative_humidity_2m&wind_speed_unit=kmh&timezone=America/Argentina/Buenos_Aires`;
+        const d = await fetch(url).then(r=>r.json());
+        return d.current || null;
+      } catch(e) { return null; }
+    }
+
+    function wmoDesc(code) {
+      if (code===0) return '☀️ Despejado';
+      if (code<=2)  return '⛅ Parcialmente nublado';
+      if (code<=3)  return '☁️ Nublado';
+      if (code<=49) return '🌫️ Neblina';
+      if (code<=59) return '🌦️ Llovizna';
+      if (code<=69) return '🌧️ Lluvia';
+      if (code<=79) return '🌨️ Nieve';
+      if (code<=84) return '🌦️ Chubascos';
+      if (code<=99) return '⛈️ Tormenta';
+      return '—';
+    }
+
+    function renderRadarEstaciones() {
+      capaRadarEstaciones.clearLayers();
+      RADAR_ESTACIONES.forEach(r => {
+        const circulo = L.circle([r.lat, r.lon], {
+          radius: r.km * 1000,
+          color: '#29b6f6', weight: 1, opacity: 0.35,
+          fillColor: '#29b6f6', fillOpacity: 0.04
+        });
+        const icon = L.divIcon({
+          html: `<div style="width:22px;height:22px;border-radius:50%;background:rgba(1,87,155,0.88);border:2px solid #29b6f6;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 8px #29b6f688;">📡</div>`,
+          iconSize:[22,22], iconAnchor:[11,11], popupAnchor:[0,-13], className:''
+        });
+        const mk = L.marker([r.lat, r.lon], { icon });
+
+        mk.on('click', async function() {
+          const popup = L.popup({ maxWidth: 220 })
+            .setLatLng([r.lat, r.lon])
+            .setContent(`<div style="font-family:monospace;font-size:11px;min-width:185px;">
+              <b style="color:#29b6f6;">📡 ${r.nombre}</b><br>
+              <span style="color:#aaa;">Cargando datos meteorológicos…</span>
+            </div>`)
+            .openOn(mapa);
+
+          const c = await fetchClimaEstacion(r.lat, r.lon);
+          let climaHtml = '<span style="color:#f44;">Sin datos</span>';
+          if (c) {
+            const dir = ['N','NE','E','SE','S','SO','O','NO'][Math.round(c.winddirection_10m/45)%8];
+            climaHtml = `
+              ${wmoDesc(c.weathercode)}<br>
+              🌡️ <b>${c.temperature_2m}°C</b> &nbsp; 💧 ${c.relative_humidity_2m}%<br>
+              🌧️ Lluvia: <b>${c.precipitation ?? 0} mm/h</b><br>
+              💨 Viento: <b>${c.windspeed_10m} km/h ${dir}</b><br>
+              ☁️ Nubosidad: ${c.cloudcover}%`;
+          }
+          popup.setContent(`<div style="font-family:monospace;font-size:11px;min-width:200px;">
+            <b style="color:#29b6f6;font-size:12px;">📡 ${r.nombre}</b><br>
+            <span style="color:#aaa;">${r.tipo} · ${r.provincia} · ${r.km} km</span><br>
+            <hr style="border-color:#333;margin:4px 0;">
+            ${climaHtml}
+            <hr style="border-color:#333;margin:4px 0;">
+            <button onclick="
+              mapa.setView([${r.lat},${r.lon}], 7);
+              if(!radarTileLayer||!mapa.hasLayer(radarTileLayer)) cargarRadarRainViewer();
+            " style="width:100%;padding:4px;background:#01579b;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;margin-top:2px;">
+              🌧 Ver radar en esta zona
+            </button>
+          </div>`);
+        });
+
+        capaRadarEstaciones.addLayer(circulo);
+        capaRadarEstaciones.addLayer(mk);
+      });
+    }
+
+
+    // ── Focos NASA ──────────────────────────────────────────────────────────
+    function colorFoco(c) {
+      const n = parseFloat(c);
+      if (!isNaN(n) && n >= 80) return { outer:'#b71c1c', inner:'#ff6d00', size:22 };
+      if (!isNaN(n) && n >= 50) return { outer:'#e65100', inner:'#ffd54f', size:17 };
+      return                            { outer:'#f57f17', inner:'#fff176', size:13 };
+    }
+
+    async function cargarFocos(msg=true) {
+      clusterFocos.clearLayers();
+      firePts = [];
+      const dias = document.getElementById('dias').value;
+      if (msg) setEstado('Consultando NASA FIRMS…');
+      try {
+        const results = await Promise.all(
+          FUENTES_NASA.map(f =>
+            fetch(`${BACKEND}/nasa-focos?fuente=${f}&dias=${dias}`)
+              .then(r => r.ok ? r.text() : '').catch(() => '')
+          )
+        );
+        const seen = new Set(), all = [];
+        results.forEach(t => { if (!t) return; parseCSV(t).forEach(f => { const k=`${f.latitude}|${f.longitude}|${f.acq_date}|${f.acq_time}`; if (!seen.has(k)) { seen.add(k); all.push(f); } }); });
+
+        const bnds = []; let cnt = 0;
+        let bS=90, bW=180, bN=-90, bE=-180;
+
+        all.forEach(f => {
+          const lat = parseFloat(f.latitude), lng = parseFloat(f.longitude);
+          if (isNaN(lat)||isNaN(lng)) return;
+          if (!estaEnArg(lat, lng)) return;
+          const conf = f.confidence || f.confidence_day || f.confidence_night || '0';
+          if (!isNaN(parseFloat(conf)) && parseFloat(conf) <= 50) return;
+
+          const col    = colorFoco(conf);
+          const brillo = f.bright_ti4 || f.brightness || 'N/D';
+          const mk     = L.marker([lat, lng], { icon: flameIcon(col.outer, col.inner, col.size) });
+          mk.bindPopup(`<div style="font-family:monospace;font-size:11px;">
+            <b style="color:#c62828;">🔥 Foco NASA</b><br>
+            Lat ${lat.toFixed(4)} | Lng ${lng.toFixed(4)}<br>
+            Confianza: <b>${conf}%</b><br>
+            Brillo: ${brillo} K<br>
+            Fecha: ${f.acq_date||'N/D'} ${f.acq_time||''}<br>
+            Satélite: ${f.satellite||'N/D'}
+          </div>`);
+          clusterFocos.addLayer(mk);
+          bnds.push([lat,lng]);
+          firePts.push({ lat, lon:lng, conf });
+          cnt++;
+          if (lat < bS) bS=lat; if (lat > bN) bN=lat;
+          if (lng < bW) bW=lng; if (lng > bE) bE=lng;
+        });
+
+        if (bnds.length > 0) {
+          mapa.fitBounds(bnds, { padding:[40,40] });
+          firesBBox = { s:bS, w:bW, n:bN, e:bE };
+        }
+        ultimoFocos = cnt;
+        actualizarContadores();
+        setEstado(`Focos activos (>${dias}d): ${cnt} | ${new Date().toLocaleTimeString('es-AR')}`, cnt>0?'warn':'ok');
+      } catch(e) {
+        console.error(e);
+        setEstado('Error al cargar focos. Verificá MAP_KEY.', 'err');
+      }
+    }
+
+    // ── SMN ─────────────────────────────────────────────────────────────────
+    async function cargarAlertasSMN(msg=true) {
+      if (msg) document.getElementById('resumenSMN').innerHTML = 'Consultando…';
+      try {
+        const alertas = await fetch(`${BACKEND}/smn-alertas?provincia=`).then(r => r.json());
+        Object.assign(ultimoSMN, { total:0, rojo:0, naranja:0, amarillo:0, verde:0 });
+        alertas.forEach(a => { ultimoSMN.total++; ultimoSMN[a.nivel]++; });
+        actualizarContadores();
+        renderizarSMNPanel(alertas);
+        renderizarCapasSMN(alertas);
+        evaluarTelegram();
+      } catch(e) {
+        document.getElementById('resumenSMN').innerHTML = '<span style="color:#e53935;">Error — ¿está app.py corriendo?</span>';
+      }
+    }
+
+    async function renderizarCapasSMN(alertas) {
+      capasAlertaSMN.clearLayers();
+      const gd = await cargarGeoJSON(); if (!gd) return;
+      const prio = { rojo:4, naranja:3, amarillo:2, verde:1 }, nivelProv = {};
+      alertas.forEach(a => {
+        const txt = normProv(a.title+' '+a.description+' '+(a.category||[]).join(' '));
+        PROVINCIAS.forEach(p => { if (txt.includes(normProv(p)) && (!nivelProv[p] || prio[a.nivel]>prio[nivelProv[p]])) nivelProv[p]=a.nivel; });
+      });
+      if (!Object.keys(nivelProv).length) return;
+      L.geoJSON(gd, {
+        style: f => { const m=Object.keys(nivelProv).find(p=>normProv(p)===normProv(nomFeat(f.properties))); return m ? colorAlerta[nivelProv[m]] : {fillOpacity:0,opacity:0}; },
+        onEachFeature: (f,l) => { const g=nomFeat(f.properties),m=Object.keys(nivelProv).find(p=>normProv(p)===normProv(g)); if(!m)return; const nv=nivelProv[m]; l.bindPopup(`<b>${g}</b><br>Alerta: <b style="color:${colorAlerta[nv].color}">${nv.toUpperCase()}</b>`); }
+      }).addTo(capasAlertaSMN);
+    }
+
+    function renderizarSMNPanel(alertas) {
+      const fil = alertas.filter(a => ['rojo','naranja','amarillo'].includes(a.nivel));
+      const resEl = document.getElementById('resumenSMN'), liEl = document.getElementById('listaAlertasSMN');
+      if (!fil.length) { resEl.innerHTML='<span style="color:#43a047;">Sin alertas críticas activas.</span>'; liEl.innerHTML=''; return; }
+      const c={rojo:0,naranja:0,amarillo:0}; fil.forEach(a=>{if(c[a.nivel]!==undefined)c[a.nivel]++;});
+      resEl.innerHTML = `${c.rojo?`<span class="badge badge-rojo">Rojo ${c.rojo}</span> `:''} ${c.naranja?`<span class="badge badge-naranja">Naranja ${c.naranja}</span> `:''} ${c.amarillo?`<span class="badge badge-amarillo">Amarillo ${c.amarillo}</span>`:''}`;
+      const prio={rojo:4,naranja:3,amarillo:2};
+      liEl.innerHTML=[...fil].sort((a,b)=>(prio[b.nivel]||0)-(prio[a.nivel]||0)).slice(0,5).map(a=>{
+        const txt=normProv(a.title+' '+a.description+' '+(a.category||[]).join(' '));
+        const provs=PROVINCIAS.filter(p=>txt.includes(normProv(p)));
+        return `<div class="alerta-item nivel-${a.nivel}">
+          <div class="alerta-titulo">${a.title} ${badgeNivel(a.nivel)}</div>
+          <div class="alerta-meta">${a.tipoFeed}</div>
+          ${a.description?`<div style="font-size:10px;color:#999;margin-top:2px;">${a.description.slice(0,120)}…</div>`:''}
+          ${provs.length?`<div style="font-size:10px;color:#aaa;margin-top:3px;">📍 ${provs.join(', ')}</div>`:''}
+        </div>`;
+      }).join('');
+    }
+
+    // ── Clima / 30-30-30 ────────────────────────────────────────────────────
+    async function cargarClima() {
+      const btn = document.getElementById('btnClima');
+      btn.disabled=true; btn.textContent='⏳ Cargando clima…';
+      try {
+        datosClima = await fetch(`${BACKEND}/weather-grid`).then(r=>r.json());
+        renderizarZonasRiesgo(datosClima);
+        actualizarIndicadores30(datosClima);
+        if (document.getElementById('togViento').checked) await cargarViento();
+        btn.textContent='✅ Clima OK';
+        setTimeout(()=>{btn.textContent='🌡 Clima y viento (Open-Meteo)';btn.disabled=false;},2000);
+      } catch(e) {
+        btn.textContent='❌ Error'; setTimeout(()=>{btn.textContent='🌡 Clima y viento (Open-Meteo)';btn.disabled=false;},3000);
+      }
+    }
+
+    function renderizarZonasRiesgo(datos) {
+      capaRiesgo30.clearLayers();
+      datos.forEach(d => {
+        const f = d.factores_30||0; if (!f) return;
+        const cfg = f===3 ? {fc:'#e53935',fo:.50,bc:'#e53935'} : f===2 ? {fc:'#ff8f00',fo:.38,bc:'#fb8c00'} : {fc:'#fdd835',fo:.22,bc:'#fdd835'};
+        const half=1.5;
+        const r=L.rectangle([[d.lat-half,d.lon-half],[d.lat+half,d.lon+half]],{fillColor:cfg.fc,fillOpacity:cfg.fo,color:cfg.bc,weight:.5,renderer:L.canvas()});
+        r.bindPopup(`<div style="font-family:monospace;font-size:11px;">
+          <b style="color:${cfg.bc};">⚡ Zona 30-30-30 — ${f}/3 condiciones</b><br>
+          🌡 Temp: ${d.temp!==null?d.temp+'°C':'N/D'} ${d.temp!==null&&d.temp>=30?'✓':'✗'}<br>
+          💨 Viento: ${d.wind_speed!==null?d.wind_speed+' km/h':'N/D'} ${d.wind_speed!==null&&d.wind_speed>=30?'✓':'✗'}<br>
+          💧 Humedad: ${d.humidity!==null?d.humidity+'%':'N/D'} ${d.humidity!==null&&d.humidity<=30?'✓':'✗'}<br>
+          <small style="color:#888;">Lat ${d.lat} | Lon ${d.lon}</small>
+        </div>`);
+        capaRiesgo30.addLayer(r);
+      });
+      if (document.getElementById('togRiesgo').checked && !mapa.hasLayer(capaRiesgo30)) mapa.addLayer(capaRiesgo30);
+    }
+
+    function actualizarIndicadores30(datos) {
+      const T=datos.map(d=>d.temp).filter(v=>v!==null);
+      const V=datos.map(d=>d.wind_speed).filter(v=>v!==null);
+      const H=datos.map(d=>d.humidity).filter(v=>v!==null);
+      const tmax=T.length?Math.max(...T):null, vmax=V.length?Math.max(...V):null, hmin=H.length?Math.min(...H):null;
+      const z3=datos.filter(d=>d.factores_30===3).length, z2=datos.filter(d=>d.factores_30===2).length;
+      document.getElementById('val-temp').textContent    = tmax!==null ? tmax+'°C'    : '—';
+      document.getElementById('val-viento').textContent  = vmax!==null ? vmax+' km/h' : '—';
+      document.getElementById('val-humedad').textContent = hmin!==null ? hmin+'%'     : '—';
+      document.getElementById('ri-temp').classList.toggle('activo',   tmax!==null && tmax>=30);
+      document.getElementById('ri-viento').classList.toggle('activo', vmax!==null && vmax>=30);
+      document.getElementById('ri-humedad').classList.toggle('activo',hmin!==null && hmin<=30);
+      document.getElementById('zonasCriticas').innerHTML = `<strong>${z3}</strong> zona${z3!==1?'s':''} 3/3 · <strong>${z2}</strong> zona${z2!==1?'s':''} 2/3`;
+      document.getElementById('numZonas').textContent = z3;
+      actualizarContadores();
+    }
+
+    // ── Viento ──────────────────────────────────────────────────────────────
+    async function cargarViento() {
+      if (capasViento) { mapa.removeLayer(capasViento); capasViento=null; }
+      try {
+        const wd = await fetch(`${BACKEND}/wind-data`).then(r=>r.json());
+        capasViento = L.velocityLayer({
+          displayValues:true,
+          displayOptions:{ velocityType:'Viento', position:'bottomleft', emptyString:'Sin datos', angleConvention:'bearingCCW', speedUnit:'km/h' },
+          data:wd, maxVelocity:60,
+          colorScale:['#d0e8ff','#81d4fa','#29b6f6','#039be5','#0277bd','#f57c00','#e65100','#c62828'],
+          velocityScale:.008, particleAge:64, lineWidth:1.5, particleMultiplier:1/300
+        });
+        mapa.addLayer(capasViento);
+        document.getElementById('togViento').checked=true;
+      } catch(e) { console.error('Error viento:',e); }
+    }
+
+    // ── Fuentes de agua ──────────────────────────────────────────────────────
+    // Dataset estático de principales cuerpos de agua de Argentina
+    const AGUA_ESTATICA = [
+      // Ríos principales
+      {lat:-27.47,lon:-58.83,tipo:'river',nombre:'Río Paraguay'},
+      {lat:-27.47,lon:-58.83,tipo:'river',nombre:'Río Pilcomayo'},
+      {lat:-25.27,lon:-57.62,tipo:'river',nombre:'Río Bermejo'},
+      {lat:-27.50,lon:-58.78,tipo:'river',nombre:'Río Bermejo (desembocadura)'},
+      {lat:-32.06,lon:-60.63,tipo:'river',nombre:'Río Paraná (Rosario)'},
+      {lat:-34.35,lon:-58.47,tipo:'river',nombre:'Río de la Plata'},
+      {lat:-31.39,lon:-57.96,tipo:'river',nombre:'Río Uruguay'},
+      {lat:-33.13,lon:-60.32,tipo:'river',nombre:'Río Carcarañá'},
+      {lat:-34.57,lon:-58.68,tipo:'river',nombre:'Río Matanza-Riachuelo'},
+      {lat:-36.47,lon:-62.12,tipo:'river',nombre:'Río Salado (Buenos Aires)'},
+      {lat:-38.97,lon:-62.08,tipo:'river',nombre:'Río Colorado'},
+      {lat:-39.02,lon:-65.97,tipo:'river',nombre:'Río Negro'},
+      {lat:-38.70,lon:-68.08,tipo:'river',nombre:'Río Limay'},
+      {lat:-38.95,lon:-68.07,tipo:'river',nombre:'Río Neuquén'},
+      {lat:-43.23,lon:-65.48,tipo:'river',nombre:'Río Chubut'},
+      {lat:-47.77,lon:-65.90,tipo:'river',nombre:'Río Deseado'},
+      {lat:-49.98,lon:-68.55,tipo:'river',nombre:'Río Santa Cruz'},
+      {lat:-32.86,lon:-68.82,tipo:'river',nombre:'Río Mendoza'},
+      {lat:-30.13,lon:-68.18,tipo:'river',nombre:'Río San Juan'},
+      {lat:-27.78,lon:-64.27,tipo:'river',nombre:'Río Dulce'},
+      {lat:-24.33,lon:-65.10,tipo:'river',nombre:'Río Bermejo (Salta)'},
+      {lat:-22.85,lon:-63.98,tipo:'river',nombre:'Río Pilcomayo (Salta)'},
+      {lat:-29.68,lon:-63.38,tipo:'river',nombre:'Río Tercero/Ctalamochita'},
+      {lat:-33.03,lon:-64.18,tipo:'river',nombre:'Río Cuarto'},
+      // Embalses y represas
+      {lat:-32.18,lon:-64.45,tipo:'reservoir',nombre:'Embalse Río Tercero'},
+      {lat:-32.83,lon:-69.07,tipo:'reservoir',nombre:'Embalse Potrerillos'},
+      {lat:-31.43,lon:-68.78,tipo:'reservoir',nombre:'Embalse Ullum'},
+      {lat:-37.92,lon:-67.48,tipo:'reservoir',nombre:'Embalse Casa de Piedra'},
+      {lat:-40.17,lon:-70.72,tipo:'reservoir',nombre:'Embalse Alicurá'},
+      {lat:-39.27,lon:-68.75,tipo:'reservoir',nombre:'Embalse El Chocón'},
+      {lat:-40.17,lon:-70.17,tipo:'reservoir',nombre:'Embalse Piedra del Águila'},
+      {lat:-38.77,lon:-68.47,tipo:'reservoir',nombre:'Embalse Cerros Colorados'},
+      {lat:-25.00,lon:-65.42,tipo:'reservoir',nombre:'Embalse Cabra Corral'},
+      {lat:-31.43,lon:-64.40,tipo:'reservoir',nombre:'Embalse San Roque'},
+      {lat:-31.68,lon:-64.25,tipo:'reservoir',nombre:'Embalse Los Molinos'},
+      {lat:-30.73,lon:-64.82,tipo:'reservoir',nombre:'Embalse Cruz del Eje'},
+      {lat:-27.12,lon:-65.68,tipo:'reservoir',nombre:'Embalse Río Hondo'},
+      // Lagos patagónicos
+      {lat:-41.03,lon:-71.53,tipo:'lake',nombre:'Lago Nahuel Huapi'},
+      {lat:-50.23,lon:-72.27,tipo:'lake',nombre:'Lago Argentino'},
+      {lat:-49.33,lon:-72.62,tipo:'lake',nombre:'Lago Viedma'},
+      {lat:-48.90,lon:-71.35,tipo:'lake',nombre:'Lago Cardiel'},
+      {lat:-45.47,lon:-69.22,tipo:'lake',nombre:'Lago Musters'},
+      {lat:-45.50,lon:-68.72,tipo:'lake',nombre:'Lago Colhué Huapi'},
+      {lat:-48.77,lon:-72.63,tipo:'lake',nombre:'Lago San Martín'},
+      {lat:-43.87,lon:-71.52,tipo:'lake',nombre:'Lago Fontana'},
+      {lat:-42.87,lon:-71.55,tipo:'lake',nombre:'Lago La Plata'},
+      {lat:-41.55,lon:-71.47,tipo:'lake',nombre:'Lago Traful'},
+      {lat:-40.82,lon:-71.57,tipo:'lake',nombre:'Lago Espejo'},
+      // Lagos del centro
+      {lat:-30.68,lon:-62.87,tipo:'lake',nombre:'Laguna Mar Chiquita (Ansenuza)'},
+      {lat:-37.48,lon:-62.68,tipo:'lake',nombre:'Laguna del Monte'},
+      {lat:-40.78,lon:-62.23,tipo:'lake',nombre:'Laguna El Hinojo (Bs As)'},
+    ];
+
+    const aguaIconCfg = {
+      river:'🌊', stream:'〰️', canal:'〰️', drain:'〰️',
+      water:'💧', lake:'💧', reservoir:'💧', pond:'💧', basin:'💧',
+      spring:'⛲', water_well:'⛲',
+      fire_hydrant:'🔴', water_tower:'🔴'
+    };
+    const aguaColorCfg = {
+      river:'#0288d1', stream:'#0288d1', canal:'#0277bd',
+      water:'#006064', lake:'#01579b', reservoir:'#006064', pond:'#00838f',
+      spring:'#00acc1', water_well:'#5d4037',
+      fire_hydrant:'#d32f2f', water_tower:'#455a64'
+    };
+
+    function aguaLabel(tipo) {
+      const m={river:'Río',stream:'Arroyo',canal:'Canal',drain:'Desagüe',water:'Cuerpo de agua',lake:'Lago',reservoir:'Embalse',pond:'Laguna',basin:'Cuenca',spring:'Manantial',water_well:'Pozo',fire_hydrant:'Hidrante',water_tower:'Tanque'};
+      return m[tipo]||tipo;
+    }
+
+    let aguaActivo = false;
+    let aguaViewportTimer = null;
+    let ultimoBboxAgua = null;
+
+    async function cargarAguaViewport() {
+      if (!aguaActivo) return;
+      const b = mapa.getBounds();
+      const s=b.getSouth(), w=b.getWest(), n=b.getNorth(), e=b.getEast();
+      // Evitar re-consultar si el bbox cambió poco
+      const bboxStr = `${s.toFixed(1)}|${w.toFixed(1)}|${n.toFixed(1)}|${e.toFixed(1)}`;
+      if (bboxStr === ultimoBboxAgua) return;
+      ultimoBboxAgua = bboxStr;
+
+      const area = (n-s)*(e-w);
+      if (area > 25) {
+        // Zoom muy alejado: mostrar solo estáticos
+        datosAgua = AGUA_ESTATICA.map(d=>({...d, acceso:'public', capacidad:null, ele:null}));
+        renderizarAgua(datosAgua);
+        renderizarPanelAgua(datosAgua);
+        document.getElementById('numAgua').textContent = datosAgua.length + '+';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${BACKEND}/water-sources?s=${s}&w=${w}&n=${n}&e=${e}`);
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        datosAgua = json;
+        renderizarAgua(datosAgua);
+        renderizarPanelAgua(datosAgua);
+      } catch(e) {
+        console.warn('Overpass:', e.message);
+        // Fallback: estáticos filtrados al viewport
+        datosAgua = AGUA_ESTATICA
+          .filter(d => d.lat>=s && d.lat<=n && d.lon>=w && d.lon<=e)
+          .map(d=>({...d, acceso:'public', capacidad:null, ele:null}));
+        if (!datosAgua.length) datosAgua = AGUA_ESTATICA.map(d=>({...d, acceso:'public', capacidad:null, ele:null}));
+        renderizarAgua(datosAgua);
+        renderizarPanelAgua(datosAgua);
+      }
+    }
+
+    async function cargarFuentesAgua() {
+      const btn=document.getElementById('btnAgua');
+      if (aguaActivo) {
+        // Toggle off
+        aguaActivo = false;
+        capaAgua.clearLayers();
+        mapa.removeLayer(capaAgua);
+        document.getElementById('togAgua').checked = false;
+        btn.textContent='💧 Fuentes de agua';
+        btn.disabled=false;
+        return;
+      }
+      aguaActivo = true;
+      btn.disabled=true; btn.textContent='⏳ Consultando OSM…';
+      await cargarAguaViewport();
+      btn.textContent='💧 Agua ON';
+      btn.disabled=false;
+
+      // Recargar al mover/zoom el mapa (debounce 800ms)
+      mapa.on('moveend zoomend', ()=>{
+        if (!aguaActivo) return;
+        clearTimeout(aguaViewportTimer);
+        aguaViewportTimer = setTimeout(cargarAguaViewport, 800);
+      });
+    }
+
+    function aguaSVG(tipo) {
+      const t = tipo;
+      if (t==='fire_hydrant') return `<svg viewBox="0 0 24 24" width="20" height="20"><rect x="9" y="3" width="6" height="3" rx="1" fill="#d32f2f"/><rect x="7" y="6" width="10" height="12" rx="2" fill="#e53935"/><rect x="5" y="9" width="4" height="6" rx="1" fill="#b71c1c"/><rect x="15" y="9" width="4" height="6" rx="1" fill="#b71c1c"/><rect x="10" y="18" width="4" height="3" rx="1" fill="#c62828"/><circle cx="12" cy="12" r="2" fill="#fff" opacity="0.6"/></svg>`;
+      if (t==='spring'||t==='water_well') return `<svg viewBox="0 0 24 24" width="20" height="20"><ellipse cx="12" cy="8" rx="6" ry="4" fill="#00acc1" opacity="0.8"/><path d="M6 8 Q6 18 12 20 Q18 18 18 8" fill="#00bcd4" opacity="0.7"/><path d="M9 6 Q12 2 15 6" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.8"/></svg>`;
+      if (t==='river'||t==='stream'||t==='canal'||t==='drain') return `<svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 8 Q7 5 12 8 Q17 11 21 8" stroke="#0288d1" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M3 13 Q7 10 12 13 Q17 16 21 13" stroke="#0288d1" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.7"/><path d="M3 18 Q7 15 12 18 Q17 21 21 18" stroke="#0288d1" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.5"/></svg>`;
+      if (t==='water_tower') return `<svg viewBox="0 0 24 24" width="20" height="20"><ellipse cx="12" cy="8" rx="7" ry="5" fill="#455a64"/><rect x="11" y="13" width="2" height="8" fill="#546e7a"/><line x1="8" y1="16" x2="12" y2="13" stroke="#546e7a" stroke-width="1.5"/><line x1="16" y1="16" x2="12" y2="13" stroke="#546e7a" stroke-width="1.5"/><ellipse cx="12" cy="8" rx="7" ry="5" fill="none" stroke="#78909c" stroke-width="1"/></svg>`;
+      // lake, reservoir, pond, basin, water (default)
+      return `<svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 3 C12 3 6 10 6 15 A6 6 0 0 0 18 15 C18 10 12 3 12 3Z" fill="#0288d1"/><path d="M9 16 Q12 13 15 16" stroke="#fff" stroke-width="1.5" fill="none" opacity="0.6"/></svg>`;
+    }
+
+    function renderizarAgua(datos) {
+      capaAgua.clearLayers();
+      datos.forEach(d => {
+        const color = aguaColorCfg[d.tipo]||'#0288d1';
+        const dist  = distAlFocoMin(d.lat, d.lon);
+        const distTxt = dist!==null ? `${dist.toFixed(1)} km al foco más cercano` : '';
+
+        const icon = L.divIcon({
+          html:`<div class="agua-marker" style="background:${color}dd;border-color:rgba(255,255,255,0.5);">${aguaSVG(d.tipo)}</div>`,
+          iconSize:[28,28], iconAnchor:[14,14], className:''
+        });
+        const mk = L.marker([d.lat, d.lon], { icon });
+        mk.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:160px;">
+          <b style="color:#00acc1;">💧 ${aguaLabel(d.tipo)}</b><br>
+          Nombre: ${d.nombre||'Sin nombre'}<br>
+          ${d.capacidad?'Capacidad: '+d.capacidad+'<br>':''}
+          Acceso: ${d.acceso||'público'}<br>
+          ${distTxt?'<b>'+distTxt+'</b><br>':''}
+          ${d.ele?'Elevación: '+d.ele+' m<br>':''}
+          <small style="color:#888;">Lat ${d.lat.toFixed(4)} | Lon ${d.lon.toFixed(4)}</small>
+        </div>`);
+        capaAgua.addLayer(mk);
+      });
+      const tog = document.getElementById('togAgua');
+      tog.checked = true;
+      if (!mapa.hasLayer(capaAgua)) mapa.addLayer(capaAgua);
+      document.getElementById('numAgua').textContent = datos.length;
+      const ac = document.getElementById('aguaCount');
+      ac.textContent = datos.length; ac.style.display='inline-block';
+    }
+
+    function renderizarPanelAgua(datos) {
+      const resEl=document.getElementById('aguaResumen'), liEl=document.getElementById('aguaLista');
+      if (!datos.length) { resEl.innerHTML='Sin fuentes de agua encontradas en el área.'; liEl.innerHTML=''; return; }
+
+      const tipos={};
+      datos.forEach(d=>{ tipos[d.tipo]=(tipos[d.tipo]||0)+1; });
+      resEl.innerHTML = Object.entries(tipos).map(([t,c])=>`<span class="badge" style="background:${aguaColorCfg[t]||'#0288d1'};margin:2px;">${aguaLabel(t)} (${c})</span>`).join('');
+
+      // Mostrar las 8 fuentes más cercanas a algún foco
+      const conDist = datos.map(d => ({...d, dist: distAlFocoMin(d.lat,d.lon)||9999}))
+                           .sort((a,b)=>a.dist-b.dist).slice(0,8);
+      liEl.innerHTML = `<div style="color:#666;margin:5px 0 3px;font-size:10px;text-transform:uppercase;">MÁS CERCANAS A FOCOS</div>` +
+        conDist.map(d=>`<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+          ${aguaIconCfg[d.tipo]||'💧'} <b style="color:#80deea;">${d.nombre||aguaLabel(d.tipo)}</b>
+          <span style="color:#888;float:right;">${d.dist<9999?d.dist.toFixed(1)+' km':''}</span>
+          <div style="color:#666;font-size:10px;">${aguaLabel(d.tipo)} · Lat ${d.lat.toFixed(3)}</div>
+        </div>`).join('');
+    }
+
+    // ── Vegetación ──────────────────────────────────────────────────────────
+    const vegCfg = {
+      wood:      { color:'#1b5e20', label:'Bosque',    riesgo:'ALTO',     rc:'#e65100' },
+      forest:    { color:'#2e7d32', label:'Bosque',    riesgo:'ALTO',     rc:'#e65100' },
+      scrub:     { color:'#827717', label:'Matorral',  riesgo:'MUY ALTO', rc:'#c62828' },
+      heath:     { color:'#558b2f', label:'Brezal',    riesgo:'MUY ALTO', rc:'#c62828' },
+      grassland: { color:'#558b2f', label:'Pastizal',  riesgo:'ALTO',     rc:'#e65100' },
+      meadow:    { color:'#689f38', label:'Pradera',   riesgo:'MODERADO', rc:'#f57c00' },
+      grass:     { color:'#7cb342', label:'Césped',    riesgo:'MODERADO', rc:'#f57c00' },
+      wetland:   { color:'#006064', label:'Humedal',   riesgo:'BAJO',     rc:'#2e7d32' },
+      farmland:  { color:'#795548', label:'Agrícola',  riesgo:'MODERADO', rc:'#f57c00' },
+      vineyard:  { color:'#6d4c41', label:'Viñedo',    riesgo:'MODERADO', rc:'#f57c00' },
+      orchard:   { color:'#558b2f', label:'Arboleda',  riesgo:'MODERADO', rc:'#f57c00' },
+      tundra:    { color:'#9e9e9e', label:'Tundra',    riesgo:'ALTO',     rc:'#e65100' },
+      fell:      { color:'#78909c', label:'Páramo',    riesgo:'ALTO',     rc:'#e65100' },
+    };
+
+    async function cargarVegetacion() {
+      const btn=document.getElementById('btnVeg');
+      btn.disabled=true; btn.textContent='⏳ Consultando OSM…';
+      const bbox = firesBBox || { s:-55.8, w:-73.5, n:-21.0, e:-53.5 };
+      try {
+        datosVeg = await fetch(`${BACKEND}/vegetation?s=${bbox.s}&w=${bbox.w}&n=${bbox.n}&e=${bbox.e}`).then(r=>r.json());
+        if (datosVeg.error) throw new Error(datosVeg.error);
+        renderizarVegetacion(datosVeg);
+        renderizarPanelVeg(datosVeg);
+        btn.textContent='✅ Vegetación OK';
+        setTimeout(()=>{btn.textContent='🌿 Vegetación';btn.disabled=false;},2000);
+      } catch(e) {
+        console.error(e);
+        btn.textContent='❌ Error Overpass';
+        setTimeout(()=>{btn.textContent='🌿 Vegetación';btn.disabled=false;},3000);
+      }
+    }
+
+    function renderizarVegetacion(datos) {
+      capaVeg.clearLayers();
+      datos.forEach(d => {
+        const cfg = vegCfg[d.tipo] || { color:'#9e9e9e', label:d.tipo, riesgo:'DESCONOCIDO', rc:'#666' };
+        const icon = L.divIcon({
+          html:`<div class="veg-marker" style="background:${cfg.color}cc;border-color:${cfg.color};">${cfg.label.slice(0,3)}</div>`,
+          iconSize:[18,18], iconAnchor:[9,9], className:''
+        });
+        const mk = L.marker([d.lat, d.lon], { icon });
+        mk.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:170px;">
+          <b style="color:${cfg.color};">🌿 ${cfg.label}</b><br>
+          Nombre: ${d.nombre||cfg.label}<br>
+          ${d.especie?`<b>Especie: ${d.especie}</b><br>`:'<span style="color:#666;">Especie: no disponible (OSM)</span><br>'}
+          Riesgo incendio: <b style="color:${cfg.rc};">${d.riesgo_incendio||cfg.riesgo}</b><br>
+          <small style="color:#888;">Lat ${d.lat.toFixed(4)} | Lon ${d.lon.toFixed(4)}</small>
+        </div>`);
+        capaVeg.addLayer(mk);
+      });
+      if (document.getElementById('togVeg').checked) {
+        if (!mapa.hasLayer(capaVeg)) mapa.addLayer(capaVeg);
+      }
+      document.getElementById('numVeg').textContent = datos.length;
+      const vc=document.getElementById('vegCount'); vc.textContent=datos.length; vc.style.display='inline-block';
+    }
+
+    function renderizarPanelVeg(datos) {
+      const resEl=document.getElementById('vegResumen'), liEl=document.getElementById('vegLista');
+      if (!datos.length) { resEl.innerHTML='Sin datos de vegetación en el área.'; liEl.innerHTML=''; return; }
+      const tipos={}, especies=new Set();
+      datos.forEach(d=>{tipos[d.tipo]=(tipos[d.tipo]||0)+1; if(d.especie)especies.add(d.especie);});
+      const sorted=Object.entries(tipos).sort((a,b)=>b[1]-a[1]);
+      resEl.innerHTML=sorted.map(([t,c])=>{ const cfg=vegCfg[t]||{color:'#9e9e9e',label:t}; return `<span class="badge" style="background:${cfg.color}bb;margin:2px;">${cfg.label} (${c})</span>`; }).join('');
+      liEl.innerHTML = `
+        ${sorted.slice(0,6).map(([t,c])=>{
+          const cfg=vegCfg[t]||{color:'#9e9e9e',label:t,riesgo:'?',rc:'#999'};
+          return `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;">
+            <span><span style="color:${cfg.color};font-size:14px;">■</span> ${cfg.label} <span style="color:#666;">(${c})</span></span>
+            <span style="color:${cfg.rc};font-size:10px;">${cfg.riesgo}</span>
+          </div>`;
+        }).join('')}
+        ${especies.size?`<div style="margin-top:6px;color:#888;font-size:10px;">🌱 Especies OSM: ${[...especies].slice(0,6).join(', ')}</div>`:'<div style="margin-top:4px;color:#555;font-size:10px;">Sin datos de especie en OSM para esta área.</div>'}
+      `;
+    }
+
+    // ── INPE BDQueimadas ────────────────────────────────────────────────────────
+    const inpeColors = {
+      'GOES-16':  '#ff8f00',
+      'AQUA_M-T': '#fdd835',
+      'TERRA_M-T':'#fdd835',
+      'NPP-375':  '#fff176',
+      'NOAA-20':  '#fff176',
+      'METOP-B':  '#ce93d8',
+      'METOP-C':  '#ce93d8',
+    };
+
+    async function cargarFocosINPE() {
+      const btn=document.getElementById('btnINPE');
+      btn.disabled=true; btn.textContent='⏳ Consultando INPE…';
+      try {
+        const data = await fetch(`${BACKEND}/inpe-focos?periodo=10`).then(r=>r.json());
+        datosINPE = data.focos || [];
+        renderizarINPE(datosINPE);
+        renderizarPanelINPE(datosINPE);
+        btn.textContent='✅ INPE OK';
+        setTimeout(()=>{btn.textContent='🛰 Focos INPE';btn.disabled=false;},2000);
+      } catch(e) {
+        btn.textContent='❌ Error INPE';
+        document.getElementById('inpeResumen').innerHTML='<span style="color:#e53935;">Error al conectar con INPE.</span>';
+        setTimeout(()=>{btn.textContent='🛰 Focos INPE';btn.disabled=false;},3000);
+      }
+    }
+
+    function renderizarINPE(focos) {
+      capaINPE.clearLayers();
+      focos.forEach(f => {
+        const inpeFlames = {
+          'GOES-16':  { outer:'#ff8f00', inner:'#ffe082' },
+          'AQUA_M-T': { outer:'#fdd835', inner:'#fffde7' },
+          'TERRA_M-T':{ outer:'#fdd835', inner:'#fffde7' },
+          'NPP-375':  { outer:'#ffb300', inner:'#fff8e1' },
+          'NOAA-20':  { outer:'#ffb300', inner:'#fff8e1' },
+          'METOP-B':  { outer:'#ab47bc', inner:'#f3e5f5' },
+          'METOP-C':  { outer:'#ab47bc', inner:'#f3e5f5' },
+        };
+        const fc  = inpeFlames[f.satelite] || { outer:'#ff8f00', inner:'#ffe082' };
+        const mk  = L.marker([f.lat, f.lon], { icon: flameIcon(fc.outer, fc.inner, 16) });
+        mk.bindPopup(`<div style="font-family:monospace;font-size:11px;">
+          <b style="color:${fc.outer};">🛰 Foco INPE</b><br>
+          Satélite: <b>${f.satelite}</b><br>
+          ${f.frp ? 'FRP: '+f.frp+' MW<br>' : ''}
+          Fecha/Hora: ${f.datahora || 'N/D'}<br>
+          <small style="color:#888;">Lat ${f.lat.toFixed(4)} | Lon ${f.lon.toFixed(4)}</small>
+        </div>`);
+        capaINPE.addLayer(mk);
+      });
+      if (document.getElementById('togINPE').checked && !mapa.hasLayer(capaINPE)) mapa.addLayer(capaINPE);
+      document.getElementById('numINPE').textContent = focos.length;
+      const ic=document.getElementById('inpeCount'); ic.textContent=focos.length; ic.style.display='inline-block';
+      actualizarContadores();
+    }
+
+    function renderizarPanelINPE(focos) {
+      const resEl=document.getElementById('inpeResumen'), liEl=document.getElementById('inpeLista');
+      if (!focos.length) {
+        resEl.innerHTML='<span style="color:#43a047;">Sin focos INPE en las últimas 24 h para Argentina.</span>';
+        liEl.innerHTML=''; return;
+      }
+      const sats={};
+      focos.forEach(f=>{ sats[f.satelite]=(sats[f.satelite]||0)+1; });
+      resEl.innerHTML = Object.entries(sats).map(([s,c])=>
+        `<span class="badge" style="background:${inpeColors[s]||'#ff8f00'}99;color:#fff;margin:2px;">${s} (${c})</span>`
+      ).join('');
+      // Top 5 con FRP más alto
+      const top = [...focos].filter(f=>f.frp).sort((a,b)=>b.frp-a.frp).slice(0,5);
+      liEl.innerHTML = top.length ? `<div style="color:#666;margin:5px 0 3px;font-size:10px;text-transform:uppercase;">Mayor potencia radiativa (FRP)</div>` +
+        top.map(f=>`<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+          <span style="color:${inpeColors[f.satelite]||'#ff8f00'};">◆</span>
+          <b>${f.satelite}</b> — <span style="color:#ffcc80;">${f.frp} MW</span>
+          <div style="color:#666;font-size:10px;">${f.datahora||''} · Lat ${f.lat.toFixed(3)}</div>
+        </div>`).join('') : '<div style="color:#666;font-size:10px;margin-top:4px;">Sin datos FRP disponibles.</div>';
+    }
+
+    // ── FWI Grid ─────────────────────────────────────────────────────────────
+    const fwiColors = [
+      { max:5,  fill:'rgba(76,175,80,.45)',   border:'#4caf50', label:'MUY BAJO'  },
+      { max:12, fill:'rgba(255,235,59,.45)',  border:'#fdd835', label:'MODERADO'  },
+      { max:24, fill:'rgba(255,152,0,.50)',   border:'#ff9800', label:'ALTO'      },
+      { max:38, fill:'rgba(244,67,54,.55)',   border:'#f44336', label:'MUY ALTO'  },
+      { max:Infinity, fill:'rgba(156,39,176,.60)', border:'#9c27b0', label:'EXTREMO' }
+    ];
+
+    function fwiCfg(val) {
+      return fwiColors.find(c=>val<c.max) || fwiColors[fwiColors.length-1];
+    }
+
+    async function cargarFWI() {
+      const btn=document.getElementById('btnFWI');
+      btn.disabled=true; btn.textContent='⏳ Calculando FWI…';
+      try {
+        datosFWI = await fetch(`${BACKEND}/fwi-grid`).then(r=>r.json());
+        renderizarFWI(datosFWI);
+        renderizarPanelFWI(datosFWI);
+        btn.textContent='✅ FWI calculado';
+        setTimeout(()=>{btn.textContent='🔥 Calcular FWI';btn.disabled=false;},2000);
+      } catch(e) {
+        btn.textContent='❌ Error FWI';
+        setTimeout(()=>{btn.textContent='🔥 Calcular FWI';btn.disabled=false;},3000);
+      }
+    }
+
+    function renderizarFWI(datos) {
+      capaFWI.clearLayers();
+      const half=1.5;
+      datos.forEach(d => {
+        if (d.fwi === null) return;
+        const cfg = fwiCfg(d.fwi);
+        const r=L.rectangle([[d.lat-half,d.lon-half],[d.lat+half,d.lon+half]],{
+          fillColor:cfg.fill, fillOpacity:1, color:cfg.border, weight:0.4, renderer:L.canvas()
+        });
+        r.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:185px;">
+          <b style="color:${cfg.border};">🔥 FWI = ${d.fwi} — ${d.clase}</b><br>
+          FFMC: ${d.ffmc} · ISI: ${d.isi} · BUI: ${d.bui}<br>
+          🌡 ${d.temp}°C · 💧 ${d.humidity}% · 💨 ${d.wind_speed} km/h<br>
+          🌧 Precip: ${d.rain} mm<br>
+          <small style="color:#888;">Lat ${d.lat} | Lon ${d.lon}</small>
+        </div>`);
+        capaFWI.addLayer(r);
+      });
+      if (document.getElementById('togFWI').checked && !mapa.hasLayer(capaFWI)) mapa.addLayer(capaFWI);
+
+      const maxFWI = Math.max(...datos.filter(d=>d.fwi!==null).map(d=>d.fwi), 0);
+      document.getElementById('numFWI').textContent = maxFWI > 0 ? maxFWI : '—';
+      actualizarContadores();
+    }
+
+    function renderizarPanelFWI(datos) {
+      const resEl=document.getElementById('fwiResumen'), liEl=document.getElementById('fwiLista');
+      const validos=datos.filter(d=>d.fwi!==null);
+      if (!validos.length) { resEl.innerHTML='Sin datos FWI.'; liEl.innerHTML=''; return; }
+
+      const maxFWI=Math.max(...validos.map(d=>d.fwi));
+      const clases={};
+      validos.forEach(d=>{ clases[d.clase]=(clases[d.clase]||0)+1; });
+
+      resEl.innerHTML=`FWI máximo: <b style="color:${fwiCfg(maxFWI).border};">${maxFWI} — ${fwiCfg(maxFWI).label}</b>`;
+
+      const extremos=validos.filter(d=>d.fwi>=24).sort((a,b)=>b.fwi-a.fwi).slice(0,6);
+      liEl.innerHTML = Object.entries(clases).map(([cls,cnt])=>{
+        const cfg=fwiColors.find(c=>c.label===cls)||fwiColors[4];
+        return `<span class="badge" style="background:${cfg.border}88;color:#fff;margin:2px;">${cls} (${cnt})</span>`;
+      }).join('') + (extremos.length ? `
+        <div style="color:#666;margin:6px 0 3px;font-size:10px;text-transform:uppercase;">Zonas más peligrosas</div>` +
+        extremos.map(d=>`<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+          <b style="color:${fwiCfg(d.fwi).border};">FWI ${d.fwi}</b> — ${d.clase}
+          <div style="color:#777;font-size:10px;">🌡${d.temp}°C 💧${d.humidity}% 💨${d.wind_speed}km/h · Lat ${d.lat}</div>
+        </div>`).join('') : '');
+    }
+
+    // ── Análisis IA ──────────────────────────────────────────────────────────
+    async function ejecutarAnalisisIA() {
+      const btn=document.getElementById('btnIA'), div=document.getElementById('iaResultado');
+      const sec=document.getElementById('secIA');
+      if (!sec.classList.contains('abierto')) toggleSeccion('secIA');
+
+      if (!datosClima.length && !firePts.length) {
+        div.innerHTML='<span style="color:#fb8c00;">Cargá focos y clima antes del análisis IA.</span>'; return;
+      }
+
+      btn.disabled=true; btn.textContent='⏳ Analizando…';
+      div.innerHTML='<div class="ia-loading"><div class="spinner"></div> Consultando Claude IA (análisis completo)…</div>';
+
+      try {
+        const maxFWI = datosFWI.length ? Math.max(...datosFWI.filter(d=>d.fwi!==null).map(d=>d.fwi), 0) : 0;
+        const body = {
+          weather:      datosClima,
+          fire_count:   ultimoFocos,
+          fire_points:  firePts.slice(0, 30),
+          water:        datosAgua,
+          vegetation:   datosVeg,
+          inpe_count:   datosINPE.length,
+          inpe_satelites: [...new Set(datosINPE.map(f=>f.satelite))],
+          fwi_max:      maxFWI,
+          fwi_extremos: datosFWI.filter(d=>d.fwi>=24).length
+        };
+        const data = await fetch(`${BACKEND}/ai-risk-analysis`,{
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+        }).then(r=>r.json());
+
+        if (data.error) {
+          div.innerHTML=`<div class="ia-resultado" style="border-color:#e53935;color:#ff8a80;">❌ ${data.error}</div>`;
+        } else {
+          div.innerHTML=`<div class="ia-resultado">${data.analysis}</div>
+            <div style="font-size:9px;color:#444;margin-top:3px;text-align:right;">
+              Claude Haiku · ${new Date().toLocaleTimeString('es-AR')} ·
+              NASA:${ultimoFocos} INPE:${datosINPE.length} FWI:${maxFWI} Agua:${datosAgua.length}
+            </div>`;
+        }
+        btn.textContent='✅ Análisis listo';
+        setTimeout(()=>{btn.textContent='🤖 Análisis IA completo';btn.disabled=false;},3000);
+      } catch(e) {
+        div.innerHTML='<span style="color:#e53935;">Error de conexión. ¿app.py corriendo?</span>';
+        btn.textContent='🤖 Análisis IA completo'; btn.disabled=false;
+      }
+    }
+
+    // ── Contadores globales ──────────────────────────────────────────────────
+    function actualizarContadores() {
+      document.getElementById('numFocos').textContent = ultimoFocos;
+      let riesgo='BAJO', bg='#2e7d32';
+      const z3 = datosClima.filter(d=>d.factores_30===3).length;
+      if (ultimoFocos>0  || ultimoSMN.amarillo>0)                            { riesgo='MODERADO'; bg='#c9a000'; }
+      if (ultimoFocos>20 || ultimoSMN.naranja>0)                             { riesgo='ALTO';     bg='#e65100'; }
+      if (ultimoFocos>50 || ultimoSMN.rojo>0     || z3>5)                   { riesgo='CRÍTICO';  bg='#b71c1c'; }
+      const badge=document.getElementById('riesgoBadge');
+      badge.textContent=`RIESGO: ${riesgo}`; badge.style.background=bg; badge.style.color='#fff';
+    }
+
+    // ── Telegram ─────────────────────────────────────────────────────────────
+    async function evaluarTelegram() {
+      if (ultimoFocos<=0 || ultimoSMN.rojo<=0) return;
+      try {
+        const z3=datosClima.filter(d=>d.factores_30===3).length;
+        await fetch(`${BACKEND}/telegram-alerta`,{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ provincia:'Argentina', focos:ultimoFocos, alertas_rojas:ultimoSMN.rojo,
+            fuente:FUENTES_NASA.join('+'), dias:document.getElementById('dias').value,
+            detalle:`${ultimoFocos} focos · ${ultimoSMN.rojo} rojas · ${z3} zonas 30-30-30 · ${datosAgua.length} fuentes agua`
+          })
+        });
+      } catch(e) { console.error('Telegram:',e); }
+    }
+
+    // ── Toggles de capa ──────────────────────────────────────────────────────
+    document.getElementById('togFocos') .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(clusterFocos);  else mapa.removeLayer(clusterFocos);  });
+    document.getElementById('togRiesgo').addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaRiesgo30);  else mapa.removeLayer(capaRiesgo30);  });
+    document.getElementById('togSMN')  .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capasAlertaSMN); else mapa.removeLayer(capasAlertaSMN); });
+    document.getElementById('togAgua') .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaAgua);       else mapa.removeLayer(capaAgua);       });
+    document.getElementById('togVeg')  .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaVeg);        else mapa.removeLayer(capaVeg);        });
+    document.getElementById('togINPE') .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaINPE);       else mapa.removeLayer(capaINPE);       });
+    document.getElementById('togFWI')  .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaFWI);        else mapa.removeLayer(capaFWI);        });
+    document.getElementById('togTopo') .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(topoOverlay);    else mapa.removeLayer(topoOverlay);    });
+    document.getElementById('togRoads').addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(roadsOverlay);   else mapa.removeLayer(roadsOverlay);   });
+    document.getElementById('togRadarEstaciones').addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaRadarEstaciones); else mapa.removeLayer(capaRadarEstaciones); });
+    document.getElementById('togViento').addEventListener('change', async e => {
+      if (e.target.checked) { if (!capasViento) await cargarViento(); else mapa.addLayer(capasViento); }
+      else { if (capasViento) mapa.removeLayer(capasViento); }
+    });
+
+    // ── Auto-refresh ─────────────────────────────────────────────────────────
+    function actualizarAutoRefresh() {
+      if (intervaloAR) { clearInterval(intervaloAR); intervaloAR=null; }
+      const ms=parseInt(document.getElementById('autoRefresh').value,10);
+      if (ms>0) intervaloAR=setInterval(()=>{ cargarFocos(false); cargarAlertasSMN(false); },ms);
+    }
+
+    // ── GOES-16 Tiempo Real ───────────────────────────────────────────────────
+    let goesRtTimer = null;
+
+    function goesEdad(acqDate, acqTime) {
+      const t = acqTime.toString().padStart(4,'0');
+      const dt = new Date(`${acqDate}T${t.slice(0,2)}:${t.slice(2,4)}:00Z`);
+      const mins = Math.round((Date.now() - dt.getTime()) / 60000);
+      if (mins < 60) return `${mins} min`;
+      if (mins < 1440) return `${Math.round(mins/60)} h`;
+      return `${Math.round(mins/1440)} d`;
+    }
+
+    async function cargarGOES_RT(silencioso=false) {
+      const btn = document.getElementById('btnGOES_RT');
+      if (!silencioso) { btn.disabled=true; btn.childNodes[0].textContent='⏳ Consultando GOES…  '; }
+      try {
+        const txt = await fetch(
+          `${BACKEND}/nasa-focos?fuente=GOES_NRT&dias=1`
+        ).then(r => r.text());
+        const focos = parseCSV(txt).filter(f => {
+          const lat=parseFloat(f.latitude), lon=parseFloat(f.longitude);
+          return !isNaN(lat) && !isNaN(lon) && estaEnArg(lat,lon);
+        });
+        capaGOES_RT.clearLayers();
+        focos.forEach(f => {
+          const lat=parseFloat(f.latitude), lon=parseFloat(f.longitude);
+          const frp = parseFloat(f.frp)||0;
+          const conf = parseFloat(f.confidence)||0;
+          const edad = goesEdad(f.acq_date, f.acq_time);
+          const color = frp>500?'#ff1744':frp>100?'#ff6d00':'#ffab40';
+          const radio = frp>500?14:frp>100?10:7;
+          const mk = L.circleMarker([lat,lon], {
+            radius: radio, color:'#fff', weight:1,
+            fillColor: color, fillOpacity:0.85
+          });
+          mk.bindPopup(`
+            <div style="font-family:sans-serif;min-width:180px;">
+              <b style="color:${color};">🛰 GOES-16 RT</b><br>
+              <b>FRP:</b> ${frp.toFixed(1)} MW<br>
+              <b>Confianza:</b> ${conf}%<br>
+              <b>Detectado:</b> hace ${edad}<br>
+              <b>Fecha:</b> ${f.acq_date} ${f.acq_time ? f.acq_time.toString().padStart(4,'0').slice(0,2)+':'+f.acq_time.toString().padStart(4,'0').slice(2,4)+' UTC' : ''}<br>
+              <b>Sat:</b> ${f.satellite||'GOES-16'}<br>
+              <small style="color:#888;">${lat.toFixed(4)}, ${lon.toFixed(4)}</small>
+            </div>`);
+          capaGOES_RT.addLayer(mk);
+        });
+        if (!mapa.hasLayer(capaGOES_RT)) mapa.addLayer(capaGOES_RT);
+        document.getElementById('numGOES').textContent = focos.length;
+        const badge = document.getElementById('goesRtBadge');
+        if (badge) badge.style.display = focos.length>0?'inline-block':'none';
+        if (!goesRtTimer) goesRtTimer = setInterval(()=>cargarGOES_RT(true), 15*60*1000);
+        setEstado(`🛰 GOES-16 RT: ${focos.length} focos activos (actualiza c/15 min)`, focos.length>0?'warn':'ok');
+      } catch(e) {
+        if (!silencioso) setEstado('Error al consultar GOES-16 RT', 'err');
+      }
+      if (!silencioso) { btn.childNodes[0].textContent='🛰 GOES-16 Tiempo Real  '; btn.disabled=false; }
+    }
+
+    // ── Click en mapa ─────────────────────────────────────────────────────────
+    mapa.on('click',e=>L.popup().setLatLng(e.latlng).setContent(`<span style="font-family:monospace;font-size:11px;">Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}</span>`).openOn(mapa));
+
+    // ── Event listeners ───────────────────────────────────────────────────────
+    document.getElementById('btnCargar').addEventListener('click',()=>cargarFocos(true));
+    document.getElementById('btnSMN')   .addEventListener('click',()=>cargarAlertasSMN(true));
+    document.getElementById('btnClima') .addEventListener('click',cargarClima);
+    document.getElementById('btnAgua')  .addEventListener('click',cargarFuentesAgua);
+    document.getElementById('btnVeg')   .addEventListener('click',cargarVegetacion);
+    document.getElementById('btnINPE')  .addEventListener('click',cargarFocosINPE);
+    document.getElementById('btnFWI')   .addEventListener('click',cargarFWI);
+    document.getElementById('btnIA')    .addEventListener('click',ejecutarAnalisisIA);
+    document.getElementById('btnGOES_RT').addEventListener('click',()=>cargarGOES_RT(false));
+    document.getElementById('autoRefresh').addEventListener('change',actualizarAutoRefresh);
+    document.getElementById('dias')       .addEventListener('change',()=>cargarFocos(true));
+
+    // ── Inicio ────────────────────────────────────────────────────────────────
+    actualizarAutoRefresh();
+    actualizarContadores();
+    renderRadarEstaciones();
+    mapa.addLayer(capaRadarEstaciones);
+    cargarGeoJSON().then(()=>{ cargarFocos(true); cargarAlertasSMN(true); });
+  </script>
+</body>
+</html>

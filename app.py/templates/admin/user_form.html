@@ -1,0 +1,104 @@
+{% extends "base_admin.html" %}
+{% block title %}{% if action == 'new' %}Nuevo Usuario{% else %}Editar {{ user.username }}{% endif %} — SPIYD Admin{% endblock %}
+{% block page_title %}{% if action == 'new' %}Nuevo Usuario{% else %}Editar Usuario{% endif %}{% endblock %}
+{% block breadcrumb %}<a href="/admin/users" style="color:var(--muted);text-decoration:none">Usuarios</a> › {% if action == 'new' %}Nuevo{% else %}{{ user.username }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="form-card">
+      <h6 style="font-weight:700;margin-bottom:24px;color:var(--text)">
+        <i class="fas fa-{{ 'user-plus' if action == 'new' else 'pen' }} me-2" style="color:var(--orange)"></i>
+        {% if action == 'new' %}Crear nuevo usuario{% else %}Editar {{ user.username }}{% endif %}
+      </h6>
+
+      <form method="POST">
+        {% if action == 'new' %}
+        <div class="mb-3">
+          <label class="form-label">Nombre de usuario *</label>
+          <input class="form-control" type="text" name="username" required placeholder="usuario123"
+                 autocomplete="off">
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label">Email *</label>
+          <input class="form-control" type="email" name="email" required
+                 value="{% if user %}{{ user.email }}{% endif %}" placeholder="correo@ejemplo.com">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Contraseña {% if action == 'edit' %}(dejar vacío para no cambiar){% else %}*{% endif %}</label>
+          <input class="form-control" type="password" name="password"
+                 {% if action == 'new' %}required{% endif %}
+                 placeholder="••••••••" autocomplete="new-password">
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Rol *</label>
+            <select class="form-select" name="role">
+              <option value="user" {% if not user or user.role == 'user' %}selected{% endif %}>Usuario</option>
+              <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Administrador</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Plan *</label>
+            <select class="form-select" name="plan">
+              <option value="basic" {% if not user or user.plan == 'basic' %}selected{% endif %}>Básico (Gratis)</option>
+              <option value="pro" {% if user and user.plan == 'pro' %}selected{% endif %}>Pro ($29/mes)</option>
+              <option value="enterprise" {% if user and user.plan == 'enterprise' %}selected{% endif %}>Enterprise ($99/mes)</option>
+            </select>
+          </div>
+        </div>
+
+        {% if action == 'edit' %}
+        <div class="mb-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="active" id="activeCheck"
+                   {% if user.active %}checked{% endif %}>
+            <label class="form-check-label" for="activeCheck" style="font-size:0.9rem;color:var(--text)">
+              Usuario activo (puede iniciar sesión)
+            </label>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-3 mt-4">
+          <button type="submit" class="btn-spiyd">
+            <i class="fas fa-{{ 'user-plus' if action == 'new' else 'floppy-disk' }}"></i>
+            {% if action == 'new' %}Crear Usuario{% else %}Guardar Cambios{% endif %}
+          </button>
+          <a href="/admin/users" class="btn-spiyd-outline">Cancelar</a>
+        </div>
+      </form>
+    </div>
+
+    {% if action == 'edit' and user %}
+    <div class="data-card mt-4">
+      <div class="data-card-header">
+        <h6 style="font-size:0.88rem"><i class="fas fa-circle-info me-2" style="color:var(--muted)"></i>Información de la cuenta</h6>
+      </div>
+      <div class="p-4" style="font-size:0.85rem;color:var(--muted)">
+        <div class="d-flex justify-content-between mb-2">
+          <span>Registrado</span>
+          <span style="color:var(--text)">{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span>Último acceso</span>
+          <span style="color:var(--text)">{% if user.last_login %}{{ user.last_login.strftime('%d/%m/%Y %H:%M') }}{% else %}Nunca{% endif %}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span>Facturas totales</span>
+          <span style="color:var(--text)">{{ user.invoices|length }}</span>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span>Monto mensual</span>
+          <span style="color:var(--orange);font-weight:700">${{ "%.2f"|format(user.monthly_amount) }}</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

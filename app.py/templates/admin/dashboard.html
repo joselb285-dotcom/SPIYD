@@ -1,0 +1,132 @@
+{% extends "base_admin.html" %}
+{% block title %}Dashboard — SPIYD Admin{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb %}Inicio{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="label"><i class="fas fa-users me-1"></i>Total Usuarios</div>
+      <div class="value" style="color:#e2e8f0">{{ total_users }}</div>
+      <div class="sub">{{ active_users }} activos</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="label"><i class="fas fa-circle-check me-1"></i>Usuarios Activos</div>
+      <div class="value" style="color:#22c55e">{{ active_users }}</div>
+      <div class="sub">{{ total_users - active_users }} inactivos</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="label"><i class="fas fa-dollar-sign me-1"></i>Cobrado</div>
+      <div class="value" style="color:#f97316">${{ "%.2f"|format(monthly_revenue) }}</div>
+      <div class="sub">total pagado</div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="label"><i class="fas fa-clock me-1"></i>Pendiente</div>
+      <div class="value" style="color:#f59e0b">${{ "%.2f"|format(pending_revenue) }}</div>
+      <div class="sub">${{ "%.2f"|format(overdue_revenue) }} vencido</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Planes -->
+  <div class="col-lg-4">
+    <div class="data-card">
+      <div class="data-card-header">
+        <h6><i class="fas fa-chart-pie me-2" style="color:var(--orange)"></i>Distribución de Planes</h6>
+      </div>
+      <div class="p-4">
+        {% set total = plan_counts.values()|sum or 1 %}
+        {% for plan, count in plan_counts.items() %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="badge-plan badge-{{ plan }}" style="font-size:0.82rem;padding:4px 10px;border-radius:6px">
+              {{ plan|capitalize }}
+            </span>
+            <span style="font-size:0.85rem;color:var(--muted)">{{ count }} usuarios</span>
+          </div>
+          <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;overflow:hidden">
+            <div style="height:100%;border-radius:4px;width:{{ (count / total * 100)|int }}%;
+              background:{% if plan == 'basic' %}#8b949e{% elif plan == 'pro' %}#60a5fa{% else %}#c084fc{% endif %}">
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% if not plan_counts %}
+        <p style="color:var(--muted);font-size:0.88rem;text-align:center;margin:20px 0">Sin usuarios registrados</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Últimos accesos -->
+  <div class="col-lg-8">
+    <div class="data-card">
+      <div class="data-card-header">
+        <h6><i class="fas fa-clock-rotate-left me-2" style="color:var(--orange)"></i>Últimos Accesos</h6>
+        <a href="/admin/users" style="color:var(--muted);font-size:0.82rem;text-decoration:none">Ver todos →</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Plan</th>
+              <th>Fecha y Hora</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log, user in recent_logins %}
+            <tr>
+              <td>
+                <div style="font-weight:600">{{ user.username }}</div>
+                <div style="font-size:0.78rem;color:var(--muted)">{{ user.email }}</div>
+              </td>
+              <td><span class="badge-plan badge-{{ user.plan }}">{{ user.plan_label }}</span></td>
+              <td style="color:var(--muted);font-size:0.82rem">{{ log.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+              <td><span class="badge-active">Activo</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Sin accesos registrados</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-0">
+  <div class="col-12">
+    <div class="data-card">
+      <div class="data-card-header">
+        <h6><i class="fas fa-bolt me-2" style="color:var(--orange)"></i>Acciones Rápidas</h6>
+      </div>
+      <div class="p-4 d-flex flex-wrap gap-3">
+        <a href="/admin/users/new" class="btn-spiyd">
+          <i class="fas fa-user-plus"></i> Nuevo Usuario
+        </a>
+        <a href="/admin/billing" class="btn-spiyd-outline">
+          <i class="fas fa-file-invoice-dollar"></i> Ver Facturación
+        </a>
+        <form method="POST" action="/admin/billing/generate" style="display:inline">
+          <button type="submit" class="btn-spiyd-outline" onclick="return confirm('¿Generar facturas del mes actual?')">
+            <i class="fas fa-receipt"></i> Generar Facturas del Mes
+          </button>
+        </form>
+        <a href="/mapa" target="_blank" class="btn-spiyd-outline">
+          <i class="fas fa-map"></i> Abrir Mapa
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

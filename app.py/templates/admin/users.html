@@ -1,0 +1,105 @@
+{% extends "base_admin.html" %}
+{% block title %}Usuarios — SPIYD Admin{% endblock %}
+{% block page_title %}Usuarios{% endblock %}
+{% block breadcrumb %}Usuarios{% endblock %}
+
+{% block content %}
+<div class="data-card">
+  <div class="data-card-header">
+    <h6><i class="fas fa-users me-2" style="color:var(--orange)"></i>
+      Usuarios registrados <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ users|length }})</span>
+    </h6>
+    <div class="d-flex gap-2 align-items-center">
+      <form method="GET" action="/admin/users" class="d-flex gap-2">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input class="form-control" type="text" name="q" value="{{ search }}" placeholder="Buscar usuario..." style="width:220px">
+        </div>
+        <button type="submit" class="btn-spiyd-outline">Buscar</button>
+        {% if search %}<a href="/admin/users" class="btn-spiyd-outline">✕</a>{% endif %}
+      </form>
+      <a href="/admin/users/new" class="btn-spiyd">
+        <i class="fas fa-plus"></i> Nuevo
+      </a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Usuario</th>
+          <th>Rol</th>
+          <th>Plan</th>
+          <th>Estado</th>
+          <th>Registrado</th>
+          <th>Último acceso</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td style="color:var(--muted)">{{ user.id }}</td>
+          <td>
+            <div style="font-weight:600">{{ user.username }}</div>
+            <div style="font-size:0.78rem;color:var(--muted)">{{ user.email }}</div>
+          </td>
+          <td>
+            <span class="badge-role badge-{{ user.role }}">{{ user.role_label }}</span>
+          </td>
+          <td>
+            <span class="badge-plan badge-{{ user.plan }}">{{ user.plan_label }}</span>
+            {% if user.monthly_amount > 0 %}
+            <div style="font-size:0.72rem;color:var(--muted)">${{ "%.0f"|format(user.monthly_amount) }}/mes</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if user.active %}
+            <span class="badge-active">Activo</span>
+            {% else %}
+            <span class="badge-inactive">Inactivo</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--muted);font-size:0.82rem">
+            {{ user.created_at.strftime('%d/%m/%Y') }}
+          </td>
+          <td style="color:var(--muted);font-size:0.82rem">
+            {% if user.last_login %}
+              {{ user.last_login.strftime('%d/%m/%Y %H:%M') }}
+            {% else %}
+              <span style="color:#4b5563">Nunca</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="/admin/users/{{ user.id }}/edit" class="btn-icon" title="Editar">
+                <i class="fas fa-pen"></i>
+              </a>
+              {% if user.id != current_user.id %}
+              <form method="POST" action="/admin/users/{{ user.id }}/delete" style="display:inline"
+                    onsubmit="return confirm('¿Eliminar usuario {{ user.username }}? Esta acción no se puede deshacer.')">
+                <button type="submit" class="btn-icon danger" title="Eliminar">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align:center;color:var(--muted);padding:40px">
+            {% if search %}
+              No se encontraron usuarios para "{{ search }}"
+            {% else %}
+              No hay usuarios registrados
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

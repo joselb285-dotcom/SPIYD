@@ -1,0 +1,119 @@
+{% extends "base_admin.html" %}
+{% block title %}Facturación — SPIYD Admin{% endblock %}
+{% block page_title %}Facturación{% endblock %}
+{% block breadcrumb %}Facturación{% endblock %}
+
+{% block content %}
+<!-- Resumen -->
+<div class="row g-4 mb-4">
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="label"><i class="fas fa-circle-check me-1"></i>Total Cobrado</div>
+      <div class="value" style="color:#22c55e">${{ "%.2f"|format(total_paid) }}</div>
+      <div class="sub">facturas pagadas</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="label"><i class="fas fa-clock me-1"></i>Pendiente</div>
+      <div class="value" style="color:#f59e0b">${{ "%.2f"|format(total_pending) }}</div>
+      <div class="sub">por cobrar</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="stat-card">
+      <div class="label"><i class="fas fa-circle-exclamation me-1"></i>Vencido</div>
+      <div class="value" style="color:#ef4444">${{ "%.2f"|format(total_overdue) }}</div>
+      <div class="sub">requiere atención</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabla de facturas -->
+<div class="data-card">
+  <div class="data-card-header">
+    <h6><i class="fas fa-file-invoice-dollar me-2" style="color:var(--orange)"></i>
+      Historial de Facturas <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ invoices|length }})</span>
+    </h6>
+    <form method="POST" action="/admin/billing/generate"
+          onsubmit="return confirm('¿Generar facturas para todos los usuarios con plan pago del mes actual?')">
+      <button type="submit" class="btn-spiyd">
+        <i class="fas fa-receipt"></i> Generar Facturas del Mes
+      </button>
+    </form>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Usuario</th>
+          <th>Plan</th>
+          <th>Período</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th>Emitida</th>
+          <th>Pagada</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices %}
+        <tr>
+          <td style="color:var(--muted)">{{ invoice.id }}</td>
+          <td>
+            <div style="font-weight:600">{{ invoice.user.username }}</div>
+            <div style="font-size:0.78rem;color:var(--muted)">{{ invoice.user.email }}</div>
+          </td>
+          <td><span class="badge-plan badge-{{ invoice.user.plan }}">{{ invoice.user.plan_label }}</span></td>
+          <td style="font-family:monospace;font-size:0.88rem">{{ invoice.period }}</td>
+          <td style="font-weight:700;color:var(--orange)">${{ "%.2f"|format(invoice.amount) }}</td>
+          <td>
+            <span class="badge bg-{{ invoice.status_class }}-subtle text-{{ invoice.status_class }}"
+                  style="font-size:0.75rem;padding:4px 10px;border-radius:20px">
+              {{ invoice.status_label }}
+            </span>
+          </td>
+          <td style="color:var(--muted);font-size:0.82rem">{{ invoice.created_at.strftime('%d/%m/%Y') }}</td>
+          <td style="color:var(--muted);font-size:0.82rem">
+            {% if invoice.paid_at %}{{ invoice.paid_at.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              {% if invoice.status == 'pending' %}
+              <form method="POST" action="/admin/billing/{{ invoice.id }}/pay" style="display:inline">
+                <button type="submit" class="btn-icon" title="Marcar como pagado" style="color:#22c55e;border-color:rgba(34,197,94,0.3)">
+                  <i class="fas fa-check"></i>
+                </button>
+              </form>
+              <form method="POST" action="/admin/billing/{{ invoice.id }}/overdue" style="display:inline">
+                <button type="submit" class="btn-icon danger" title="Marcar como vencido">
+                  <i class="fas fa-exclamation"></i>
+                </button>
+              </form>
+              {% elif invoice.status == 'overdue' %}
+              <form method="POST" action="/admin/billing/{{ invoice.id }}/pay" style="display:inline">
+                <button type="submit" class="btn-icon" title="Marcar como pagado" style="color:#22c55e;border-color:rgba(34,197,94,0.3)">
+                  <i class="fas fa-check"></i>
+                </button>
+              </form>
+              {% else %}
+              <span style="color:var(--muted);font-size:0.78rem">—</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align:center;color:var(--muted);padding:48px">
+            <i class="fas fa-file-invoice" style="font-size:2rem;margin-bottom:12px;display:block;opacity:0.3"></i>
+            No hay facturas generadas.<br>
+            <small>Usá el botón "Generar Facturas del Mes" para crear facturas para el período actual.</small>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

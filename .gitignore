@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+server.log
+app.py/server.log
+
+# OS
+.DS_Store
+Thumbs.db

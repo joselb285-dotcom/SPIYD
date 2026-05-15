@@ -1,0 +1,11 @@
+flask
+flask-cors
+flask-login
+flask-sqlalchemy
+flask-limiter
+requests
+feedparser
+anthropic
+python-dotenv
+gunicorn
+psycopg2-binary
