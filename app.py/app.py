@@ -60,16 +60,7 @@ with app.app_context():
 
 @app.route('/')
 def landing():
-    return send_from_directory(BASE_DIR, 'landing_new.html')
-
-@app.route('/precios')
-def precios():
-    return send_from_directory(BASE_DIR, 'precios.html')
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    return send_from_directory(BASE_DIR, 'dashboard.html')
+    return render_template('landing.html')
 
 @app.route('/mapa')
 @login_required
