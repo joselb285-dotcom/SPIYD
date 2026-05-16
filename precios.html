@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPIYD — Planes y Precios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:'Poppins',sans-serif;background:#000308;color:white;min-height:100vh}
+    #root{min-height:100vh}
+    .g{position:relative;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);border-radius:1.6rem}
+    .g-featured{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22)}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .au{animation:fadeUp .6s ease both}
+    .au1{animation-delay:.05s}.au2{animation-delay:.10s}.au3{animation-delay:.15s}
+    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:99px}
+
+    /* ── Edit mode ── */
+    .spiyd-editable {
+      outline: none;
+      border-radius: 3px;
+      transition: outline .12s, background .12s;
+      cursor: inherit;
+    }
+    body.edit-on .spiyd-editable {
+      outline: 1px dashed rgba(136,170,255,.38);
+      cursor: text;
+      padding: 1px 3px;
+      margin: -1px -3px;
+    }
+    body.edit-on .spiyd-editable:hover {
+      outline-color: rgba(136,170,255,.7);
+      background: rgba(136,170,255,.06);
+    }
+    body.edit-on .spiyd-editable:focus {
+      outline: 2px solid rgba(136,170,255,.8);
+      background: rgba(136,170,255,.09);
+      border-radius: 3px;
+    }
+
+    /* Edit mode banner */
+    #edit-banner {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+      background: rgba(136,170,255,.15); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(136,170,255,.3);
+      padding: 8px 1.5rem;
+      align-items: center; justify-content: space-between;
+      font-family: 'Poppins', sans-serif; font-size: .72rem; color: rgba(255,255,255,.7);
+    }
+    body.edit-on #edit-banner { display: flex; }
+    body.edit-on nav { top: 36px; }
+    body.edit-on { padding-top: 36px; }
+    .edit-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(136,170,255,.18); border: 1px solid rgba(136,170,255,.3);
+      border-radius: 99px; padding: 3px 12px; font-size: .65rem; font-weight: 500; color: #88aaff;
+    }
+    .reset-btn {
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+      color: rgba(255,255,255,.55); font-family: 'Poppins'; font-size: .65rem;
+      padding: 4px 12px; border-radius: 99px; cursor: pointer; transition: all .15s;
+    }
+    .reset-btn:hover { background: rgba(255,100,68,.12); border-color: rgba(255,100,68,.3); color: #ff8866; }
+  </style>
+</head>
+<body>
+
+<!-- Edit mode banner -->
+<div id="edit-banner">
+  <div class="edit-pill">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Modo edición activo — hacé click en cualquier texto para editarlo
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span style="font-size:.62rem;color:rgba(255,255,255,.35)">Los cambios se guardan automáticamente</span>
+    <button class="reset-btn" onclick="resetAllTexts()">Restaurar originales</button>
+  </div>
+</div>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useContext, createContext, useCallback } = React;
+
+/* ═══════ STORAGE ═══════ */
+const STORE_KEY = 'spiyd_precios_texts';
+function loadTexts() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveText(id, val) {
+  const all = loadTexts();
+  all[id] = val;
+  localStorage.setItem(STORE_KEY, JSON.stringify(all));
+}
+window.resetAllTexts = function() {
+  localStorage.removeItem(STORE_KEY);
+  //reload
+};
+
+/* ═══════ CONTEXT ═══════ */
+const EditCtx = createContext({ editMode: false });
+
+/* ═══════ EDITABLE TEXT ═══════ */
+function E({ id, children, tag: Tag = 'span', style, className, ...rest }) {
+  const { editMode } = useContext(EditCtx);
+  const stored = loadTexts()[id];
+  const [val, setVal] = useState(stored !== undefined ? stored : children);
+  const ref = useRef();
+
+  // Sync when stored value changes (e.g. reset)
+  useEffect(() => {
+    const s = loadTexts()[id];
+    if (s !== undefined && ref.current) ref.current.textContent = s;
+  }, []);
+
+  function handleBlur(e) {
+    const v = e.target.textContent;
+    setVal(v);
+    saveText(id, v);
+  }
+
+  return (
+    <Tag
+      ref={ref}
+      contentEditable={editMode}
+      suppressContentEditableWarning
+      onBlur={editMode ? handleBlur : undefined}
+      className={`spiyd-editable${className ? ' ' + className : ''}`}
+      style={style}
+      {...rest}
+    >
+      {val}
+    </Tag>
+  );
+}
+
+/* ═══════ LOGO ═══════ */
+function Logo({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="17" stroke="rgba(255,255,255,.38)" strokeWidth="1.2"/>
+      <ellipse cx="20" cy="20" rx="10" ry="5" stroke="rgba(255,255,255,.22)" strokeWidth="1" transform="rotate(-35 20 20)"/>
+      <circle cx="20" cy="20" r="4.2" fill="rgba(255,255,255,.90)"/>
+      <circle cx="33" cy="12" r="2.6" fill="rgba(255,255,255,.72)"/>
+      <circle cx="8" cy="30" r="1.4" fill="rgba(255,255,255,.40)"/>
+    </svg>
+  );
+}
+
+function CheckIcon({ ok, col }) {
+  if (!ok) return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>;
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>;
+}
+
+/* ═══════ PLAN DATA ═══════ */
+const PLANS = [
+  {
+    id: 'estatal',
+    tier: 'Básico', name: 'Estatal', price: '299', period: 'mes',
+    color: '#88aaff', featured: false,
+    description: 'Cobertura regional con alertas email y SMS. Ideal para organismos que necesitan monitoreo básico de su jurisdicción.',
+    features: [
+      '1 área de cobertura (hasta 50.000 km²)',
+      'Alertas por email y SMS',
+      'Dashboard básico',
+      'Reportes PDF mensuales',
+      'Datos históricos 12 meses',
+      'Soporte email 5×8',
+    ],
+    featuresOff: ['API de integración', 'Análisis IA', 'White-label'],
+    cta: 'Comenzar gratis 14 días',
+  },
+  {
+    id: 'pro',
+    tier: 'Más Popular', name: 'Pro', price: '990', period: 'mes',
+    color: '#44ffcc', featured: true,
+    description: 'El plan más completo para empresas que toman decisiones críticas. Análisis IA, API REST y alertas en tiempo real.',
+    features: [
+      'Hasta 5 áreas (500.000 km²)',
+      'Alertas en tiempo real < 15 min',
+      'Dashboard avanzado + histórico 5 años',
+      'Análisis IA con recomendaciones',
+      'API RESTful + Webhooks',
+      'Reportes ejecutivos semanales',
+      'Soporte técnico 7×16',
+      'Integración GIS (QGIS/ArcGIS)',
+    ],
+    featuresOff: ['White-label'],
+    cta: 'Solicitar demo gratuita',
+  },
+  {
+    id: 'enterprise',
+    tier: 'A medida', name: 'Gobierno', price: null, period: null,
+    color: '#ffcc44', featured: false,
+    description: 'Solución a medida con cobertura ilimitada, SLA dedicado 24/7 y personalización completa de la plataforma.',
+    features: [
+      'Cobertura ilimitada · Cono Sur',
+      'Análisis predictivo + modelado de riesgo',
+      'SLA 99.9% · Soporte 24/7/365',
+      'White-label disponible',
+      'Integración con sistemas existentes',
+      'Capacitación in-house incluida',
+      'Acceso API completo + streaming',
+      'Auditoría y cumplimiento normativo',
+    ],
+    featuresOff: [],
+    cta: 'Contactar equipo de ventas',
+  },
+];
+
+const COMPARE = [
+  { feat: 'Fuentes satelitales', vals: ['7', '7', '7'] },
+  { feat: 'Áreas de cobertura',  vals: ['1', '5', 'Ilimitadas'] },
+  { feat: 'Latencia de alerta',  vals: ['≤ 60 min', '≤ 15 min', '≤ 5 min'] },
+  { feat: 'Historial de datos',  vals: ['12 meses', '5 años', 'Ilimitado'] },
+  { feat: 'Análisis IA',         vals: ['—', '✓', '✓'] },
+  { feat: 'API de integración',  vals: ['—', 'REST + WS', 'REST + WS + Stream'] },
+  { feat: 'Exportación GIS',     vals: ['—', 'GeoJSON/KML', 'GeoJSON/KML/SHP'] },
+  { feat: 'White-label',         vals: ['—', '—', '✓'] },
+  { feat: 'SLA garantizado',     vals: ['—', '99.5%', '99.9%'] },
+  { feat: 'Soporte',             vals: ['Email 5×8', '7×16', '24/7/365 dedicado'] },
+];
+
+const FAQS = [
+  { q: '¿Cuánto tarda la activación?', a: 'Menos de 48 horas hábiles desde la firma del contrato. Nuestro equipo configura el área de cobertura y las notificaciones con acompañamiento directo.' },
+  { q: '¿Qué pasa si necesito más de una área?', a: 'El plan Pro admite hasta 5 áreas. Para más, Enterprise ofrece cobertura ilimitada. También podés agregar áreas adicionales al plan Estatal como add-on por USD 89/área/mes.' },
+  { q: '¿Los datos son en tiempo real?', a: 'El plan Pro y Enterprise reciben datos satelitales procesados en menos de 15 minutos desde la detección. El plan Estatal tiene latencia de hasta 60 minutos.' },
+  { q: '¿Puedo exportar los datos a mi GIS?', a: 'Sí. El plan Pro incluye exportación en formato GeoJSON, KML y Shapefile. La API permite integración directa con QGIS, ArcGIS y PostGIS.' },
+  { q: '¿Hay contrato mínimo?', a: 'No. Todos los planes son mensuales. Para organismos del Estado ofrecemos contratos anuales con 15% de descuento y modalidad de licitación.' },
+  { q: '¿Qué es el análisis de IA?', a: 'Claude AI analiza cada detección en contexto: historial de la zona, condiciones meteorológicas actuales, vegetación colindante y genera una recomendación operativa en lenguaje natural.' },
+];
+
+/* ═══════ APP ═══════ */
+function App() {
+  const [editMode, setEditMode] = useState(false);
+  const [billing, setBilling]   = useState('monthly');
+  const [openFaq, setOpenFaq]   = useState(null);
+
+  /* Tweaks toolbar protocol */
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === '__activate_edit_mode')   { setEditMode(true);  document.body.classList.add('edit-on'); }
+      if (e.data?.type === '__deactivate_edit_mode') { setEditMode(false); document.body.classList.remove('edit-on'); }
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  return (
+    <EditCtx.Provider value={{ editMode }}>
+      <div style={{ minHeight: '100vh', background: '#000308' }}>
+
+        {/* NAV */}
+        <nav style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'.9rem 5vw',borderBottom:'1px solid rgba(255,255,255,.07)',background:'rgba(0,3,12,.95)',position:'sticky',top:0,zIndex:50 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+            <Logo size={26}/>
+            <E id="nav_brand" tag="span" style={{ fontWeight:600,letterSpacing:'-.05em',fontSize:'1rem' }}>spiyd</E>
+            <span style={{ color:'rgba(255,255,255,.2)',margin:'0 .4rem' }}>/</span>
+            <E id="nav_title" tag="span" style={{ color:'rgba(255,255,255,.45)',fontSize:'.8rem' }}>Planes y Precios</E>
+          </div>
+          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+            {editMode && (
+              <div style={{ display:'flex',alignItems:'center',gap:5,background:'rgba(136,170,255,.1)',border:'1px solid rgba(136,170,255,.25)',borderRadius:99,padding:'4px 12px',fontSize:'.65rem',color:'#88aaff' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Editando
+              </div>
+            )}
+            {[['Hero','SPIYD Hero.html'],['Dashboard','SPIYD Dashboard.html'],['Mapa','SPIYD Mapa.html']].map(([l,h])=>(
+              <a key={l} href={h} style={{ color:'rgba(255,255,255,.4)',fontSize:'.75rem',textDecoration:'none',padding:'5px 12px',borderRadius:99,transition:'color .15s' }}
+                onMouseEnter={e=>e.target.style.color='white'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,.4)'}>{l}</a>
+            ))}
+          </div>
+        </nav>
+
+        <div style={{ padding:'5rem 5vw 4rem',maxWidth:1200,margin:'0 auto' }}>
+
+          {/* HERO */}
+          <div style={{ textAlign:'center',marginBottom:'4rem' }}>
+            <div className="au" style={{ display:'inline-block',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',borderRadius:99,padding:'5px 16px',fontSize:'.6rem',color:'rgba(255,255,255,.5)',letterSpacing:'.16em',textTransform:'uppercase',marginBottom:'1.2rem' }}>
+              <E id="hero_badge">SaaS · Activación en 48 h</E>
+            </div>
+            <h1 className="au au1" style={{ fontSize:'clamp(2.2rem,4vw,3.4rem)',fontWeight:500,letterSpacing:'-.05em',lineHeight:1.06,marginBottom:'.8rem' }}>
+              <E id="hero_title">Planes adaptados</E><br/>
+              <em style={{ fontFamily:"'Source Serif 4',serif",fontStyle:'italic',fontWeight:400,color:'rgba(255,255,255,.55)' }}>
+                <E id="hero_title_italic">a cada organización</E>
+              </em>
+            </h1>
+            <p className="au au2" style={{ color:'rgba(255,255,255,.45)',fontSize:'.92rem',maxWidth:480,margin:'0 auto 2rem' }}>
+              <E id="hero_subtitle">Desde municipios hasta gobiernos nacionales. Inteligencia geoespacial al alcance de cualquier organismo.</E>
+            </p>
+
+            {/* Billing toggle */}
+            <div className="au au3" style={{ display:'inline-flex',background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.1)',borderRadius:99,padding:3 }}>
+              {[['monthly','Mensual'],['annual','Anual (-15%)']].map(([v,l])=>(
+                <button key={v} onClick={()=>setBilling(v)} style={{ padding:'7px 20px',borderRadius:99,border:'none',cursor:'pointer',fontFamily:'Poppins',fontSize:'.78rem',fontWeight:500,background:billing===v?'rgba(255,255,255,.12)':'transparent',color:billing===v?'white':'rgba(255,255,255,.45)',transition:'all .15s' }}>{l}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* PLANS */}
+          <div className="au au4" style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1.5rem',marginBottom:'5rem',alignItems:'start' }}>
+            {PLANS.map((p, pi) => (
+              <div key={p.id} className={`g${p.featured?' g-featured':''}`} style={{ padding:'2.2rem',position:'relative' }}>
+                {p.featured && (
+                  <div style={{ position:'absolute',top:'1.2rem',right:'1.2rem',background:`${p.color}22`,border:`1px solid ${p.color}55`,borderRadius:99,padding:'3px 10px',fontSize:'.52rem',color:p.color,fontWeight:600,letterSpacing:'.12em',textTransform:'uppercase' }}>
+                    <E id={`plan_${p.id}_badge`}>Más popular</E>
+                  </div>
+                )}
+                <div style={{ color:'rgba(255,255,255,.35)',fontSize:'.58rem',letterSpacing:'.2em',textTransform:'uppercase',marginBottom:'.6rem' }}>
+                  <E id={`plan_${p.id}_tier`}>{p.tier}</E>
+                </div>
+                <div style={{ fontSize:'1.5rem',fontWeight:600,letterSpacing:'-.05em',marginBottom:'.3rem',color:'white' }}>
+                  <E id={`plan_${p.id}_name`}>{p.name}</E>
+                </div>
+                {p.price
+                  ? <div style={{ marginBottom:'.3rem' }}>
+                      <span style={{ fontSize:'2.8rem',fontWeight:700,letterSpacing:'-.06em',color:'white' }}>
+                        USD <E id={`plan_${p.id}_price`}>{billing==='annual'?String(Math.round(parseInt(p.price)*.85)):p.price}</E>
+                      </span>
+                      <span style={{ color:'rgba(255,255,255,.35)',fontSize:'.85rem' }}>
+                        /<E id={`plan_${p.id}_period`}>{p.period}</E>
+                      </span>
+                    </div>
+                  : <div style={{ fontSize:'1.8rem',fontWeight:600,color:'white',marginBottom:'.3rem' }}>
+                      <E id={`plan_${p.id}_no_price`}>A consultar</E>
+                    </div>
+                }
+                <p style={{ color:'rgba(255,255,255,.4)',fontSize:'.75rem',lineHeight:1.55,marginBottom:'1.4rem',minHeight:50 }}>
+                  <E id={`plan_${p.id}_desc`}>{p.description}</E>
+                </p>
+                <hr style={{ border:'none',borderTop:'1px solid rgba(255,255,255,.08)',marginBottom:'1.4rem' }}/>
+                <ul style={{ listStyle:'none',display:'flex',flexDirection:'column',gap:'.65rem',marginBottom:'1.8rem' }}>
+                  {p.features.map((f, fi) => (
+                    <li key={fi} style={{ display:'flex',alignItems:'flex-start',gap:8,color:'rgba(255,255,255,.65)',fontSize:'.76rem',lineHeight:1.4 }}>
+                      <div style={{ marginTop:1,flexShrink:0 }}><CheckIcon ok={true} col={p.color}/></div>
+                      <E id={`plan_${p.id}_feat_${fi}`}>{f}</E>
+                    </li>
+                  ))}
+                  {p.featuresOff.map((f, fi) => (
+                    <li key={'off'+fi} style={{ display:'flex',alignItems:'flex-start',gap:8,color:'rgba(255,255,255,.2)',fontSize:'.76rem',lineHeight:1.4 }}>
+                      <div style={{ marginTop:1,flexShrink:0 }}><CheckIcon ok={false} col={p.color}/></div>
+                      <E id={`plan_${p.id}_featoff_${fi}`}>{f}</E>
+                    </li>
+                  ))}
+                </ul>
+                <button style={{ width:'100%',padding:'.9rem',borderRadius:99,background:p.featured?'white':'transparent',border:p.featured?'none':`1px solid rgba(255,255,255,.2)`,color:p.featured?'#000308':'white',fontFamily:'Poppins',fontSize:'.82rem',fontWeight:500,cursor:'pointer',transition:'opacity .2s',letterSpacing:'-.01em' }}
+                  onMouseEnter={e=>e.currentTarget.style.opacity='.82'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                  <E id={`plan_${p.id}_cta`}>{p.cta}</E>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* COMPARE TABLE */}
+          <div style={{ marginBottom:'5rem' }}>
+            <h2 style={{ fontSize:'1.6rem',fontWeight:500,letterSpacing:'-.04em',marginBottom:'2rem',textAlign:'center' }}>
+              <E id="compare_title">Comparar planes</E>
+            </h2>
+            <div className="g" style={{ overflow:'hidden',borderRadius:'1.2rem' }}>
+              <table style={{ width:'100%',borderCollapse:'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom:'1px solid rgba(255,255,255,.08)' }}>
+                    <th style={{ padding:'1rem 1.4rem',textAlign:'left',color:'rgba(255,255,255,.35)',fontSize:'.62rem',letterSpacing:'.14em',textTransform:'uppercase',fontWeight:400,width:'40%' }}>
+                      <E id="compare_feat_col">Característica</E>
+                    </th>
+                    {PLANS.map(p => (
+                      <th key={p.id} style={{ padding:'1rem 1.4rem',textAlign:'center',color:p.featured?'white':'rgba(255,255,255,.55)',fontSize:'.82rem',fontWeight:p.featured?600:500 }}>
+                        <E id={`compare_head_${p.id}`}>{p.name}</E>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARE.map((row, i) => (
+                    <tr key={i} style={{ borderBottom:'1px solid rgba(255,255,255,.05)',background:i%2===0?'transparent':'rgba(255,255,255,.015)' }}>
+                      <td style={{ padding:'.85rem 1.4rem',color:'rgba(255,255,255,.55)',fontSize:'.78rem' }}>
+                        <E id={`compare_feat_${i}`}>{row.feat}</E>
+                      </td>
+                      {row.vals.map((v, j) => (
+                        <td key={j} style={{ padding:'.85rem 1.4rem',textAlign:'center',color:v==='—'?'rgba(255,255,255,.2)':v==='✓'?PLANS[j].color:'rgba(255,255,255,.7)',fontSize:'.76rem',fontWeight:v==='✓'?600:400 }}>
+                          <E id={`compare_val_${i}_${j}`}>{v}</E>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* FAQ */}
+          <div style={{ marginBottom:'5rem',maxWidth:720,margin:'0 auto 5rem' }}>
+            <h2 style={{ fontSize:'1.6rem',fontWeight:500,letterSpacing:'-.04em',marginBottom:'2rem',textAlign:'center' }}>
+              <E id="faq_title">Preguntas frecuentes</E>
+            </h2>
+            <div style={{ display:'flex',flexDirection:'column',gap:'.5rem' }}>
+              {FAQS.map((f, i) => (
+                <div key={i} className="g" style={{ borderRadius:'.9rem',overflow:'hidden',borderColor:openFaq===i?'rgba(255,255,255,.18)':'rgba(255,255,255,.09)' }}>
+                  <button onClick={()=>setOpenFaq(openFaq===i?null:i)} style={{ width:'100%',padding:'1rem 1.2rem',background:'transparent',border:'none',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,color:'white',fontFamily:'Poppins',fontSize:'.82rem',fontWeight:500,cursor:'pointer',textAlign:'left',letterSpacing:'-.02em' }}>
+                    <E id={`faq_q_${i}`}>{f.q}</E>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0,transition:'transform .2s',transform:openFaq===i?'rotate(180deg)':'none' }}>
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </button>
+                  {openFaq===i && (
+                    <div style={{ padding:'0 1.2rem 1rem',color:'rgba(255,255,255,.5)',fontSize:'.8rem',lineHeight:1.65 }}>
+                      <E id={`faq_a_${i}`}>{f.a}</E>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div style={{ textAlign:'center',background:'rgba(255,255,255,.03)',border:'1px solid rgba(255,255,255,.09)',borderRadius:'2rem',padding:'3.5rem 2rem',maxWidth:680,margin:'0 auto' }}>
+            <div style={{ color:'rgba(255,255,255,.35)',fontSize:'.58rem',letterSpacing:'.2em',textTransform:'uppercase',marginBottom:'1rem' }}>
+              <E id="cta_label">¿Tenés dudas?</E>
+            </div>
+            <h2 style={{ fontSize:'clamp(1.6rem,3vw,2.4rem)',fontWeight:500,letterSpacing:'-.04em',marginBottom:'.8rem',lineHeight:1.1 }}>
+              <E id="cta_title">Hablá con nuestro</E><br/>
+              <em style={{ fontFamily:"'Source Serif 4',serif",fontStyle:'italic',fontWeight:400,color:'rgba(255,255,255,.55)' }}>
+                <E id="cta_title_italic">equipo técnico</E>
+              </em>
+            </h2>
+            <p style={{ color:'rgba(255,255,255,.4)',fontSize:'.85rem',marginBottom:'2rem',lineHeight:1.6 }}>
+              <E id="cta_sub">Te mostramos la plataforma en vivo con tu área de cobertura, datos reales y sin compromiso.</E>
+            </p>
+            <div style={{ display:'flex',gap:'1rem',justifyContent:'center',flexWrap:'wrap' }}>
+              <button style={{ display:'inline-flex',alignItems:'center',gap:8,background:'white',color:'#000308',fontFamily:'Poppins',fontSize:'.85rem',fontWeight:500,padding:'.9rem 2rem',borderRadius:99,border:'none',cursor:'pointer',transition:'opacity .2s' }}
+                onMouseEnter={e=>e.currentTarget.style.opacity='.85'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                <E id="cta_btn1">Solicitar demo gratuita</E>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+              </button>
+              <a href="/mapa" style={{ display:'inline-flex',alignItems:'center',gap:8,background:'transparent',color:'white',fontFamily:'Poppins',fontSize:'.85rem',fontWeight:500,padding:'.9rem 2rem',borderRadius:99,border:'1px solid rgba(255,255,255,.22)',textDecoration:'none',transition:'border-color .2s' }}
+                onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.5)'} onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.22)'}>
+                <E id="cta_btn2">Ver dashboard demo</E>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <footer style={{ borderTop:'1px solid rgba(255,255,255,.06)',padding:'2rem 5vw',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'1rem',marginTop:'4rem' }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+            <Logo size={20}/>
+            <E id="footer_brand" tag="span" style={{ fontWeight:600,letterSpacing:'-.04em' }}>spiyd</E>
+          </div>
+          <E id="footer_copy" tag="span" style={{ color:'rgba(255,255,255,.2)',fontSize:'.68rem' }}>© 2026 SPIYD · Inteligencia Geoespacial · República Argentina</E>
+          <div style={{ display:'flex',gap:'1.5rem' }}>
+            {['Privacidad','Términos','API Docs'].map((t,i)=>(
+              <E key={i} id={`footer_link_${i}`} tag="span" style={{ color:'rgba(255,255,255,.22)',fontSize:'.68rem',cursor:'pointer' }}>{t}</E>
+            ))}
+          </div>
+        </footer>
+
+      </div>
+    </EditCtx.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
