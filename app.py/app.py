@@ -62,6 +62,15 @@ with app.app_context():
 def landing():
     return render_template('landing.html')
 
+@app.route('/precios')
+def precios():
+    return render_template('precios.html')
+
+@app.route('/dashboard-preview')
+@login_required
+def dashboard_preview():
+    return render_template('dashboard_design.html')
+
 @app.route('/mapa')
 @login_required
 def mapa():
