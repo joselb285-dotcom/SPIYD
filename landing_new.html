@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPIYD — Inteligencia Geoespacial en Tiempo Real</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;1,8..60,400&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --glass-blur: 50px; --r: rgb(219,91,91); --rb: rgb(179,75,75); --rl: rgb(219,155,155); }
+    html { scroll-behavior: smooth; }
+    html, body { width: 100%; font-family: 'Poppins', sans-serif; overflow-x: hidden; }
+    body { background: #000308; }
+
+    #earth-bg { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; z-index: 0; }
+    #orbit-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+    #sat-labels   { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+    #bg-scrim     { position: fixed; inset: 0; z-index: 2; background: rgba(0,0,0,0); pointer-events: none; transition: background 0.3s; }
+    #root         { position: relative; z-index: 10; }
+
+    /* ── Satellite labels ──────────────────────────────────── */
+    .sat-label {
+      position: absolute; display: none; align-items: center; gap: 5px;
+      color: rgba(255,255,255,0.72); font-size: 0.52rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      background: rgba(0,5,20,0.55); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 99px;
+      padding: 3px 9px 3px 6px; white-space: nowrap;
+      transform: translate(10px, -50%);
+      transition: opacity 0.3s;
+    }
+    .sat-dot { width: 5px; height: 5px; border-radius: 50%; background: #44ffcc; flex-shrink: 0; animation: satPulse 1.8s ease-in-out infinite; }
+    @keyframes satPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.5)} }
+
+    /* ── Glass morphism ────────────────────────────────────── */
+    .glass, .glass-strong { position: relative; overflow: hidden; }
+    .glass {
+      background: rgba(255,255,255,0.01); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.10);
+    }
+    .glass::before, .glass-strong::before {
+      content: ''; position: absolute; inset: 0; padding: 1.4px; border-radius: inherit;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask:         linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none; z-index: 1;
+    }
+    .glass::before { background: linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.12) 25%, transparent 50%, rgba(255,255,255,.12) 75%, rgba(255,255,255,.42) 100%); }
+    .glass-strong {
+      background: rgba(255,255,255,0.01); backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur));
+      box-shadow: 4px 4px 8px rgba(0,0,0,.08), inset 0 1px 1px rgba(255,255,255,.15);
+    }
+    .glass-strong::before { background: linear-gradient(180deg, rgba(255,255,255,.48) 0%, rgba(255,255,255,.18) 25%, transparent 50%, rgba(255,255,255,.18) 75%, rgba(255,255,255,.48) 100%); }
+
+    .hs { transition: transform .2s cubic-bezier(.34,1.56,.64,1); cursor: pointer; }
+    .hs:hover  { transform: scale(1.04); }
+    .hs:active { transform: scale(.96); }
+
+    /* ── Entrance animations ───────────────────────────────── */
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .a0{animation:fadeUp .7s .00s cubic-bezier(.16,1,.3,1) both}
+    .a1{animation:fadeUp .7s .08s cubic-bezier(.16,1,.3,1) both}
+    .a2{animation:fadeUp .7s .16s cubic-bezier(.16,1,.3,1) both}
+    .a3{animation:fadeUp .7s .24s cubic-bezier(.16,1,.3,1) both}
+    .a4{animation:fadeUp .7s .32s cubic-bezier(.16,1,.3,1) both}
+    .a5{animation:fadeUp .7s .40s cubic-bezier(.16,1,.3,1) both}
+
+    /* ── Hero ──────────────────────────────────────────────── */
+    #hero { height: 100vh; display: flex; }
+
+    /* ── Section base ──────────────────────────────────────── */
+    .section { position: relative; padding: 100px 7vw; }
+    .section-dark { background: rgba(0,3,12,.96); }
+    .section-darker { background: rgba(0,1,8,.98); }
+    .section-label {
+      color: rgba(255,255,255,.35); font-size: .58rem; letter-spacing: .26em;
+      text-transform: uppercase; font-weight: 500; margin-bottom: 1rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem,3vw,2.8rem); font-weight: 500;
+      letter-spacing: -.04em; color: white; line-height: 1.1; margin-bottom: 1rem;
+    }
+    .section-sub {
+      color: rgba(255,255,255,.45); font-size: .9rem; line-height: 1.7;
+      max-width: 560px; margin-bottom: 3rem;
+    }
+
+    /* ── Stats ─────────────────────────────────────────────── */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 1px;
+      background: rgba(255,255,255,.07);
+    }
+    .stat-cell {
+      padding: 2.5rem 2rem; background: rgba(0,3,12,.95);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .stat-num { font-size: clamp(2rem,4vw,3.2rem); font-weight: 600; letter-spacing: -.05em; color: white; }
+    .stat-unit { font-size: .75rem; color: rgba(255,255,255,.4); letter-spacing: .04em; }
+    .stat-label { color: rgba(255,255,255,.45); font-size: .8rem; margin-top: .4rem; line-height: 1.4; }
+
+    /* ── Feature cards ─────────────────────────────────────── */
+    .feature-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; }
+    .feature-card {
+      border-radius: 1.5rem; padding: 2rem; border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03); transition: border-color .2s, background .2s;
+    }
+    .feature-card:hover { border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.05); }
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 50%; margin-bottom: 1.2rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .feature-card h3 { color: white; font-size: .9rem; font-weight: 500; margin-bottom: .6rem; letter-spacing: -.02em; }
+    .feature-card p  { color: rgba(255,255,255,.45); font-size: .78rem; line-height: 1.6; }
+
+    /* ── How it works ──────────────────────────────────────── */
+    .pipeline { display: grid; grid-template-columns: repeat(4,1fr); gap: 0; position: relative; }
+    .pipeline::before {
+      content: ''; position: absolute; top: 2rem; left: 12.5%; right: 12.5%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.15) 20%, rgba(255,255,255,.15) 80%, transparent);
+    }
+    .pipe-step { padding: 0 1.5rem; text-align: center; }
+    .pipe-num {
+      width: 4rem; height: 4rem; border-radius: 50%; margin: 0 auto 1.5rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; font-weight: 600; color: white;
+      border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.05);
+    }
+    .pipe-title { color: white; font-size: .85rem; font-weight: 500; margin-bottom: .5rem; }
+    .pipe-desc  { color: rgba(255,255,255,.4); font-size: .73rem; line-height: 1.6; }
+
+    /* ── Use cases ─────────────────────────────────────────── */
+    .usecase-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1.5rem; }
+    .usecase-card {
+      border-radius: 2rem; padding: 2.4rem; position: relative; overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03);
+      transition: border-color .2s;
+    }
+    .usecase-card:hover { border-color: rgba(255,255,255,.16); }
+    .usecase-sector { color: rgba(255,255,255,.35); font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 500; margin-bottom: .8rem; }
+    .usecase-card h3 { color: white; font-size: 1.15rem; font-weight: 500; margin-bottom: .8rem; letter-spacing: -.03em; }
+    .usecase-card p  { color: rgba(255,255,255,.45); font-size: .8rem; line-height: 1.65; }
+    .usecase-tags { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1.2rem; }
+    .usecase-tag {
+      color: rgba(255,255,255,.5); font-size: .62rem; padding: 4px 12px;
+      border: 1px solid rgba(255,255,255,.14); border-radius: 99px; font-weight: 400;
+    }
+
+    /* ── Pricing ───────────────────────────────────────────── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; align-items: start; }
+    .price-card {
+      border-radius: 2rem; padding: 2.4rem; border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03); position: relative; overflow: hidden;
+    }
+    .price-card.featured {
+      border-color: rgba(255,255,255,.28);
+      background: rgba(255,255,255,.06);
+    }
+    .price-card.featured::after {
+      content: 'MÁS POPULAR'; position: absolute; top: 1.4rem; right: 1.4rem;
+      font-size: .5rem; font-weight: 600; letter-spacing: .14em;
+      color: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.2);
+      padding: 3px 10px; border-radius: 99px;
+    }
+    .price-tier { color: rgba(255,255,255,.4); font-size: .6rem; letter-spacing: .2em; text-transform: uppercase; font-weight: 500; margin-bottom: .8rem; }
+    .price-name { color: white; font-size: 1.4rem; font-weight: 500; letter-spacing: -.04em; margin-bottom: .4rem; }
+    .price-amt  { font-size: 2.6rem; font-weight: 600; color: white; letter-spacing: -.06em; line-height: 1; }
+    .price-amt span { font-size: 1rem; font-weight: 400; color: rgba(255,255,255,.4); }
+    .price-desc { color: rgba(255,255,255,.4); font-size: .75rem; margin: 1rem 0 1.8rem; line-height: 1.55; }
+    .price-divider { border: none; border-top: 1px solid rgba(255,255,255,.08); margin-bottom: 1.5rem; }
+    .price-features { list-style: none; display: flex; flex-direction: column; gap: .75rem; margin-bottom: 2rem; }
+    .price-features li { display: flex; align-items: flex-start; gap: .7rem; color: rgba(255,255,255,.6); font-size: .78rem; line-height: 1.4; }
+    .price-check { color: #44ffcc; flex-shrink: 0; margin-top: 1px; }
+    .price-btn {
+      width: 100%; padding: .85rem; border-radius: 99px; border: none; cursor: pointer;
+      font-family: 'Poppins', sans-serif; font-size: .82rem; font-weight: 500;
+      transition: opacity .2s; letter-spacing: -.01em;
+    }
+    .price-btn.outline { background: transparent; border: 1px solid rgba(255,255,255,.2); color: white; }
+    .price-btn.outline:hover { border-color: rgba(255,255,255,.5); }
+    .price-btn.solid  { background: white; color: #000308; }
+    .price-btn.solid:hover  { opacity: .88; }
+
+    /* ── CTA ───────────────────────────────────────────────── */
+    .cta-inner {
+      text-align: center; max-width: 640px; margin: 0 auto;
+    }
+    .cta-inner h2 {
+      font-size: clamp(2rem,4vw,3.5rem); font-weight: 500; letter-spacing: -.05em;
+      color: white; line-height: 1.06; margin-bottom: 1.4rem;
+    }
+    .cta-inner p { color: rgba(255,255,255,.45); font-size: .9rem; line-height: 1.7; margin-bottom: 2.4rem; }
+    .cta-row { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: .7rem;
+      background: white; color: #000308; font-family: 'Poppins',sans-serif;
+      font-size: .85rem; font-weight: 500; padding: .9rem 2rem;
+      border-radius: 99px; border: none; cursor: pointer; transition: opacity .2s;
+      letter-spacing: -.02em;
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: .7rem;
+      background: transparent; color: white; font-family: 'Poppins',sans-serif;
+      font-size: .85rem; font-weight: 500; padding: .9rem 2rem;
+      border-radius: 99px; border: 1px solid rgba(255,255,255,.22); cursor: pointer;
+      transition: border-color .2s; letter-spacing: -.02em;
+    }
+    .btn-secondary:hover { border-color: rgba(255,255,255,.5); }
+
+    /* ── Footer ────────────────────────────────────────────── */
+    .footer {
+      background: rgba(0,1,6,.99); padding: 3rem 7vw;
+      border-top: 1px solid rgba(255,255,255,.06);
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-brand { display: flex; align-items: center; gap: .6rem; }
+    .footer-brand span { color: white; font-weight: 600; letter-spacing: -.04em; font-size: 1.1rem; }
+    .footer-copy { color: rgba(255,255,255,.25); font-size: .7rem; letter-spacing: .02em; }
+
+    /* ── Scroll indicator ──────────────────────────────────── */
+    .scroll-hint {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: .5rem; opacity: .5;
+    }
+    .scroll-hint span { color: white; font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; }
+    .scroll-arrow { animation: bounce .9s ease-in-out infinite alternate; }
+    @keyframes bounce { from{transform:translateY(0)} to{transform:translateY(5px)} }
+
+    /* ── Hot fire badge ────────────────────────────────────── */
+    .fire-badge {
+      position: absolute; top: 1.2rem; left: 1.4rem;
+      background: rgba(230,80,30,.18); border: 1px solid rgba(230,80,30,.35);
+      border-radius: 99px; padding: 4px 12px; font-size: .6rem;
+      color: rgb(255,150,80); font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .fire-dot { width: 6px; height: 6px; border-radius: 50%; background: rgb(255,100,50); animation: satPulse 1.2s ease-in-out infinite; }
+
+    @media (max-width: 900px) {
+      .feature-grid, .pricing-grid, .usecase-grid { grid-template-columns: 1fr; }
+      .pipeline { grid-template-columns: 1fr 1fr; gap: 2rem; }
+      .stats-strip { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <img id="earth-bg" src="uploads/Act%C3%BAa_como_un_experto_dise%C3%B1ador_202605140911.jpeg" />
+  <canvas id="orbit-canvas"></canvas>
+  <div id="sat-labels"></div>
+  <div id="bg-scrim"></div>
+  <div id="root"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       THREE.JS EARTH SCENE
+  ══════════════════════════════════════════════════════════ -->
+  <script>
+  (function () {
+    // ── Image dimensions ─────────────────────────────
+    const IMG_W = 1376, IMG_H = 768, IMG_ASP = IMG_W / IMG_H;
+    // Earth center & radius as fraction of image size
+    const EC_FX = 0.763, EC_FY = 0.476, ER_FH = 0.469;
+
+    const canvas = document.getElementById('orbit-canvas');
+    const ctx    = canvas.getContext('2d');
+
+    function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function getEarth() {
+      const vw = innerWidth, vh = innerHeight, vA = vw / vh;
+      let iW, iH, iX, iY;
+      if (vA < IMG_ASP) { iH=vh; iW=vh*IMG_ASP; iX=(vw-iW)/2; iY=0; }
+      else               { iW=vw; iH=vw/IMG_ASP; iX=0; iY=(vh-iH)/2; }
+      return { cx: iX+iW*EC_FX, cy: iY+iH*EC_FY, r: iH*ER_FH };
+    }
+
+    // Orbit config: rA/rB = semi-axes × Earth radius, tiltDeg = screen rotation
+    const ORBITS = [
+      { rA:1.55, rB:0.10, tilt: -3, speed:0.00042, phase:0.2,  color:'#88aaff', name:'GOES-16' },
+      { rA:0.68, rB:0.68, tilt: 70, speed:0.00130, phase:2.1,  color:'#99ffcc', name:'NOAA-20' },
+      { rA:0.74, rB:0.74, tilt:108, speed:0.00110, phase:4.4,  color:'#ffeeaa', name:'METOP-B' },
+    ];
+
+    // DOM labels
+    const labelBox = document.getElementById('sat-labels');
+    const domLabels = ORBITS.map(o => {
+      const el = document.createElement('div');
+      el.className = 'sat-label';
+      el.innerHTML = '<span class="sat-dot"></span><span>' + o.name + '</span>';
+      labelBox.appendChild(el);
+      return el;
+    });
+    const satAngles = ORBITS.map(o => o.phase);
+
+    function orbitPos(cx, cy, er, rA, rB, tiltDeg, angle) {
+      const tr = tiltDeg * Math.PI / 180;
+      const lx = Math.cos(angle) * er * rA;
+      const ly = Math.sin(angle) * er * rB;
+      return { x: cx + lx*Math.cos(tr) - ly*Math.sin(tr),
+               y: cy + lx*Math.sin(tr) + ly*Math.cos(tr) };
+    }
+
+    function drawOrbit(cx, cy, er, rA, rB, tiltDeg, color) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(tiltDeg * Math.PI / 180);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, er*rA, er*rB, 0, 0, Math.PI*2);
+      ctx.strokeStyle = color + '3a';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawSat(x, y, dir, size, color) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(dir + Math.PI / 2);
+      const s = size;
+      // Solar wings
+      ctx.fillStyle = '#12297a';
+      ctx.fillRect(-s*3.0, -s*0.22, s*2.2, s*0.44);
+      ctx.fillRect( s*0.8, -s*0.22, s*2.2, s*0.44);
+      // Cell lines
+      ctx.strokeStyle = 'rgba(80,120,200,0.55)';
+      ctx.lineWidth = 0.5;
+      for (let i=1;i<=2;i++){
+        const l=-s*3.0+(s*2.2/3)*i, r=s*0.8+(s*2.2/3)*i;
+        ctx.beginPath(); ctx.moveTo(l,-s*.22); ctx.lineTo(l,s*.22); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(r,-s*.22); ctx.lineTo(r,s*.22); ctx.stroke();
+      }
+      // Body
+      ctx.fillStyle = '#b0bfcc';
+      ctx.fillRect(-s*.52, -s*.52, s*1.04, s*1.04);
+      // Boom
+      ctx.strokeStyle = '#99aaaa'; ctx.lineWidth = s*.1;
+      ctx.beginPath(); ctx.moveTo(s*.18,-s*.52); ctx.lineTo(s*.18,-s*.95); ctx.stroke();
+      // Dish
+      ctx.strokeStyle = '#ccccbb'; ctx.lineWidth = s*.13;
+      ctx.beginPath(); ctx.arc(s*.36,-s*1.05,s*.34,Math.PI*1.15,Math.PI*1.85); ctx.stroke();
+      // Glow
+      ctx.shadowColor = color; ctx.shadowBlur = 10;
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(0,0,s*.22,0,Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    /* ── Orthographic lat/lon → canvas ──────────────────── */
+    const C_LON = -60 * Math.PI / 180;
+    const C_LAT =   5 * Math.PI / 180;
+
+    function latLonToXY(lat, lon, cx, cy, er) {
+      const φ = lat * Math.PI / 180, λ = lon * Math.PI / 180;
+      const cosC = Math.sin(C_LAT)*Math.sin(φ) + Math.cos(C_LAT)*Math.cos(φ)*Math.cos(λ-C_LON);
+      if (cosC < 0.05) return null;
+      return {
+        x: cx + er * Math.cos(φ) * Math.sin(λ - C_LON),
+        y: cy - er * (Math.cos(C_LAT)*Math.sin(φ) - Math.sin(C_LAT)*Math.cos(φ)*Math.cos(λ-C_LON)),
+      };
+    }
+
+    const FIRE_SPOTS = [
+      { lat: -4,  lon: -55, label: 'Pará · BR'        },
+      { lat: -10, lon: -52, label: 'Mato Grosso · BR'  },
+      { lat: -15, lon: -63, label: 'Beni · BO'         },
+      { lat: -22, lon: -61, label: 'Chaco · AR'        },
+      { lat: -28, lon: -57, label: 'Corrientes · AR'   },
+      { lat: -31, lon: -60, label: 'Entre Ríos · AR'   },
+    ];
+
+    function drawFireHotspots(cx, cy, er, t) {
+      FIRE_SPOTS.forEach(s => {
+        const pos = latLonToXY(s.lat, s.lon, cx, cy, er);
+        if (!pos) return;
+        const pulse = (t * 0.04) % (Math.PI * 2);
+        ctx.save();
+        ctx.shadowColor = 'rgba(255,80,20,0.9)'; ctx.shadowBlur = 8;
+        ctx.fillStyle = '#ff6622';
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, er*0.010, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+        [0, Math.PI].forEach((phaseOff, ri) => {
+          const p = ((pulse + phaseOff) % (Math.PI*2)) / (Math.PI*2);
+          const rad = er * (0.032 + ri*0.012) * p;
+          const op  = (1 - p) * 0.7;
+          if (op > 0.01) {
+            ctx.strokeStyle = `rgba(255,${90+ri*30},10,${op.toFixed(2)})`;
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.arc(pos.x, pos.y, rad, 0, Math.PI*2); ctx.stroke();
+          }
+        });
+        ctx.restore();
+      });
+    }
+
+    function drawScanRing(cx, cy, er, t) {
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * 0.0009);
+      ctx.beginPath(); ctx.ellipse(0,0,er*.78,er*.78,Math.PI*.44,0,Math.PI*2);
+      ctx.strokeStyle='rgba(40,255,160,0.36)'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawAtmoGlow(cx, cy, er, t) {
+      const a = t * 0.00014;
+      const hx = cx + Math.cos(a)*er*.32, hy = cy + Math.sin(a)*er*.16;
+      const g = ctx.createRadialGradient(hx,hy,0,cx,cy,er*1.05);
+      g.addColorStop(0,'rgba(255,248,210,0.048)');
+      g.addColorStop(0.5,'rgba(255,248,210,0.014)');
+      g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.arc(cx,cy,er*1.05,0,Math.PI*2); ctx.fill();
+    }
+
+    /* ── Earth rotation: terminator day/night sweep ── */
+    function drawTerminator(cx, cy, er, t) {
+      const rot = t * 0.00022;
+      ctx.save(); ctx.translate(cx, cy);
+
+      // Day-side warm highlight
+      const lx = Math.cos(rot)*er*.38, ly = Math.sin(rot)*er*.22;
+      const gDay = ctx.createRadialGradient(lx,ly,0,lx,ly,er*1.1);
+      gDay.addColorStop(0,    'rgba(255,248,200,0.14)');
+      gDay.addColorStop(0.30, 'rgba(255,248,200,0.07)');
+      gDay.addColorStop(0.60, 'rgba(255,248,200,0.01)');
+      gDay.addColorStop(1,    'rgba(255,248,200,0)');
+      ctx.beginPath(); ctx.arc(0,0,er,0,Math.PI*2);
+      ctx.fillStyle=gDay; ctx.fill();
+
+      // Night-side dark shadow — opposite side
+      const nx = -Math.cos(rot)*er*.38, ny = -Math.sin(rot)*er*.22;
+      const gNight = ctx.createRadialGradient(nx,ny,0,nx,ny,er*1.1);
+      gNight.addColorStop(0,    'rgba(0,5,20,0.38)');
+      gNight.addColorStop(0.28, 'rgba(0,5,20,0.22)');
+      gNight.addColorStop(0.55, 'rgba(0,5,20,0.08)');
+      gNight.addColorStop(1,    'rgba(0,5,20,0)');
+      ctx.beginPath(); ctx.arc(0,0,er,0,Math.PI*2);
+      ctx.fillStyle=gNight; ctx.fill();
+
+      ctx.restore();
+    }
+
+    /* ── Cloud layer: visible drifting blobs ──────────── */
+    const CLOUD_DEFS = [
+      { a:0.40, d:0.28, w:0.20, h:0.065, sp:0.00018, op:0.30 },
+      { a:1.55, d:0.50, w:0.24, h:0.078, sp:0.00013, op:0.27 },
+      { a:2.60, d:0.22, w:0.16, h:0.055, sp:0.00020, op:0.32 },
+      { a:3.80, d:0.62, w:0.26, h:0.080, sp:0.00011, op:0.26 },
+      { a:4.70, d:0.39, w:0.18, h:0.060, sp:0.00016, op:0.29 },
+      { a:5.80, d:0.54, w:0.22, h:0.070, sp:0.00014, op:0.28 },
+      { a:0.90, d:0.71, w:0.14, h:0.050, sp:0.00010, op:0.25 },
+      { a:3.20, d:0.15, w:0.17, h:0.058, sp:0.00022, op:0.27 },
+      { a:2.10, d:0.35, w:0.13, h:0.045, sp:0.00025, op:0.24 },
+      { a:5.10, d:0.44, w:0.15, h:0.052, sp:0.00017, op:0.26 },
+    ];
+    const cloudAngles = CLOUD_DEFS.map(c => c.a);
+
+    function drawClouds(cx, cy, er) {
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, er*0.972, 0, Math.PI*2); ctx.clip();
+      CLOUD_DEFS.forEach((c, i) => {
+        cloudAngles[i] += c.sp;
+        const a = cloudAngles[i];
+        const x = cx + Math.cos(a)*er*c.d;
+        const y = cy + Math.sin(a)*er*c.d*0.36;
+        const rw = er*c.w, rh = er*c.h;
+        // 3 overlapping sub-blobs per cloud for natural wispy look
+        [
+          { ox: 0,       oy: 0,    sr: 1.00, op: c.op        },
+          { ox: rw*0.35, oy:-rh*.2,sr: 0.72, op: c.op*0.75   },
+          { ox:-rw*0.28, oy: rh*.1,sr: 0.60, op: c.op*0.65   },
+        ].forEach(b => {
+          const bx = x + b.ox, by = y + b.oy;
+          const g = ctx.createRadialGradient(bx,by,0,bx,by,rw*b.sr);
+          g.addColorStop(0,    `rgba(255,255,255,${b.op.toFixed(2)})`);
+          g.addColorStop(0.45, `rgba(255,255,255,${(b.op*0.40).toFixed(2)})`);
+          g.addColorStop(0.80, `rgba(255,255,255,${(b.op*0.10).toFixed(2)})`);
+          g.addColorStop(1,    'rgba(255,255,255,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.ellipse(bx, by, rw*b.sr, rh*b.sr*0.48, a*0.14, 0, Math.PI*2);
+          ctx.fill();
+        });
+      });
+      ctx.restore();
+    }
+
+    let t = 0;
+    function tick() {
+      requestAnimationFrame(tick);
+      if (canvas.width !== innerWidth || canvas.height !== innerHeight) {
+        canvas.width = innerWidth; canvas.height = innerHeight;
+      }
+      t++;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const { cx, cy, r } = getEarth();
+      drawAtmoGlow(cx, cy, r, t);
+      drawTerminator(cx, cy, r, t);
+      drawClouds(cx, cy, r);
+      drawScanRing(cx, cy, r, t);
+      drawFireHotspots(cx, cy, r, t);
+      ORBITS.forEach((orb, i) => {
+        satAngles[i] += orb.speed;
+        drawOrbit(cx, cy, r, orb.rA, orb.rB, orb.tilt, orb.color);
+        const pos = orbitPos(cx, cy, r, orb.rA, orb.rB, orb.tilt, satAngles[i]);
+        drawSat(pos.x, pos.y, satAngles[i], r * 0.028, orb.color);
+        domLabels[i].style.cssText = 'display:flex;left:' + pos.x + 'px;top:' + pos.y + 'px';
+      });
+    }
+    tick();
+  })();
+  </script>
+
+
+  <!-- ══  <!-- ══════════════════════════════════════════════════════════
+       REACT APP
+  ══════════════════════════════════════════════════════════ -->
+  <script type="text/babel">
+  const { useEffect, useRef } = React;
+
+  /* ── Inline SVG icons ──────────────────────────────────── */
+  const ICONS = {
+    ArrowRight: <><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>,
+    Menu:       <><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></>,
+    Check:      <><path d="M20 6 9 17l-5-5"/></>,
+    Satellite:  <><path d="M13 7 9 3 3 9l4 4"/><path d="m13 7 3 3"/><path d="M3 3l4 4"/><path d="m3 21 18-18"/><path d="m21 21-4-4"/><path d="M11 11l-3 3 4 4 3-3-4-4z"/></>,
+    Zap:        <><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></>,
+    Globe:      <><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>,
+    Shield:     <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>,
+    BarChart:   <><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></>,
+    Map:        <><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></>,
+    Bell:       <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>,
+    Code:       <><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></>,
+  };
+  const Ico = ({ name, size=16, col='white' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={col}
+      strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
+      style={{ display:'block', flexShrink:0 }}>
+      {ICONS[name]}
+    </svg>
+  );
+  const GC = ({ children, style, ...p }) => (
+    <div style={{ position:'relative', zIndex:2, ...style }} {...p}>{children}</div>
+  );
+
+  /* ── Logo ───────────────────────────────────────────────── */
+  const Logo = ({ size=28 }) => (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="17" stroke="rgba(255,255,255,0.38)" strokeWidth="1.2"/>
+      <ellipse cx="20" cy="20" rx="10" ry="5" stroke="rgba(255,255,255,0.22)" strokeWidth="1" transform="rotate(-35 20 20)"/>
+      <circle cx="20" cy="20" r="4.2" fill="rgba(255,255,255,0.90)"/>
+      <circle cx="33" cy="12" r="2.6" fill="rgba(255,255,255,0.72)"/>
+      <circle cx="8"  cy="30" r="1.4" fill="rgba(255,255,255,0.40)"/>
+    </svg>
+  );
+
+  /* ── NAV ─────────────────────────────────────────────────── */
+  function Nav() {
+    return (
+      <nav style={{
+        position:'fixed', top:0, left:0, right:0, zIndex:50,
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        padding:'1.2rem 4vw',
+        background:'linear-gradient(rgba(0,3,12,0.6),transparent)',
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <Logo size={28}/>
+          <span style={{ fontWeight:600, fontSize:'1.1rem', letterSpacing:'-.06em', color:'white' }}>spiyd</span>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:'2rem' }}>
+          {['Capacidades','Casos de uso','Precios'].map(t => (
+            <a key={t} style={{ color:'rgba(255,255,255,.55)', fontSize:'.8rem', fontWeight:400, textDecoration:'none', letterSpacing:'-.01em',
+              cursor:'pointer', transition:'color .15s' }}
+              onMouseEnter={e=>e.target.style.color='white'}
+              onMouseLeave={e=>e.target.style.color='rgba(255,255,255,.55)'}>
+              {t}
+            </a>
+          ))}
+          <div className="glass hs" style={{ borderRadius:9999, padding:'8px 20px', cursor:'pointer' }}>
+            <GC style={{ color:'white', fontSize:'.78rem', fontWeight:500 }}>Solicitar demo</GC>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  /* ── HERO ────────────────────────────────────────────────── */
+  function Hero() {
+    return (
+      <div id="hero">
+        {/* Left glass panel */}
+        <div style={{ position:'relative', width:'52%', height:'100vh', display:'flex', flexDirection:'column' }}>
+          <div className="glass-strong" style={{
+            position:'absolute', top:'1.5rem', right:'1.5rem', bottom:'1.5rem', left:'1.5rem',
+            borderRadius:'1.75rem', zIndex:0, pointerEvents:'none',
+          }}/>
+          <div style={{ position:'relative', zIndex:2, display:'flex', flexDirection:'column', height:'100%', padding:'6rem 2.8rem 2.5rem' }}>
+            {/* Fire alert badge */}
+            <div className="a0 fire-badge" style={{ width:'fit-content', marginBottom:'auto' }}>
+              <span className="fire-dot"></span>
+              4 alertas activas · Argentina y Brasil
+            </div>
+
+            <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'center', gap:'1.8rem' }}>
+              <h1 className="a1" style={{
+                fontFamily:'Poppins,sans-serif', fontWeight:500,
+                fontSize:'clamp(2.4rem,4.5vw,3.8rem)',
+                lineHeight:1.06, letterSpacing:'-.05em', color:'white',
+              }}>
+                <span style={{ color:'var(--rb)' }}><span style={{ color:'var(--r)' }}>Detectamos</span></span><br/>
+                <span style={{ color:'var(--rl)' }}>lo que el ojo</span><br/>
+                <em style={{ fontFamily:"'Source Serif 4',serif", fontStyle:'italic', fontWeight:400, color:'rgba(255,255,255,.75)' }}>no puede ver</em>
+              </h1>
+
+              <p className="a2" style={{ color:'rgba(255,255,255,.52)', fontSize:'.88rem', lineHeight:1.7, maxWidth:340 }}>
+                Plataforma de inteligencia geoespacial en tiempo real. Siete fuentes satelitales integradas y análisis de IA para detección temprana de incendios y deforestación.
+              </p>
+
+              <div className="a3" style={{ display:'flex', gap:'.9rem', flexWrap:'wrap' }}>
+                <div className="glass-strong hs" style={{ borderRadius:9999, padding:'13px 24px', display:'inline-flex', alignItems:'center', gap:10, cursor:'pointer' }}>
+                  <GC style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <span style={{ color:'white', fontWeight:500, fontSize:'.88rem', letterSpacing:'-.02em' }}>Ver plataforma</span>
+                    <div style={{ width:26, height:26, borderRadius:'50%', background:'rgba(255,255,255,.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <Ico name="ArrowRight" size={13}/>
+                    </div>
+                  </GC>
+                </div>
+                <div className="glass hs" style={{ borderRadius:9999, padding:'13px 20px', cursor:'pointer' }}>
+                  <GC style={{ color:'rgba(255,255,255,.7)', fontSize:'.82rem', fontWeight:400 }}>Ver demo en vivo</GC>
+                </div>
+              </div>
+
+              <div className="a4" style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {['NASA FIRMS','GOES-16','NOAA-20','METOP-B/C','AQUA','TERRA','INPE'].map(t => (
+                  <div key={t} className="glass" style={{ borderRadius:9999, padding:'5px 12px' }}>
+                    <GC style={{ color:'rgba(255,255,255,.6)', fontSize:'.6rem', fontWeight:400, letterSpacing:'.04em' }}>{t}</GC>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="a5" style={{ textAlign:'center', paddingBottom:'.25rem', marginTop:'auto', paddingTop:'1rem' }}>
+              <div style={{ color:'rgba(255,255,255,.38)', fontSize:'.56rem', letterSpacing:'.24em', textTransform:'uppercase', fontWeight:500, marginBottom:'.45rem' }}>
+                INTELIGENCIA GEOESPACIAL · CONO SUR
+              </div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12 }}>
+                <div style={{ width:50, height:1, background:'rgba(255,255,255,.14)' }}/>
+                <span style={{ color:'rgba(255,255,255,.35)', fontSize:'.56rem', letterSpacing:'.18em', textTransform:'uppercase', fontWeight:500 }}>EQUIPO SPIYD</span>
+                <div style={{ width:50, height:1, background:'rgba(255,255,255,.14)' }}/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right panel */}
+        <div style={{ width:'48%', height:'100vh', display:'flex', flexDirection:'column', padding:'6.5rem 2.5rem 2.5rem 1rem', gap:'1.2rem', justifyContent:'space-between' }}>
+          {/* Satellite status card */}
+          <div className="glass a0" style={{ borderRadius:'1.5rem', padding:'16px 20px', alignSelf:'flex-end' }}>
+            <GC>
+              <div style={{ color:'rgba(255,255,255,.4)', fontSize:'.56rem', letterSpacing:'.2em', textTransform:'uppercase', marginBottom:8 }}>Estado de red</div>
+              {[['GOES-16','Geoestacionario','#44ffcc'],['NOAA-20','Sol-síncrono','#44ffcc'],['METOP-B','Polar 98.5°','#44ffcc']].map(([n,t,c]) => (
+                <div key={n} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5, gap:24 }}>
+                  <span style={{ color:'rgba(255,255,255,.7)', fontSize:'.7rem', fontWeight:500 }}>{n}</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                    <div style={{ width:5, height:5, borderRadius:'50%', background:c, animation:'satPulse 1.5s ease-in-out infinite' }}/>
+                    <span style={{ color:'rgba(255,255,255,.35)', fontSize:'.62rem' }}>{t}</span>
+                  </div>
+                </div>
+              ))}
+            </GC>
+          </div>
+
+          <div style={{ flex:1 }}/>
+
+          {/* Feature cards */}
+          <div className="glass-strong a2" style={{ borderRadius:'2rem', padding:'1.2rem' }}>
+            <GC>
+              <div style={{ display:'flex', gap:'.8rem', marginBottom:'.8rem' }}>
+                {[['Detección','Tiempo real < 15 min','#ff6622'],['Predicción','FWI Canadiense activo','#44ffcc']].map(([t,s,c]) => (
+                  <div key={t} className="glass" style={{ flex:1, borderRadius:'1.2rem', padding:'14px' }}>
+                    <GC>
+                      <div style={{ width:28, height:28, borderRadius:'50%', background:`${c}22`, border:`1px solid ${c}44`, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:10 }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background:c }}/>
+                      </div>
+                      <div style={{ color:'white', fontWeight:500, fontSize:'.73rem', marginBottom:3 }}>{t}</div>
+                      <div style={{ color:'rgba(255,255,255,.38)', fontSize:'.62rem', lineHeight:1.4 }}>{s}</div>
+                    </GC>
+                  </div>
+                ))}
+              </div>
+              {/* AI Analysis row */}
+              <div className="glass" style={{ borderRadius:'1.2rem', padding:'13px 15px' }}>
+                <GC style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(100,150,255,.15)', border:'1px solid rgba(100,150,255,.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#88aaff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2a5 5 0 1 0 5 5"/><path d="M13 7h8"/><path d="m16 4 3 3-3 3"/><path d="M7 9a5 5 0 1 0 5 5"/><path d="M11 14H3"/><path d="m8 11-3 3 3 3"/>
+                    </svg>
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ color:'white', fontWeight:500, fontSize:'.73rem', marginBottom:2 }}>Análisis IA activo</div>
+                    <div style={{ color:'rgba(255,255,255,.38)', fontSize:'.62rem' }}>Claude AI · Recomendaciones operativas en lenguaje natural</div>
+                  </div>
+                </GC>
+              </div>
+            </GC>
+          </div>
+        </div>
+
+        {/* Scroll hint */}
+        <div className="scroll-hint">
+          <span>Descubrir</span>
+          <div className="scroll-arrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── STATS ───────────────────────────────────────────────── */
+  function Stats() {
+    return (
+      <div className="stats-strip">
+        {[['7','','Fuentes satelitales\nsimultáneas'],['47','países','Cobertura en\nAmérica Latina'],['98.3','%','Precisión de\ndetección'],['< 15','min','Tiempo de alerta\ndesde detección']].map(([n,u,l]) => (
+          <div key={n} className="stat-cell">
+            <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+              <span className="stat-num">{n}</span>
+              <span className="stat-unit">{u}</span>
+            </div>
+            <div className="stat-label" style={{ whiteSpace:'pre-line' }}>{l}</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  /* ── FEATURES ────────────────────────────────────────────── */
+  function Features() {
+    const feats = [
+      { icon:'Satellite', col:'#88aaff', bg:'rgba(100,140,255,.12)', t:'Detección Multisatelital', d:'Integración simultánea de 7 fuentes: NASA FIRMS, INPE BDQueimadas, GOES-16, NOAA-20, METOP-B/C, AQUA y TERRA.' },
+      { icon:'Zap',       col:'#ffcc44', bg:'rgba(255,200,50,.12)',  t:'Alertas en Tiempo Real',  d:'Notificaciones multicanal en menos de 15 minutos desde la detección. Email, SMS, API webhook y dashboard live.' },
+      { icon:'Globe',     col:'#44ccff', bg:'rgba(50,180,255,.12)',  t:'Cartografía Dinámica',    d:'Mapas interactivos de cobertura vegetal, recursos hídricos y área de interfaz urbano-forestal actualizados diariamente.' },
+      { icon:'Shield',    col:'#44ffcc', bg:'rgba(50,255,180,.12)',  t:'Análisis Predictivo',     d:'Algoritmos meteorológicos internacionales: Regla 30-30-30 y Fire Weather Index canadiense para predicción de riesgo.' },
+      { icon:'BarChart',  col:'#ff8844', bg:'rgba(255,120,50,.12)',  t:'Historial y Tendencias',  d:'Archivo histórico completo con análisis de tendencias, comparativas interanuales y reportes ejecutivos automatizados.' },
+      { icon:'Code',      col:'#cc88ff', bg:'rgba(180,120,255,.12)', t:'API de Integración',      d:'Endpoints RESTful y WebSocket para integrar alertas y análisis en sistemas de gestión existentes. Documentación completa.' },
+    ];
+    return (
+      <div id="capacidades" className="section section-dark">
+        <div className="section-label">Capacidades</div>
+        <h2 className="section-title">Tecnología de detección<br/>
+          <em style={{ fontFamily:"'Source Serif 4',serif", fontWeight:400, fontStyle:'italic', color:'rgba(255,255,255,.6)' }}>de clase mundial</em>
+        </h2>
+        <p className="section-sub">Un ecosistema completo de inteligencia geoespacial diseñado para respuesta rápida y toma de decisiones basada en datos satelitales verificados.</p>
+        <div className="feature-grid">
+          {feats.map(f => (
+            <div key={f.t} className="feature-card">
+              <div className="feature-icon" style={{ background:f.bg, border:`1px solid ${f.col}33` }}>
+                <Ico name={f.icon} size={18} col={f.col}/>
+              </div>
+              <h3>{f.t}</h3>
+              <p>{f.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── HOW IT WORKS ────────────────────────────────────────── */
+  function HowItWorks() {
+    const steps = [
+      { n:'01', t:'Captura Satelital', d:'7 constelaciones transmiten imágenes termales y multiespectrales cada 15 minutos sobre el territorio.' },
+      { n:'02', t:'Procesamiento y Fusión', d:'Algoritmos de correlación cruzan las 7 fuentes y filtran falsos positivos con validación cruzada.' },
+      { n:'03', t:'Análisis con IA', d:'Claude AI evalúa contexto meteorológico, vegetación, historial y genera recomendaciones operativas en lenguaje natural.' },
+      { n:'04', t:'Alerta y Respuesta', d:'Notificación multicanal con coordenadas exactas, nivel de riesgo, recursos hídricos cercanos y protocolo recomendado.' },
+    ];
+    return (
+      <div className="section section-darker">
+        <div className="section-label">Cómo funciona</div>
+        <h2 className="section-title" style={{ marginBottom:'3.5rem' }}>De satélite a decisión<br/>
+          <em style={{ fontFamily:"'Source Serif 4',serif", fontWeight:400, fontStyle:'italic', color:'rgba(255,255,255,.55)' }}>en minutos</em>
+        </h2>
+        <div className="pipeline">
+          {steps.map(s => (
+            <div key={s.n} className="pipe-step">
+              <div className="pipe-num">{s.n}</div>
+              <div className="pipe-title">{s.t}</div>
+              <div className="pipe-desc">{s.d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── USE CASES ───────────────────────────────────────────── */
+  function UseCases() {
+    const cases = [
+      { sector:'Sector Público', t:'Defensa Civil y Gestión de Emergencias', d:'Coordinación de evacuaciones con datos de propagación en tiempo real. Reducción del tiempo de respuesta inicial en más de 60% frente a sistemas tradicionales.', tags:['Municipios','Defensa Civil','Bomberos','Parques Nacionales'] },
+      { sector:'Sector Financiero', t:'Aseguradoras y Reaseguradoras', d:'Evaluación objetiva de siniestros con evidencia satelital verificada. Análisis de exposición de cartera y cálculo de prima basado en riesgo geoespacial real.', tags:['Seguros Agro','Reaseguros','Peritaje','Risk Assessment'] },
+      { sector:'Industria Forestal', t:'Empresas Forestales y Madereras', d:'Monitoreo continuo de plantaciones y bosques nativos bajo gestión. Alertas tempranas para activación de brigadas propias con coordenadas exactas.', tags:['Plantaciones','Bosque Nativo','Certificación','FSC'] },
+      { sector:'Sector Agropecuario', t:'Productores y Consultoras Agrícolas', d:'Protección de infraestructura rural, monitoreo de quemas controladas y análisis de impacto en rendimiento de cultivos colindantes.', tags:['Agrícola','Ganadería','Quemas','Consul. Ambiental'] },
+    ];
+    return (
+      <div id="casos" className="section section-dark">
+        <div className="section-label">Casos de uso</div>
+        <h2 className="section-title">Diseñado para quien<br/>
+          <em style={{ fontFamily:"'Source Serif 4',serif", fontWeight:400, fontStyle:'italic', color:'rgba(255,255,255,.6)' }}>toma decisiones críticas</em>
+        </h2>
+        <p className="section-sub">Adaptable a las necesidades específicas de organismos del Estado, empresas del sector privado y consultoras ambientales.</p>
+        <div className="usecase-grid">
+          {cases.map(c => (
+            <div key={c.t} className="usecase-card">
+              <div className="usecase-sector">{c.sector}</div>
+              <h3>{c.t}</h3>
+              <p>{c.d}</p>
+              <div className="usecase-tags">
+                {c.tags.map(tag => <span key={tag} className="usecase-tag">{tag}</span>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── PRICING ─────────────────────────────────────────────── */
+  function Pricing() {
+    const plans = [
+      {
+        tier:'Acceso Básico', name:'Estatal', price:'299', featured:false,
+        desc:'Para municipios, defensa civil y organismos de monitoreo ambiental con cobertura regional.',
+        features:['1 área de cobertura (hasta 50.000 km²)','Alertas por email y SMS','Dashboard interactivo básico','Reportes mensuales en PDF','Soporte por email 5×8','Datos históricos 12 meses'],
+        cta:'Comenzar gratis 14 días', btnClass:'outline',
+      },
+      {
+        tier:'Más Popular', name:'Profesional', price:'990', featured:true,
+        desc:'Para empresas forestales, aseguradoras y consultoras que requieren análisis en tiempo real.',
+        features:['Hasta 5 áreas de cobertura (500.000 km²)','Alertas en tiempo real < 15 min','Análisis IA con recomendaciones','API de integración RESTful','Dashboard avanzado + histórico 5 años','Reportes semanales ejecutivos','Soporte técnico 7×16'],
+        cta:'Solicitar demo', btnClass:'solid',
+      },
+      {
+        tier:'A medida', name:'Enterprise', price:'—', featured:false,
+        desc:'Para gobiernos provinciales, nacionales y grandes aseguradoras con necesidades personalizadas.',
+        features:['Cobertura ilimitada, Argentina + Cono Sur','Análisis predictivo y modelado de riesgo','White-label disponible','Integración con sistemas GIS existentes','SLA dedicado 24/7/365','Capacitación in-house incluida','Acceso a API completa + Webhooks'],
+        cta:'Contactar ventas', btnClass:'outline',
+      },
+    ];
+    return (
+      <div id="precios" className="section section-darker">
+        <div className="section-label">Precios</div>
+        <h2 className="section-title" style={{ marginBottom:'.8rem' }}>Planes adaptados a<br/>
+          <em style={{ fontFamily:"'Source Serif 4',serif", fontWeight:400, fontStyle:'italic', color:'rgba(255,255,255,.55)' }}>cada organización</em>
+        </h2>
+        <p className="section-sub">SaaS con tres niveles de suscripción. Activación en menos de 48 horas.</p>
+        <div className="pricing-grid">
+          {plans.map(p => (
+            <div key={p.name} className={`price-card${p.featured?' featured':''}`}>
+              <div className="price-tier">{p.tier}</div>
+              <div className="price-name">{p.name}</div>
+              {p.price !== '—'
+                ? <div className="price-amt">USD {p.price}<span>/mes</span></div>
+                : <div className="price-amt" style={{ fontSize:'2rem' }}>A consultar</div>
+              }
+              <p className="price-desc">{p.desc}</p>
+              <hr className="price-divider"/>
+              <ul className="price-features">
+                {p.features.map(f => (
+                  <li key={f}>
+                    <span className="price-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#44ffcc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button className={`price-btn ${p.btnClass}`}>{p.cta}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── CTA ─────────────────────────────────────────────────── */
+  function CTA() {
+    return (
+      <div className="section section-dark" style={{ background:'rgba(0,3,14,.97)' }}>
+        <div className="cta-inner">
+          <div style={{ display:'inline-block', background:'rgba(255,255,255,.06)', border:'1px solid rgba(255,255,255,.12)', borderRadius:99, padding:'5px 16px', fontSize:'.6rem', color:'rgba(255,255,255,.5)', letterSpacing:'.16em', textTransform:'uppercase', marginBottom:'1.5rem' }}>
+            Disponible hoy · Activación en 48 h
+          </div>
+          <h2>Protegé el territorio.<br/>
+            <em style={{ fontFamily:"'Source Serif 4',serif", fontStyle:'italic', fontWeight:400, color:'rgba(255,255,255,.6)' }}>Actuá antes del incendio.</em>
+          </h2>
+          <p>Solicitá una demo personalizada y ve SPIYD en acción sobre tu área de cobertura, con datos reales.</p>
+          <div className="cta-row">
+            <button className="btn-primary">
+              Solicitar demo gratuita
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+            <button className="btn-secondary">
+              Ver documentación técnica
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── FOOTER ──────────────────────────────────────────────── */
+  function Footer() {
+    return (
+      <footer className="footer">
+        <div className="footer-brand">
+          <Logo size={22}/>
+          <span>spiyd</span>
+        </div>
+        <div className="footer-copy">
+          © 2026 SPIYD. Inteligencia Geoespacial · República Argentina · Cono Sur
+        </div>
+        <div style={{ display:'flex', gap:'1.5rem' }}>
+          {['Privacidad','Términos','API Docs'].map(t => (
+            <span key={t} style={{ color:'rgba(255,255,255,.25)', fontSize:'.68rem', cursor:'pointer' }}>{t}</span>
+          ))}
+        </div>
+      </footer>
+    );
+  }
+
+  /* ── APP ─────────────────────────────────────────────────── */
+  function App() {
+    return (
+      <>
+        <Nav/>
+        <Hero/>
+        <Stats/>
+        <Features/>
+        <HowItWorks/>
+        <UseCases/>
+        <Pricing/>
+        <CTA/>
+        <Footer/>
+      </>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
