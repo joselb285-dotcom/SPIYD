@@ -23,7 +23,14 @@ def login():
             db.session.add(UsageLog(user_id=user.id, action='login'))
             db.session.commit()
             next_page = request.args.get('next')
-            return redirect(next_page or url_for('mapa'))
+            if not next_page:
+                if user.role == 'superadmin':
+                    next_page = url_for('superadmin.dashboard')
+                elif user.role == 'admin':
+                    next_page = url_for('admin.dashboard')
+                else:
+                    next_page = url_for('mapa')
+            return redirect(next_page)
         flash('Usuario o contraseña incorrectos', 'error')
     return render_template('auth/login.html')
 

@@ -1,0 +1,99 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}Usuarios — SPIYD SuperAdmin{% endblock %}
+{% block page_title %}Gestión de Usuarios{% endblock %}
+{% block breadcrumb %}Usuarios{% endblock %}
+
+{% block content %}
+<div class="data-card">
+  <div class="data-card-header">
+    <h6><i class="fas fa-users-gear me-2"></i>Todos los usuarios <span style="color:var(--muted);font-weight:400">({{ users|length }})</span></h6>
+    <a href="/superadmin/users/new" class="btn-spiyd">
+      <i class="fas fa-plus"></i> Nuevo Usuario
+    </a>
+  </div>
+
+  <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap">
+    <form method="get" style="display:flex;gap:10px;flex-wrap:wrap;width:100%">
+      <div class="search-box" style="flex:1;min-width:200px">
+        <i class="fas fa-search"></i>
+        <input type="text" name="q" class="form-control" placeholder="Buscar por nombre o email..." value="{{ search }}">
+      </div>
+      <select name="role" class="form-select" style="width:160px">
+        <option value="">Todos los roles</option>
+        {% for r in roles %}
+          <option value="{{ r }}" {% if role_filter == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn-spiyd">Buscar</button>
+      {% if search or role_filter %}
+        <a href="/superadmin/users" class="btn-spiyd-outline">Limpiar</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Usuario</th>
+        <th>Rol</th>
+        <th>Plan</th>
+        <th>Estado</th>
+        <th>Último acceso</th>
+        <th>Registrado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td style="color:var(--muted)">{{ u.id }}</td>
+        <td>
+          <div style="font-weight:600">{{ u.username }}</div>
+          <div style="font-size:0.78rem;color:var(--muted)">{{ u.email }}</div>
+        </td>
+        <td><span class="badge-role badge-{{ u.role }}">{{ u.role_label }}</span></td>
+        <td><span class="badge-plan badge-{{ u.plan }}">{{ u.plan_label }}</span></td>
+        <td>
+          {% if u.active %}
+            <span class="badge-active">Activo</span>
+          {% else %}
+            <span class="badge-inactive">Inactivo</span>
+          {% endif %}
+        </td>
+        <td style="color:var(--muted);font-size:0.82rem">
+          {{ u.last_login.strftime('%d/%m/%Y %H:%M') if u.last_login else '—' }}
+        </td>
+        <td style="color:var(--muted);font-size:0.82rem">{{ u.created_at.strftime('%d/%m/%Y') }}</td>
+        <td>
+          <div class="d-flex gap-1">
+            <a href="/superadmin/users/{{ u.id }}/edit" class="btn-icon" title="Editar">
+              <i class="fas fa-pen"></i>
+            </a>
+            <form method="post" action="/superadmin/users/{{ u.id }}/toggle" style="margin:0">
+              <button type="submit" class="btn-icon warning" title="{{ 'Desactivar' if u.active else 'Activar' }}">
+                <i class="fas fa-{{ 'toggle-on' if u.active else 'toggle-off' }}"></i>
+              </button>
+            </form>
+            {% if u.id != current_user.id %}
+            <form method="post" action="/superadmin/users/{{ u.id }}/delete" style="margin:0"
+                  onsubmit="return confirm('¿Eliminar a {{ u.username }}? Esta acción no se puede deshacer.')">
+              <button type="submit" class="btn-icon danger" title="Eliminar">
+                <i class="fas fa-trash"></i>
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center;color:var(--muted);padding:32px">
+          No se encontraron usuarios
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

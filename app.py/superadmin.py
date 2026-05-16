@@ -1,0 +1,147 @@
+from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask_login import login_required, current_user
+from functools import wraps
+from sqlalchemy import func
+from models import db, User, UsageLog, Invoice
+from datetime import datetime
+
+superadmin_bp = Blueprint('superadmin', __name__)
+
+ROLES = ['user', 'admin', 'superadmin']
+PLANS = ['basic', 'pro', 'enterprise']
+
+
+def superadmin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'superadmin':
+            flash('Acceso restringido a superadministradores', 'error')
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+@superadmin_bp.route('/')
+@login_required
+@superadmin_required
+def dashboard():
+    total_users = User.query.count()
+    active_users = User.query.filter_by(active=True).count()
+    admins = User.query.filter_by(role='admin').count()
+    superadmins = User.query.filter_by(role='superadmin').count()
+    role_counts = dict(
+        db.session.query(User.role, func.count(User.id)).group_by(User.role).all()
+    )
+    plan_counts = dict(
+        db.session.query(User.plan, func.count(User.id)).group_by(User.plan).all()
+    )
+    recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
+    return render_template('superadmin/dashboard.html',
+        total_users=total_users,
+        active_users=active_users,
+        admins=admins,
+        superadmins=superadmins,
+        role_counts=role_counts,
+        plan_counts=plan_counts,
+        recent_users=recent_users,
+    )
+
+
+@superadmin_bp.route('/users')
+@login_required
+@superadmin_required
+def users():
+    search = request.args.get('q', '').strip()
+    role_filter = request.args.get('role', '').strip()
+    query = User.query
+    if search:
+        query = query.filter(
+            (User.username.ilike(f'%{search}%')) | (User.email.ilike(f'%{search}%'))
+        )
+    if role_filter:
+        query = query.filter_by(role=role_filter)
+    all_users = query.order_by(User.created_at.desc()).all()
+    return render_template('superadmin/users.html', users=all_users, search=search, role_filter=role_filter, roles=ROLES)
+
+
+@superadmin_bp.route('/users/new', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def user_new():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        role = request.form.get('role', 'user')
+        plan = request.form.get('plan', 'basic')
+        if not username or not email or not password:
+            flash('Todos los campos son obligatorios', 'error')
+        elif User.query.filter_by(username=username).first():
+            flash('El nombre de usuario ya existe', 'error')
+        elif User.query.filter_by(email=email).first():
+            flash('El email ya está registrado', 'error')
+        else:
+            user = User(username=username, email=email, role=role, plan=plan)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            flash(f'Usuario {username} creado exitosamente', 'success')
+            return redirect(url_for('superadmin.users'))
+    return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES, plans=PLANS)
+
+
+@superadmin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def user_edit(user_id):
+    user = db.get_or_404(User, user_id)
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        role = request.form.get('role', user.role)
+        plan = request.form.get('plan', user.plan)
+        active = 'active' in request.form
+        new_password = request.form.get('password', '').strip()
+        existing = User.query.filter(User.email == email, User.id != user_id).first()
+        if existing:
+            flash('El email ya está en uso por otro usuario', 'error')
+        else:
+            user.email = email
+            user.role = role
+            user.plan = plan
+            user.active = active
+            if new_password:
+                user.set_password(new_password)
+            db.session.commit()
+            flash(f'Usuario {user.username} actualizado', 'success')
+            return redirect(url_for('superadmin.users'))
+    return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES, plans=PLANS)
+
+
+@superadmin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+@superadmin_required
+def user_delete(user_id):
+    user = db.get_or_404(User, user_id)
+    if user.id == current_user.id:
+        flash('No podés eliminarte a vos mismo', 'error')
+        return redirect(url_for('superadmin.users'))
+    username = user.username
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'Usuario {username} eliminado', 'success')
+    return redirect(url_for('superadmin.users'))
+
+
+@superadmin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
+@login_required
+@superadmin_required
+def user_toggle(user_id):
+    user = db.get_or_404(User, user_id)
+    if user.id == current_user.id:
+        flash('No podés desactivarte a vos mismo', 'error')
+        return redirect(url_for('superadmin.users'))
+    user.active = not user.active
+    db.session.commit()
+    estado = 'activado' if user.active else 'desactivado'
+    flash(f'Usuario {user.username} {estado}', 'success')
+    return redirect(url_for('superadmin.users'))

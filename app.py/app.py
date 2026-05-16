@@ -50,8 +50,10 @@ def load_user(user_id):
 
 from auth import auth_bp
 from admin import admin_bp
+from superadmin import superadmin_bp
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp, url_prefix='/admin')
+app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
 
 with app.app_context():
     db.create_all()

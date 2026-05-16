@@ -1,0 +1,77 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}{{ 'Nuevo Usuario' if action == 'new' else 'Editar Usuario' }} — SPIYD SuperAdmin{% endblock %}
+{% block page_title %}{{ 'Nuevo Usuario' if action == 'new' else 'Editar: ' + user.username }}{% endblock %}
+{% block breadcrumb %}<a href="/superadmin/users" style="color:var(--muted);text-decoration:none">Usuarios</a> › {{ 'Nuevo' if action == 'new' else 'Editar' }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="form-card">
+      <form method="post">
+        {% if action == 'new' %}
+        <div class="mb-4">
+          <label class="form-label">Nombre de usuario</label>
+          <input type="text" name="username" class="form-control" placeholder="johndoe" required autofocus>
+        </div>
+        {% endif %}
+
+        <div class="mb-4">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" placeholder="usuario@email.com"
+                 value="{{ user.email if user else '' }}" required>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">{{ 'Contraseña' if action == 'new' else 'Nueva contraseña (dejar vacío para no cambiar)' }}</label>
+          <input type="password" name="password" class="form-control"
+                 placeholder="{{ 'Contraseña' if action == 'new' else '••••••••' }}"
+                 {% if action == 'new' %}required{% endif %}>
+        </div>
+
+        <div class="row mb-4">
+          <div class="col">
+            <label class="form-label">Rol</label>
+            <select name="role" class="form-select">
+              {% for r in roles %}
+                <option value="{{ r }}" {% if user and user.role == r %}selected{% elif not user and r == 'user' %}selected{% endif %}>
+                  {{ r }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col">
+            <label class="form-label">Plan</label>
+            <select name="plan" class="form-select">
+              {% for p in plans %}
+                <option value="{{ p }}" {% if user and user.plan == p %}selected{% elif not user and p == 'basic' %}selected{% endif %}>
+                  {{ p }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        {% if action == 'edit' %}
+        <div class="mb-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="active" id="activeCheck"
+                   {{ 'checked' if user.active else '' }}>
+            <label class="form-check-label" for="activeCheck" style="font-size:0.9rem">
+              Usuario activo
+            </label>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-3 mt-2">
+          <button type="submit" class="btn-spiyd">
+            <i class="fas fa-{{ 'plus' if action == 'new' else 'floppy-disk' }}"></i>
+            {{ 'Crear usuario' if action == 'new' else 'Guardar cambios' }}
+          </button>
+          <a href="/superadmin/users" class="btn-spiyd-outline">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
