@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendar Reunión — SPIYD</title>
+  <meta name="description" content="Agende una reunión técnica o comercial con el equipo SPIYD en el horario que le sea conveniente.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260516">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav is-solid" id="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="nav-logo-mark">⬡</span>SPIYD
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html#tecnologia">Tecnología</a></li>
+      <li><a href="index.html#institucional">Para quién</a></li>
+      <li><a href="index.html#cobertura">Casos de uso</a></li>
+      <li><a href="index.html#contacto-section">Contacto</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="#" class="btn btn-ghost btn-sm" id="btn-login">Ingresar al sistema</a>
+      <a href="demo.html" class="btn btn-fire btn-sm">Solicitar Demo</a>
+    </div>
+    <button class="nav-hamburger" aria-label="Menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav-mobile">
+    <ul>
+      <li><a href="index.html#tecnologia">Tecnología</a></li>
+      <li><a href="index.html#institucional">Para quién</a></li>
+      <li><a href="index.html#cobertura">Casos de uso</a></li>
+    </ul>
+    <div class="nav-mobile-actions">
+      <a href="index.html" class="btn btn-outline btn-full">Volver al inicio</a>
+      <a href="demo.html" class="btn btn-fire btn-full">Solicitar Demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="page-hero-gradient" aria-hidden="true"></div>
+  <div class="page-hero-grid" aria-hidden="true"></div>
+  <div class="container">
+    <a href="index.html" class="back-link">← Volver al inicio</a>
+    <p class="kicker">Reunión con el equipo</p>
+    <h1 class="page-title">Agendar<br><em>Reunión.</em></h1>
+    <p class="page-sub">Reunión técnica o comercial con el equipo SPIYD. 45 minutos. En el horario que le sea conveniente, por videollamada o en forma presencial en Buenos Aires.</p>
+  </div>
+</section>
+
+<!-- FORM -->
+<section class="form-page">
+  <div class="form-page-inner">
+    <div class="form-page-card">
+      <h2 class="form-page-title">Solicitar turno</h2>
+      <p class="form-page-sub">Complete sus datos y preferencia horaria. El equipo confirma la reunión en 24 hs y envía el link de videollamada o dirección si es presencial.</p>
+
+      <form data-subpage-form novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="r-nombre">Nombre completo</label>
+            <input type="text" id="r-nombre" name="nombre" placeholder="Carlos Méndez" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="r-cargo">Cargo</label>
+            <input type="text" id="r-cargo" name="cargo" placeholder="Secretario de Ambiente" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="r-org">Organismo / Empresa</label>
+            <input type="text" id="r-org" name="organismo" placeholder="Gobierno de Misiones" required autocomplete="organization">
+          </div>
+          <div class="form-group">
+            <label for="r-email">Correo electrónico</label>
+            <input type="email" id="r-email" name="email" placeholder="cmendes@misiones.gov.ar" required autocomplete="email">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="r-tel">Teléfono / WhatsApp</label>
+            <input type="tel" id="r-tel" name="telefono" placeholder="+54 376 000 0000" autocomplete="tel">
+          </div>
+          <div class="form-group">
+            <label for="r-tipo">Tipo de reunión</label>
+            <select id="r-tipo" name="tipo_reunion" required>
+              <option value="" disabled selected>Seleccionar…</option>
+              <option>Reunión técnica — evaluar integración / arquitectura</option>
+              <option>Reunión comercial — propuesta y negociación</option>
+              <option>Demo + reunión de evaluación</option>
+              <option>Reunión de seguimiento (ya tengo acceso)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="r-modalidad">Modalidad preferida</label>
+          <select id="r-modalidad" name="modalidad" required>
+            <option value="" disabled selected>Seleccionar…</option>
+            <option>Videollamada (Google Meet / Zoom / Teams)</option>
+            <option>Presencial en Buenos Aires</option>
+            <option>Indistinto</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="r-horario">Preferencia horaria</label>
+          <select id="r-horario" name="horario" required>
+            <option value="" disabled selected>Seleccionar…</option>
+            <option>Mañana (9:00–12:00 ART)</option>
+            <option>Mediodía (12:00–14:00 ART)</option>
+            <option>Tarde temprana (14:00–17:00 ART)</option>
+            <option>Tarde (17:00–19:00 ART)</option>
+            <option>Cualquier horario — el equipo me contacta</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="r-fecha">Semana de preferencia (opcional)</label>
+          <input type="week" id="r-fecha" name="semana">
+        </div>
+        <div class="form-group">
+          <label for="r-agenda">¿Qué temas quiere tratar?</label>
+          <textarea id="r-agenda" name="agenda" rows="3" placeholder="Ej: Evaluación técnica para integración con nuestro centro de monitoreo, cobertura zona NEA, niveles de acceso por perfil de usuario…"></textarea>
+        </div>
+        <button type="submit" class="btn btn-fire btn-full" style="padding-top:1rem;padding-bottom:1rem;font-size:1rem;">
+          <span class="btn-text">Solicitar reunión</span>
+          <span class="btn-loading" aria-hidden="true">Enviando solicitud…</span>
+        </button>
+        <div class="form-success" role="alert" aria-live="polite">
+          <span class="success-icon" aria-hidden="true">✓</span>
+          <p>Solicitud recibida. El equipo SPIYD confirma turno y envía invitación en 24 hs hábiles.</p>
+        </div>
+      </form>
+    </div>
+
+    <div style="margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap;">
+      <a href="demo.html" class="btn btn-outline">Solicitar demo</a>
+      <a href="contacto.html" class="btn btn-ghost">Contactar ventas</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-bottom" style="padding-top:0;border-top:none;">
+      <p class="footer-legal">© 2026 SPIYD. Plataforma de inteligencia geoespacial. República Argentina.</p>
+      <a href="index.html" class="footer-legal" style="color:var(--fire);">← Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script defer src="lib/gsap.min.js?v=20260516"></script>
+<script defer src="main.js?v=20260516"></script>
+</body>
+</html>

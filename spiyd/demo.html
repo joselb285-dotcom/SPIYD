@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Interactiva — SPIYD</title>
+  <meta name="description" content="Explore el sistema SPIYD en acción: focos de calor en tiempo real, zonas de deforestación y alertas sobre el Cono Sur de América Latina.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="lib/leaflet.css">
+  <link rel="stylesheet" href="styles.css?v=20260517">
+  <style>
+    /* ---- Demo map page ---- */
+    .demo-hero {
+      padding: calc(var(--nav-h) + 3rem) 2rem 2.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .demo-hero h1 {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.8rem, 3.5vw, 3rem);
+      color: var(--ink);
+      margin: 0.5rem 0 0.8rem;
+      line-height: 1.1;
+    }
+    .demo-hero h1 em { color: var(--fire); font-style: italic; }
+    .demo-hero p {
+      font-size: 0.95rem;
+      color: var(--ink-soft);
+      max-width: 58ch;
+      line-height: 1.65;
+    }
+
+    /* ---- Map wrapper ---- */
+    .demo-map-section {
+      background: #0d1f35;
+      padding: 0;
+    }
+    .demo-map-wrap {
+      position: relative;
+      width: 100%;
+      height: 72vh;
+      min-height: 480px;
+      max-height: 720px;
+    }
+    #spiyd-map {
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    /* ---- Floating panels ---- */
+    .map-panel {
+      position: absolute;
+      z-index: 800;
+      background: rgba(13,31,53,0.93);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.66rem;
+      color: rgba(240,240,245,0.85);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .map-panel-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(240,240,245,0.55);
+      font-size: 0.6rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.55rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* Alerts panel — top left */
+    .map-panel--alerts {
+      top: 1rem;
+      left: 1rem;
+      width: 240px;
+    }
+    .dot-live {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #ff4444;
+      flex-shrink: 0;
+      animation: livePulse 1.8s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(255,68,68,0.5); }
+      50%      { box-shadow: 0 0 0 5px rgba(255,68,68,0); }
+    }
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 4px;
+      padding-left: 0.2rem;
+    }
+    .alert-item:hover { background: rgba(255,255,255,0.05); }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-lvl {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .alert-lvl--3 { background: #ff4444; box-shadow: 0 0 6px #ff4444; }
+    .alert-lvl--2 { background: #ff9500; box-shadow: 0 0 6px #ff9500; }
+    .alert-lvl--1 { background: #ffd700; }
+    .alert-name {
+      font-size: 0.63rem;
+      color: rgba(240,240,245,0.9);
+      line-height: 1.35;
+    }
+    .alert-sub {
+      font-size: 0.58rem;
+      color: rgba(240,240,245,0.45);
+      display: block;
+      margin-top: 1px;
+    }
+
+    /* Layers panel — top right */
+    .map-panel--layers {
+      top: 1rem;
+      right: 1rem;
+      min-width: 180px;
+    }
+    .layer-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      cursor: pointer;
+      color: rgba(240,240,245,0.80);
+      font-size: 0.63rem;
+      letter-spacing: 0.04em;
+      user-select: none;
+    }
+    .layer-toggle {
+      width: 28px; height: 14px;
+      border-radius: 7px;
+      background: rgba(255,255,255,0.12);
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    .layer-toggle.is-on { background: var(--fire); }
+    .layer-toggle::after {
+      content: '';
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform 0.2s;
+    }
+    .layer-toggle.is-on::after { transform: translateX(14px); }
+    .layer-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Stats bar — bottom */
+    .map-stats-bar {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      z-index: 800;
+      background: rgba(13,31,53,0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: stretch;
+      justify-content: space-around;
+      padding: 0.6rem 1.5rem;
+    }
+    .map-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      padding: 0 1rem;
+      border-right: 1px solid rgba(255,255,255,0.07);
+      font-family: "JetBrains Mono", monospace;
+    }
+    .map-stat:last-child { border-right: none; }
+    .map-stat-num {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--fire);
+      line-height: 1;
+      font-family: "Syne", sans-serif;
+    }
+    .map-stat-label {
+      font-size: 0.56rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(240,240,245,0.45);
+    }
+
+    /* Timestamp badge */
+    .map-timestamp {
+      position: absolute;
+      bottom: 4rem;
+      right: 1rem;
+      z-index: 800;
+      background: rgba(13,31,53,0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 5px;
+      padding: 0.3rem 0.65rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.58rem;
+      color: rgba(240,240,245,0.5);
+      letter-spacing: 0.06em;
+    }
+
+    /* ---- Feature cards below map ---- */
+    .demo-features {
+      background: var(--bg-2);
+      padding: 3rem 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .demo-features-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+    .demo-feat {
+      background: var(--bg-3);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1.6rem;
+      transition: border-color 0.2s;
+    }
+    .demo-feat:hover { border-color: var(--fire); }
+    .demo-feat-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+    .demo-feat-icon--fire { background: rgba(255,107,43,0.12); color: var(--fire); }
+    .demo-feat-icon--sat  { background: rgba(0,119,182,0.12);  color: var(--cyan); }
+    .demo-feat-icon--ai   { background: rgba(40,200,64,0.10);  color: #28c840; }
+    .demo-feat h3 {
+      font-family: "Syne", sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--ink);
+      margin-bottom: 0.5rem;
+    }
+    .demo-feat p {
+      font-size: 0.82rem;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+
+    /* ---- CTA section ---- */
+    .demo-cta {
+      padding: 3.5rem 2rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .demo-cta-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .demo-cta-header h2 {
+      font-family: "Syne", sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.4rem, 2.5vw, 2.2rem);
+      color: var(--ink);
+      margin-bottom: 0.5rem;
+    }
+    .demo-cta-header p {
+      font-size: 0.9rem;
+      color: var(--ink-soft);
+    }
+
+    /* Popup overrides */
+    .leaflet-popup-content-wrapper {
+      background: rgba(13,31,53,0.97);
+      color: #f0f0f5;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .leaflet-popup-tip { background: rgba(13,31,53,0.97); }
+    .leaflet-popup-close-button { color: rgba(240,240,245,0.5) !important; }
+    .popup-inner { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; min-width: 190px; }
+    .popup-lvl {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.65rem;
+    }
+    .popup-lvl--3 { background: rgba(255,68,68,0.18); color: #ff6666; border: 1px solid rgba(255,68,68,0.3); }
+    .popup-lvl--2 { background: rgba(255,149,0,0.18); color: #ffaa33; border: 1px solid rgba(255,149,0,0.3); }
+    .popup-lvl--1 { background: rgba(255,215,0,0.15); color: #ffd700; border: 1px solid rgba(255,215,0,0.3); }
+    .popup-title { font-size: 0.82rem; font-weight: 600; color: #f0f0f5; margin-bottom: 0.75rem; font-family: "Syne", sans-serif; }
+    .popup-row { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.3rem; }
+    .popup-key { color: rgba(240,240,245,0.45); }
+    .popup-val { color: rgba(240,240,245,0.85); text-align: right; }
+    .popup-actions { margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; gap: 0.5rem; }
+    .popup-btn {
+      flex: 1; text-align: center;
+      padding: 0.35rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .popup-btn--primary { background: var(--fire); color: #fff; border: none; }
+    .popup-btn--secondary { background: transparent; color: rgba(240,240,245,0.6); border: 1px solid rgba(255,255,255,0.12); }
+
+    @media (max-width: 640px) {
+      .demo-features-inner { grid-template-columns: 1fr; }
+      .map-panel--alerts { width: 190px; font-size: 0.6rem; }
+      .demo-map-wrap { height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav is-solid" id="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="nav-logo-mark">⬡</span>SPIYD
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html#tecnologia">Tecnología</a></li>
+      <li><a href="index.html#institucional">Para quién</a></li>
+      <li><a href="index.html#cobertura">Casos de uso</a></li>
+      <li><a href="index.html#contacto-section">Contacto</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="#" class="btn btn-ghost btn-sm" id="btn-login">Ingresar al sistema</a>
+      <a href="demo.html" class="btn btn-fire btn-sm">Solicitar Demo</a>
+    </div>
+    <button class="nav-hamburger" aria-label="Menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav-mobile">
+    <ul>
+      <li><a href="index.html#tecnologia">Tecnología</a></li>
+      <li><a href="index.html#institucional">Para quién</a></li>
+      <li><a href="index.html#cobertura">Casos de uso</a></li>
+    </ul>
+    <div class="nav-mobile-actions">
+      <a href="index.html" class="btn btn-outline btn-full">Volver al inicio</a>
+      <a href="contacto.html" class="btn btn-ghost btn-full">Contactar ventas</a>
+    </div>
+  </div>
+</nav>
+
+<!-- DEMO HERO -->
+<div class="demo-hero">
+  <a href="index.html" class="back-link">← Volver al inicio</a>
+  <p class="kicker">Mapa de Monitoreo en Vivo</p>
+  <h1>SPIYD <em>en acción.</em></h1>
+  <p>Datos satelitales procesados en tiempo real sobre Argentina y el Cono Sur. Haga clic en cualquier foco de calor para ver el análisis completo del incidente.</p>
+</div>
+
+<!-- MAP -->
+<section class="demo-map-section">
+  <div class="demo-map-wrap">
+    <div id="spiyd-map"></div>
+
+    <!-- Alerts panel -->
+    <div class="map-panel map-panel--alerts" id="alerts-panel">
+      <div class="map-panel-header">
+        <span class="dot-live"></span>
+        Alertas activas
+      </div>
+      <div id="alerts-list"></div>
+    </div>
+
+    <!-- Layers panel -->
+    <div class="map-panel map-panel--layers">
+      <div class="map-panel-header">Capas del mapa</div>
+      <div class="layer-row" data-layer="focos">
+        <div class="layer-toggle is-on" id="toggle-focos"></div>
+        <div class="layer-dot" style="background:#ff4444;"></div>
+        Focos de calor
+      </div>
+      <div class="layer-row" data-layer="defo">
+        <div class="layer-toggle is-on" id="toggle-defo"></div>
+        <div class="layer-dot" style="background:rgba(255,107,43,0.7);"></div>
+        Deforestación
+      </div>
+      <div class="layer-row" data-layer="cobertura">
+        <div class="layer-toggle" id="toggle-cobertura"></div>
+        <div class="layer-dot" style="background:#28c840;"></div>
+        Cobertura vegetal
+      </div>
+      <div class="layer-row" data-layer="alertas">
+        <div class="layer-toggle is-on" id="toggle-alertas"></div>
+        <div class="layer-dot" style="background:#ffd700;"></div>
+        Zonas de alerta
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="map-stats-bar">
+      <div class="map-stat">
+        <span class="map-stat-num">7</span>
+        <span class="map-stat-label">Satélites activos</span>
+      </div>
+      <div class="map-stat">
+        <span class="map-stat-num" id="stat-focos">15</span>
+        <span class="map-stat-label">Focos detectados</span>
+      </div>
+      <div class="map-stat">
+        <span class="map-stat-num">4</span>
+        <span class="map-stat-label">Alertas nivel 3</span>
+      </div>
+      <div class="map-stat">
+        <span class="map-stat-num" id="stat-area">38.400 ha</span>
+        <span class="map-stat-label">Área en riesgo</span>
+      </div>
+      <div class="map-stat">
+        <span class="map-stat-num" id="stat-time">hace 12 min</span>
+        <span class="map-stat-label">Última actualización</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURE CARDS -->
+<section class="demo-features">
+  <div class="demo-features-inner">
+    <div class="demo-feat">
+      <div class="demo-feat-icon demo-feat-icon--fire">🔥</div>
+      <h3>Detección en 15 minutos</h3>
+      <p>Los focos de calor son detectados y georeferenciados cada 15 minutos por 7 fuentes satelitales simultáneas. Sin demora, sin falsos negativos.</p>
+    </div>
+    <div class="demo-feat">
+      <div class="demo-feat-icon demo-feat-icon--sat">🛰</div>
+      <h3>Capas de análisis múltiple</h3>
+      <p>Superposición de cobertura vegetal NDVI, cuencas hídricas, zonas de deforestación histórica y variables meteorológicas para un análisis completo.</p>
+    </div>
+    <div class="demo-feat">
+      <div class="demo-feat-icon demo-feat-icon--ai">⚡</div>
+      <h3>Alertas inteligentes</h3>
+      <p>Claude AI procesa cada alerta y genera recomendaciones operativas en lenguaje natural: rutas de acceso, recursos requeridos y proyección de propagación.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA + FORM -->
+<div class="demo-cta">
+  <div class="demo-cta-header">
+    <p class="kicker" style="text-align:center;">Acceso personalizado</p>
+    <h2>Solicitar demostración<br><em style="color:var(--fire);font-style:italic;">sobre su territorio.</em></h2>
+    <p>30 minutos. Mostramos SPIYD con datos reales de su zona de interés. Sin compromiso.</p>
+  </div>
+
+  <div class="form-page-card">
+    <form data-subpage-form novalidate>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="d-nombre">Nombre completo</label>
+          <input type="text" id="d-nombre" name="nombre" placeholder="Juan Rodríguez" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="d-cargo">Cargo / Función</label>
+          <input type="text" id="d-cargo" name="cargo" placeholder="Director de Defensa Civil" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="d-org">Organismo / Empresa</label>
+          <input type="text" id="d-org" name="organismo" placeholder="Gobierno de Salta" required autocomplete="organization">
+        </div>
+        <div class="form-group">
+          <label for="d-email">Correo electrónico</label>
+          <input type="email" id="d-email" name="email" placeholder="juan@salta.gov.ar" required autocomplete="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="d-zona">Zona / provincia de interés</label>
+        <input type="text" id="d-zona" name="zona" placeholder="Ej: Norte de Salta, Corrientes, Chaco" required>
+      </div>
+      <div class="form-group">
+        <label for="d-uso">Principal caso de uso</label>
+        <select id="d-uso" name="uso" required>
+          <option value="" disabled selected>Seleccionar…</option>
+          <option>Respuesta a emergencias / incendios activos</option>
+          <option>Monitoreo preventivo de zonas de riesgo</option>
+          <option>Análisis de riesgo asegurador</option>
+          <option>Cumplimiento ambiental / auditoría</option>
+          <option>Planificación territorial</option>
+          <option>Protección de infraestructura</option>
+          <option>Reporting ESG / ambiental corporativo</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-fire btn-full" style="padding-top:1rem;padding-bottom:1rem;font-size:0.95rem;">
+        <span class="btn-text">Solicitar demostración personalizada</span>
+        <span class="btn-loading" aria-hidden="true">Enviando solicitud…</span>
+      </button>
+      <div class="form-success" role="alert" aria-live="polite">
+        <span class="success-icon" aria-hidden="true">✓</span>
+        <p>Solicitud recibida. Un especialista SPIYD se comunica en 24 hs hábiles.</p>
+      </div>
+    </form>
+  </div>
+  <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;">
+    <a href="contacto.html" class="btn btn-outline btn-sm">Contactar ventas</a>
+    <a href="reunion.html" class="btn btn-ghost btn-sm">Agendar reunión técnica</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-bottom" style="padding-top:0;border-top:none;">
+      <p class="footer-legal">© 2026 SPIYD. Plataforma de inteligencia geoespacial. República Argentina.</p>
+      <a href="index.html" class="footer-legal" style="color:var(--fire);">← Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script src="lib/leaflet.js"></script>
+<script defer src="lib/gsap.min.js?v=20260517"></script>
+<script defer src="main.js?v=20260517"></script>
+<script>
+(function () {
+  'use strict';
+
+  var FOCOS = [
+    { lat: -27.38, lng: -55.92, lvl: 3, zona: 'Misiones — San Pedro',     ha: 1240, sat: 'FIRMS/VIIRS', ts: '15:47 UTC' },
+    { lat: -26.82, lng: -56.18, lvl: 2, zona: 'Misiones — Iguazú',        ha: 380,  sat: 'GOES-16',    ts: '15:32 UTC' },
+    { lat: -25.08, lng: -60.52, lvl: 3, zona: 'Chaco — General Güemes',   ha: 2850, sat: 'NOAA-20',    ts: '15:51 UTC' },
+    { lat: -24.78, lng: -61.22, lvl: 1, zona: 'Chaco — Bermejo',          ha: 120,  sat: 'TERRA',      ts: '14:58 UTC' },
+    { lat: -23.90, lng: -62.05, lvl: 2, zona: 'Formosa — Ramón Lista',    ha: 670,  sat: 'AQUA',       ts: '15:42 UTC' },
+    { lat: -24.18, lng: -60.82, lvl: 3, zona: 'Formosa — Patiño',         ha: 3100, sat: 'GOES-16',    ts: '15:48 UTC' },
+    { lat: -25.50, lng: -59.15, lvl: 1, zona: 'Chaco — Gral. San Martín', ha: 90,   sat: 'FIRMS',      ts: '14:32 UTC' },
+    { lat: -28.50, lng: -58.72, lvl: 2, zona: 'Corrientes — Iberá',       ha: 440,  sat: 'VIIRS',      ts: '15:25 UTC' },
+    { lat: -29.18, lng: -57.82, lvl: 1, zona: 'Corrientes — Mercedes',    ha: 65,   sat: 'METOP-B',    ts: '13:55 UTC' },
+    { lat: -22.52, lng: -64.18, lvl: 2, zona: 'Salta — Orán',             ha: 820,  sat: 'NOAA-20',    ts: '15:38 UTC' },
+    { lat: -23.08, lng: -63.52, lvl: 3, zona: 'Salta — Rivadavia',        ha: 2200, sat: 'GOES-16',    ts: '15:52 UTC' },
+    { lat: -26.18, lng: -64.48, lvl: 1, zona: 'Tucumán — Alberdi',        ha: 55,   sat: 'TERRA',      ts: '14:12 UTC' },
+    { lat: -30.42, lng: -58.22, lvl: 2, zona: 'Entre Ríos — Concordia',   ha: 290,  sat: 'AQUA',       ts: '15:19 UTC' },
+    { lat: -27.80, lng: -64.20, lvl: 1, zona: 'Santiago del Estero',      ha: 80,   sat: 'FIRMS',      ts: '14:45 UTC' },
+    { lat: -24.72, lng: -65.38, lvl: 2, zona: 'Jujuy — Ledesma',          ha: 510,  sat: 'VIIRS',      ts: '15:29 UTC' },
+  ];
+
+  var DEFO_ZONES = [
+    { coords: [[-24.0,-61.5],[-23.4,-61.5],[-23.4,-60.2],[-24.0,-60.2]], label: 'Deforestación activa — Gran Chaco' },
+    { coords: [[-24.6,-62.8],[-23.9,-62.8],[-23.9,-61.8],[-24.6,-61.8]], label: 'Zona deforestada — Formosa Norte' },
+    { coords: [[-22.8,-63.8],[-22.2,-63.8],[-22.2,-62.9],[-22.8,-62.9]], label: 'Avance agrícola — Chaco Salteño' },
+  ];
+
+  var COBERTURA_ZONES = [
+    { coords: [[-27.0,-55.0],[-25.5,-55.0],[-25.5,-53.5],[-27.0,-53.5]], label: 'Selva Paranaense — Alta cobertura' },
+    { coords: [[-29.5,-57.5],[-27.5,-57.5],[-27.5,-56.2],[-29.5,-56.2]], label: 'Esteros del Iberá — Humedal protegido' },
+  ];
+
+  var ALERT_ZONES = [
+    { coords: [[-25.5,-61.0],[-24.2,-61.0],[-24.2,-59.5],[-25.5,-59.5]], label: 'Zona de alerta preventiva — NEA Central' },
+    { coords: [[-23.5,-63.8],[-22.5,-63.8],[-22.5,-62.5],[-23.5,-62.5]], label: 'Frente de avance — Noroeste' },
+  ];
+
+  var LVL_COLORS = { 3: '#ff4444', 2: '#ff9500', 1: '#ffd700' };
+  var LVL_LABELS = { 3: 'NIVEL 3 — ALERTA MÁXIMA', 2: 'NIVEL 2 — FOCO ACTIVO', 1: 'NIVEL 1 — MONITOREO' };
+
+  /* --- Init map --- */
+  var map = L.map('spiyd-map', {
+    center: [-26.5, -60.0],
+    zoom: 5,
+    zoomControl: false,
+    attributionControl: true,
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  /* Satellite tiles (Esri WorldImagery — free, no key) */
+  var satLayer = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Tiles © Esri', maxZoom: 18 }
+  ).addTo(map);
+
+  /* Labels overlay */
+  L.tileLayer(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    { attribution: '', maxZoom: 18, opacity: 0.7 }
+  ).addTo(map);
+
+  /* --- Layer groups --- */
+  var layerFocos    = L.layerGroup().addTo(map);
+  var layerDefo     = L.layerGroup().addTo(map);
+  var layerCobertura= L.layerGroup();
+  var layerAlertas  = L.layerGroup().addTo(map);
+
+  var layerState = { focos: true, defo: true, cobertura: false, alertas: true };
+
+  /* --- Deforestación polygons --- */
+  DEFO_ZONES.forEach(function(z) {
+    L.polygon(z.coords, {
+      color: '#ff6b2b', weight: 1.5,
+      fillColor: '#cc3300', fillOpacity: 0.28,
+      dashArray: '4 3',
+    }).bindTooltip(z.label, { className: 'spiyd-tooltip' }).addTo(layerDefo);
+  });
+
+  /* --- Cobertura polygons --- */
+  COBERTURA_ZONES.forEach(function(z) {
+    L.polygon(z.coords, {
+      color: '#28c840', weight: 1.5,
+      fillColor: '#1a9e30', fillOpacity: 0.22,
+    }).bindTooltip(z.label, { className: 'spiyd-tooltip' }).addTo(layerCobertura);
+  });
+
+  /* --- Alert zones --- */
+  ALERT_ZONES.forEach(function(z) {
+    L.polygon(z.coords, {
+      color: '#ffd700', weight: 1,
+      fillColor: '#ffd700', fillOpacity: 0.10,
+      dashArray: '6 4',
+    }).bindTooltip(z.label, { className: 'spiyd-tooltip' }).addTo(layerAlertas);
+  });
+
+  /* --- Fire hotspot markers --- */
+  FOCOS.forEach(function(f) {
+    var color  = LVL_COLORS[f.lvl];
+    var radius = f.lvl === 3 ? 11 : f.lvl === 2 ? 8 : 6;
+
+    var marker = L.circleMarker([f.lat, f.lng], {
+      radius: radius,
+      color: color, weight: 2,
+      fillColor: color, fillOpacity: 0.85,
+    });
+
+    var popupHtml = [
+      '<div class="popup-inner">',
+      '<span class="popup-lvl popup-lvl--' + f.lvl + '">' + LVL_LABELS[f.lvl] + '</span>',
+      '<div class="popup-title">' + f.zona + '</div>',
+      '<div class="popup-row"><span class="popup-key">Superficie</span><span class="popup-val">' + f.ha.toLocaleString('es-AR') + ' ha</span></div>',
+      '<div class="popup-row"><span class="popup-key">Fuente</span><span class="popup-val">' + f.sat + '</span></div>',
+      '<div class="popup-row"><span class="popup-key">Timestamp</span><span class="popup-val">' + f.ts + '</span></div>',
+      '<div class="popup-row"><span class="popup-key">Coordenadas</span><span class="popup-val">' + f.lat.toFixed(2) + '° / ' + f.lng.toFixed(2) + '°</span></div>',
+      '<div class="popup-actions">',
+      '<button class="popup-btn popup-btn--primary">Ver análisis IA</button>',
+      '<button class="popup-btn popup-btn--secondary">Exportar</button>',
+      '</div>',
+      '</div>',
+    ].join('');
+
+    marker.bindPopup(popupHtml, { maxWidth: 240, minWidth: 210 });
+    marker.addTo(layerFocos);
+  });
+
+  /* --- Populate alerts list --- */
+  var alertsList = document.getElementById('alerts-list');
+  var top5 = FOCOS.slice().sort(function(a,b){ return b.lvl - a.lvl; }).slice(0, 5);
+  top5.forEach(function(f) {
+    var div = document.createElement('div');
+    div.className = 'alert-item';
+    div.innerHTML =
+      '<div class="alert-lvl alert-lvl--' + f.lvl + '"></div>' +
+      '<div><div class="alert-name">' + f.zona + '</div>' +
+      '<span class="alert-sub">' + f.ha.toLocaleString('es-AR') + ' ha · ' + f.sat + '</span></div>';
+    div.addEventListener('click', function() {
+      map.setView([f.lat, f.lng], 8, { animate: true });
+    });
+    alertsList.appendChild(div);
+  });
+
+  /* --- Layer toggles --- */
+  function bindToggle(id, layerKey, group) {
+    var toggle = document.getElementById('toggle-' + id);
+    var row = toggle.closest('.layer-row');
+    row.addEventListener('click', function() {
+      layerState[layerKey] = !layerState[layerKey];
+      if (layerState[layerKey]) {
+        map.addLayer(group);
+        toggle.classList.add('is-on');
+      } else {
+        map.removeLayer(group);
+        toggle.classList.remove('is-on');
+      }
+    });
+  }
+  bindToggle('focos',    'focos',     layerFocos);
+  bindToggle('defo',     'defo',      layerDefo);
+  bindToggle('cobertura','cobertura', layerCobertura);
+  bindToggle('alertas',  'alertas',   layerAlertas);
+
+  /* --- Live clock --- */
+  function updateTime() {
+    var now = new Date();
+    var h = String(now.getUTCHours()).padStart(2,'0');
+    var m = String(now.getUTCMinutes()).padStart(2,'0');
+    var el = document.getElementById('stat-time');
+    if (el) el.textContent = h + ':' + m + ' UTC';
+  }
+  updateTime();
+  setInterval(updateTime, 30000);
+
+  /* --- Nav login --- */
+  var loginBtn = document.getElementById('btn-login');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      alert('Sistema SPIYD — Acceso restringido a usuarios registrados.\nContacte a ventas para obtener credenciales.');
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

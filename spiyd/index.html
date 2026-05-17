@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPIYD — Inteligencia Geoespacial en Tiempo Real</title>
+  <meta name="description" content="Plataforma SaaS de inteligencia geoespacial para detección, monitoreo y análisis predictivo de incendios forestales y deforestación en Argentina y el Cono Sur. 7 fuentes satelitales + IA.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260517">
+</head>
+<body>
+
+<!-- SPLASH -->
+<div class="splash" data-splash aria-hidden="true">
+  <div class="splash-inner">
+    <div class="splash-logo">SPIYD</div>
+    <div class="splash-bar"><div class="splash-progress"></div></div>
+    <p class="splash-sub">Inicializando sistema satelital…</p>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="nav-logo-mark">⬡</span>SPIYD
+    </a>
+    <ul class="nav-links">
+      <li><a href="#tecnologia">Tecnología</a></li>
+      <li><a href="#institucional">Para quién</a></li>
+      <li><a href="#cobertura">Casos de uso</a></li>
+      <li><a href="#contacto-section">Contacto</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="#" class="btn btn-ghost btn-sm" id="btn-login">Ingresar al sistema</a>
+      <a href="demo.html" class="btn btn-fire btn-sm">Solicitar Demo</a>
+    </div>
+    <button class="nav-hamburger" aria-label="Menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav-mobile" role="dialog" aria-label="Menú de navegación">
+    <ul>
+      <li><a href="#tecnologia">Tecnología</a></li>
+      <li><a href="#institucional">Para quién</a></li>
+      <li><a href="#cobertura">Casos de uso</a></li>
+      <li><a href="#contacto-section">Contacto</a></li>
+    </ul>
+    <div class="nav-mobile-actions">
+      <a href="#" class="btn btn-outline btn-full" id="btn-login-m">Ingresar al sistema</a>
+      <a href="demo.html" class="btn btn-fire btn-full">Solicitar Demo</a>
+      <a href="contacto.html" class="btn btn-ghost btn-full">Contactar Ventas</a>
+      <a href="reunion.html" class="btn btn-ghost btn-full">Agendar Reunión</a>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="inicio">
+  <div class="hero-bg" aria-hidden="true">
+    <img src="assets/img/hero.jpg" alt="" class="hero-bg-img">
+    <div class="hero-bg-tint"></div>
+  </div>
+  <div class="hero-gradient" data-mouse-gradient aria-hidden="true"></div>
+  <div class="hero-grid" aria-hidden="true"></div>
+  <div class="hero-vignette" aria-hidden="true"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="hero-badge-dot" aria-hidden="true"></span>
+      <span>Sistema activo · 7 fuentes satelitales · Tiempo real</span>
+    </div>
+    <h1 class="hero-title">
+      <span class="hero-line">Sistema de Prevención</span>
+      <span class="hero-line hero-line--accent">de Incendios y Deforestación.</span>
+    </h1>
+    <p class="hero-sub hero-sub--kicker">Inteligencia geoespacial en tiempo real</p>
+    <p class="hero-sub">Detección, monitoreo y análisis predictivo de incendios forestales y deforestación en la República Argentina y el Cono Sur de América Latina.</p>
+    <div class="hero-actions">
+      <a href="#" class="btn btn-fire btn-lg" id="hero-login">
+        Ingresar al Sistema →
+      </a>
+      <a href="demo.html" class="btn btn-outline btn-lg">Solicitar Demo</a>
+      <a href="contacto.html" class="btn btn-ghost btn-lg">Contactar Ventas</a>
+      <a href="reunion.html" class="btn btn-ghost btn-lg">Agendar Reunión</a>
+    </div>
+  </div>
+
+  <div class="hero-scroll-indicator" aria-hidden="true">
+    <span>Scroll</span>
+    <div class="hero-scroll-line"></div>
+  </div>
+</section>
+
+<!-- METRICS -->
+<section class="metrics" aria-label="Métricas del sistema SPIYD">
+  <div class="metrics-inner">
+    <div class="metric-item">
+      <div class="metric-num-wrap">
+        <span class="metric-num" data-count-to="7">7</span>
+      </div>
+      <span class="metric-label">Fuentes satelitales<br>simultáneas</span>
+    </div>
+    <div class="metric-divider" aria-hidden="true"></div>
+    <div class="metric-item">
+      <div class="metric-num-wrap">
+        <span class="metric-num" data-count-to="3800000" data-suffix="km²">3,8M km²</span>
+      </div>
+      <span class="metric-label">Superficie<br>monitoreable</span>
+    </div>
+    <div class="metric-divider" aria-hidden="true"></div>
+    <div class="metric-item">
+      <div class="metric-num-wrap">
+        <span class="metric-prefix">&lt;</span><span class="metric-num" data-count-to="15">15</span><span class="metric-unit"> min</span>
+      </div>
+      <span class="metric-label">Detección de<br>focos activos</span>
+    </div>
+    <div class="metric-divider" aria-hidden="true"></div>
+    <div class="metric-item">
+      <div class="metric-num-wrap">
+        <span class="metric-num metric-num--text">24/7</span>
+      </div>
+      <span class="metric-label">Monitoreo<br>continuo</span>
+    </div>
+    <div class="metric-divider" aria-hidden="true"></div>
+    <div class="metric-item">
+      <div class="metric-num-wrap">
+        <span class="metric-num" data-count-to="3">3</span>
+      </div>
+      <span class="metric-label">Niveles de<br>suscripción SaaS</span>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="section problem-section" id="problema">
+  <div class="container">
+    <div class="problem-grid">
+      <div class="problem-text">
+        <p class="kicker">El costo de cada hora</p>
+        <h2 class="section-title">El fuego avanza<br><em>a 90 km/h.</em></h2>
+        <p class="section-body">Los incendios forestales son una de las mayores amenazas ambientales, económicas y humanas de América del Sur. En Argentina, más de 900.000 hectáreas ardieron en un solo año. Cada hora sin información precisa es tierra perdida, vidas en riesgo y daño irreversible al ecosistema.</p>
+        <p class="section-body">SPIYD fue diseñado para eliminar ese margen de incertidumbre. No sólo detecta: anticipa, analiza y genera respuestas operativas accionables en minutos.</p>
+      </div>
+      <div class="problem-stats">
+        <div class="problem-stat reveal">
+          <span class="pstat-num">+900.000</span>
+          <span class="pstat-label">hectáreas quemadas en Argentina en un solo año</span>
+        </div>
+        <div class="problem-stat reveal">
+          <span class="pstat-num">70%</span>
+          <span class="pstat-label">de incendios detectables antes de escalar con monitoreo satelital temprano</span>
+        </div>
+        <div class="problem-stat reveal">
+          <span class="pstat-num">USD 2.000M</span>
+          <span class="pstat-label">en pérdidas anuales estimadas para el sector agropecuario regional</span>
+        </div>
+      </div>
+    </div>
+    <div class="problem-image reveal">
+      <img src="assets/img/forest.jpg" alt="Vista aérea de zona forestal afectada por incendio en Argentina">
+      <div class="problem-image-caption">Vista satelital procesada — Región NEA · República Argentina</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section how-section" id="como-funciona">
+  <div class="container">
+    <div class="section-header">
+      <p class="kicker">Proceso operativo</p>
+      <h2 class="section-title">De datos brutos a<br><em>decisiones accionables.</em></h2>
+    </div>
+    <div class="steps-grid">
+      <div class="step reveal">
+        <div class="step-num">01</div>
+        <div class="step-icon" aria-hidden="true">⬡</div>
+        <h3 class="step-title">Ingesta Satelital</h3>
+        <p class="step-body">Siete fuentes de datos satelitales activas en forma simultánea. Cobertura continua sin dependencia de ninguna agencia única. Actualización cada 15 minutos en condiciones operativas normales.</p>
+      </div>
+      <div class="step-connector" aria-hidden="true"><div class="step-line"></div></div>
+      <div class="step reveal">
+        <div class="step-num">02</div>
+        <div class="step-icon" aria-hidden="true">◈</div>
+        <h3 class="step-title">Análisis e IA</h3>
+        <p class="step-body">Motor de inteligencia artificial (Claude AI de Anthropic) que correlaciona datos satelitales con variables meteorológicas, cobertura vegetal, cartografía hídrica y algoritmos de riesgo internacionales.</p>
+      </div>
+      <div class="step-connector" aria-hidden="true"><div class="step-line"></div></div>
+      <div class="step reveal">
+        <div class="step-num">03</div>
+        <div class="step-icon" aria-hidden="true">▲</div>
+        <h3 class="step-title">Alerta y Acción</h3>
+        <p class="step-body">Recomendaciones operativas en lenguaje natural, alertas georreferenciadas en tiempo real y reportes estructurados para equipos técnicos y tomadores de decisión institucional.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECHNOLOGY -->
+<section class="section tech-section" id="tecnologia">
+  <div class="container">
+    <div class="section-header">
+      <p class="kicker">Infraestructura técnica</p>
+      <h2 class="section-title">Siete fuentes.<br><em>Un sistema unificado.</em></h2>
+      <p class="section-sub">SPIYD integra simultáneamente datos de siete fuentes satelitales internacionales. Es la plataforma más completa de monitoreo de incendios del Cono Sur.</p>
+    </div>
+
+    <div class="satellites-grid">
+      <div class="sat-card reveal">
+        <div class="sat-agency">NASA</div>
+        <div class="sat-name">FIRMS</div>
+        <div class="sat-desc">Fire Information for Resource Management System. Detección activa de fuego global con resolución de 375 m.</div>
+      </div>
+      <div class="sat-card reveal">
+        <div class="sat-agency">INPE · Brasil</div>
+        <div class="sat-name">BDQueimadas</div>
+        <div class="sat-desc">Base de datos de quemas del Instituto Nacional de Pesquisas Espaciais de Brasil. Cobertura regional prioritaria.</div>
+      </div>
+      <div class="sat-card reveal">
+        <div class="sat-agency">NOAA</div>
+        <div class="sat-name">GOES-16</div>
+        <div class="sat-desc">Satélite geoestacionario operacional. Cobertura en tiempo casi real de América del Sur y Central.</div>
+      </div>
+      <div class="sat-card reveal">
+        <div class="sat-agency">NOAA / NASA</div>
+        <div class="sat-name">NOAA-20</div>
+        <div class="sat-desc">Satélite de órbita polar con sensor VIIRS de última generación. Detección infrarroja de alta precisión.</div>
+      </div>
+      <div class="sat-card reveal">
+        <div class="sat-agency">EUMETSAT</div>
+        <div class="sat-name">METOP-B/C</div>
+        <div class="sat-desc">Dos satélites meteorológicos europeos con sensores infrarrojos. Complemento indispensable para cobertura polar.</div>
+      </div>
+      <div class="sat-card reveal">
+        <div class="sat-agency">NASA</div>
+        <div class="sat-name">AQUA</div>
+        <div class="sat-desc">Satélite de observación terrestre con sensor MODIS. Análisis espectral de temperatura superficial y humedad.</div>
+      </div>
+      <div class="sat-card reveal">
+        <div class="sat-agency">NASA</div>
+        <div class="sat-name">TERRA</div>
+        <div class="sat-desc">Primera plataforma Earth Observing System. Teledetección multiespectral para análisis de cobertura vegetal.</div>
+      </div>
+    </div>
+
+    <div class="algo-section reveal">
+      <div class="algo-header">
+        <p class="kicker">Algoritmos meteorológicos</p>
+        <h3 class="algo-title">Modelos de riesgo<br>validados internacionalmente.</h3>
+      </div>
+      <div class="algo-grid">
+        <div class="algo-card">
+          <div class="algo-tag">Regla 30-30-30</div>
+          <p>Temperatura superior a 30°C, humedad relativa inferior al 30%, velocidad del viento mayor a 30 km/h. Combinación crítica para la propagación explosiva de incendios.</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-tag">Fire Weather Index (FWI)</div>
+          <p>Sistema canadiense de índices de peligro de incendio forestal. Estándar internacional adoptado por más de 60 países. Integrado y georreferenciado en tiempo real.</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-tag">Cobertura Vegetal</div>
+          <p>Cartografía dinámica de biomasa, densidad forestal e índice NDVI actualizado por escenas satelitales. Correlación automática con riesgo de propagación.</p>
+        </div>
+        <div class="algo-card">
+          <div class="algo-tag">Recursos Hídricos</div>
+          <p>Capa de cuerpos de agua, cursos fluviales y cortafuegos naturales integrada en el modelo predictivo. Análisis de contención georreferenciado.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI SECTION -->
+<section class="section ai-section" id="inteligencia-artificial">
+  <div class="container">
+    <div class="ai-grid">
+      <div class="ai-text reveal">
+        <p class="kicker">Motor de inteligencia artificial</p>
+        <h2 class="section-title">Claude AI.<br><em>Análisis en lenguaje<br>que se entiende.</em></h2>
+        <p class="section-body">SPIYD integra la API de Claude (Anthropic) como motor central de análisis. El sistema no solo detecta: interpreta, correlaciona y genera recomendaciones operativas comprensibles para cualquier perfil de usuario, desde el técnico de campo hasta el funcionario de máxima decisión.</p>
+        <ul class="ai-features">
+          <li><span class="ai-dot" aria-hidden="true"></span>Resúmenes ejecutivos automáticos de situación de riesgo</li>
+          <li><span class="ai-dot" aria-hidden="true"></span>Recomendaciones de evacuación y asignación de recursos</li>
+          <li><span class="ai-dot" aria-hidden="true"></span>Análisis comparativo histórico por región y temporada</li>
+          <li><span class="ai-dot" aria-hidden="true"></span>Generación de informes técnicos y oficiales en minutos</li>
+          <li><span class="ai-dot" aria-hidden="true"></span>Consulta en lenguaje natural sobre cualquier zona del mapa</li>
+          <li><span class="ai-dot" aria-hidden="true"></span>Predicción de propagación con variables meteorológicas en tiempo real</li>
+        </ul>
+      </div>
+      <div class="ai-terminal reveal" aria-label="Ejemplo de análisis generado por IA">
+        <div class="terminal-header" aria-hidden="true">
+          <span class="terminal-dot terminal-dot--red"></span>
+          <span class="terminal-dot terminal-dot--yellow"></span>
+          <span class="terminal-dot terminal-dot--green"></span>
+          <span class="terminal-title">SPIYD · Análisis IA · 15:47 UTC</span>
+        </div>
+        <div class="terminal-body">
+          <div class="terminal-prompt" aria-hidden="true">
+            <span class="prompt-prefix">$</span> analizar provincia=corrientes timestamp=2026-05-16T15:47Z
+          </div>
+          <div class="terminal-output" role="log">
+            <span class="out-section">▸ ANÁLISIS SPIYD — CORRIENTES</span>
+            <span class="out-normal">Timestamp: 2026-05-16 15:47 UTC · Fuentes: 7/7 ■■■■■■■■■■</span>
+            <span class="out-break"></span>
+            <span class="out-alert">⚠  ALERTA NIVEL 3 — FOCO ACTIVO DETECTADO</span>
+            <span class="out-normal">Coordenadas: -28.4°S / -58.7°W · Superficie: ~340 ha</span>
+            <span class="out-normal">Propagación estimada: 12 km/h dirección NNO</span>
+            <span class="out-break"></span>
+            <span class="out-section">▸ CONDICIONES METEOROLÓGICAS</span>
+            <span class="out-warn">Regla 30-30-30: ACTIVA ■■■■■■■■■■ (EXTREMO)</span>
+            <span class="out-normal">Temp: 36°C · HR: 18% · Viento: 38 km/h NNO</span>
+            <span class="out-normal">FWI Canadiense: 82/100 — clasificación EXTREMA</span>
+            <span class="out-break"></span>
+            <span class="out-section">▸ RECOMENDACIÓN OPERATIVA</span>
+            <span class="out-success">→ Activar Brigada Norte. Coordinar con Defensa Civil.</span>
+            <span class="out-success">→ Evacuar sector residencial radio 8 km.</span>
+            <span class="out-success">→ Bloquear acceso Ruta 12 km 87–94.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO IT'S FOR -->
+<section class="section audience-section" id="institucional">
+  <div class="container">
+    <div class="section-header">
+      <p class="kicker">Para quién es SPIYD</p>
+      <h2 class="section-title">Diseñado para los que<br><em>toman decisiones críticas.</em></h2>
+    </div>
+    <div class="audience-grid">
+      <div class="audience-card audience-card--state reveal">
+        <div class="audience-icon" aria-hidden="true">⬡</div>
+        <div class="audience-tag">Sector Público</div>
+        <h3 class="audience-title">Organismos del Estado</h3>
+        <ul class="audience-list">
+          <li>Defensa Civil provincial y municipal</li>
+          <li>Secretarías de Ambiente y Desarrollo Sostenible</li>
+          <li>Administración de Parques Nacionales</li>
+          <li>Ministerios de Seguridad y Gestión del Riesgo</li>
+          <li>CONAE y organismos de monitoreo ambiental</li>
+          <li>Municipios en zonas de interfaz urbano-forestal</li>
+        </ul>
+        <a href="contacto.html" class="btn btn-fire audience-btn">Consulta para organismos públicos</a>
+      </div>
+      <div class="audience-card audience-card--private reveal">
+        <div class="audience-icon" aria-hidden="true">◈</div>
+        <div class="audience-tag">Sector Privado</div>
+        <h3 class="audience-title">Empresas y Consultoras</h3>
+        <ul class="audience-list">
+          <li>Compañías aseguradoras del agro y sector forestal</li>
+          <li>Empresas forestales y madereras de gran escala</li>
+          <li>Productores agropecuarios con superficie extensa</li>
+          <li>Consultoras ambientales y de gestión de riesgo</li>
+          <li>Empresas de energía renovable (eólica, solar)</li>
+          <li>Operadoras de infraestructura crítica nacional</li>
+        </ul>
+        <a href="demo.html" class="btn btn-outline audience-btn">Solicitar demostración técnica</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section class="section cases-section" id="cobertura">
+  <div class="container">
+    <div class="section-header">
+      <p class="kicker">Casos de uso</p>
+      <h2 class="section-title">Una plataforma.<br><em>Múltiples aplicaciones.</em></h2>
+    </div>
+    <div class="cases-grid">
+      <div class="case-card reveal">
+        <div class="case-num">01</div>
+        <h3 class="case-title">Respuesta a Emergencias</h3>
+        <p>Coordinación en tiempo real de brigadas, recursos hídricos y accesos. Reducción comprobada del tiempo de respuesta inicial de horas a minutos.</p>
+      </div>
+      <div class="case-card reveal">
+        <div class="case-num">02</div>
+        <h3 class="case-title">Análisis de Riesgo Asegurador</h3>
+        <p>Evaluación dinámica de exposición de cartera agropecuaria y forestal con datos satelitales actualizados. Cálculo continuo de índice de riesgo por parcela.</p>
+      </div>
+      <div class="case-card reveal">
+        <div class="case-num">03</div>
+        <h3 class="case-title">Monitoreo de Cumplimiento</h3>
+        <p>Verificación satelital de áreas de conservación, reservas naturales y zonas de amortiguamiento para organismos de control y auditoría ambiental.</p>
+      </div>
+      <div class="case-card reveal">
+        <div class="case-num">04</div>
+        <h3 class="case-title">Planificación Territorial</h3>
+        <p>Análisis histórico de incendios y deforestación para planificación de uso del suelo, corredores biológicos y zonificación de interfaz urbano-forestal.</p>
+      </div>
+      <div class="case-card reveal">
+        <div class="case-num">05</div>
+        <h3 class="case-title">Protección de Infraestructura</h3>
+        <p>Monitoreo continuo de corredores de transmisión eléctrica, oleoductos, gasoductos y rutas nacionales en zonas de alto riesgo de incendio forestal.</p>
+      </div>
+      <div class="case-card reveal">
+        <div class="case-num">06</div>
+        <h3 class="case-title">Reporting ESG y Ambiental</h3>
+        <p>Generación automatizada de informes de impacto ambiental, pérdida de cobertura forestal y métricas de huella de carbono para reportes corporativos ESG.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SATELLITE BG SECTION -->
+<section class="satellite-section">
+  <div class="satellite-bg" aria-hidden="true">
+    <img src="assets/img/bomberos-ruta.jpeg" alt="" class="satellite-img">
+    <div class="satellite-overlay"></div>
+  </div>
+  <div class="container">
+    <div class="satellite-content reveal">
+      <p class="kicker">Cobertura geográfica</p>
+      <h2 class="section-title">Argentina.<br><em>Y el Cono Sur completo.</em></h2>
+      <p class="section-body">SPIYD cubre la totalidad del territorio argentino y se extiende al Cono Sur, incluyendo Chile, Uruguay, Paraguay, Bolivia y el sur de Brasil. Cobertura sin zonas ciegas a resolución de 375 metros por píxel, actualizada en tiempo real.</p>
+      <div class="coverage-tags">
+        <span class="ctag">Argentina</span>
+        <span class="ctag">Chile</span>
+        <span class="ctag">Uruguay</span>
+        <span class="ctag">Paraguay</span>
+        <span class="ctag">Bolivia</span>
+        <span class="ctag">Sur de Brasil</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section class="section stack-section">
+  <div class="container">
+    <div class="section-header">
+      <p class="kicker">Arquitectura del sistema</p>
+      <h2 class="section-title">Tecnología de producción.<br><em>Lista para escalar.</em></h2>
+    </div>
+    <div class="stack-grid">
+      <div class="stack-card reveal">
+        <div class="stack-icon" aria-hidden="true">◉</div>
+        <h3 class="stack-title">Backend robusto</h3>
+        <p>Python/Flask con arquitectura modular. Autenticación, gestión de usuarios, APIs de datos y sistema de auditoría completo. Compatible con Gunicorn + Nginx.</p>
+      </div>
+      <div class="stack-card reveal">
+        <div class="stack-icon" aria-hidden="true">◎</div>
+        <h3 class="stack-title">Cartografía interactiva</h3>
+        <p>Frontend con Leaflet.js para visualización geoespacial. Capas dinámicas, filtros por región, zoom a nivel parcela, exportación de reportes.</p>
+      </div>
+      <div class="stack-card reveal">
+        <div class="stack-icon" aria-hidden="true">⬢</div>
+        <h3 class="stack-title">IA integrada nativamente</h3>
+        <p>Integración directa con la API de Anthropic (Claude AI). Análisis contextual en lenguaje natural. Actualizable con cada nuevo modelo sin rediseño.</p>
+      </div>
+      <div class="stack-card reveal">
+        <div class="stack-icon" aria-hidden="true">▣</div>
+        <h3 class="stack-title">SaaS escalable</h3>
+        <p>Tres niveles de suscripción con modelos de facturación diferenciados. Compatible con AWS, GCP, Azure o infraestructura propia del cliente.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT SECTION -->
+<section class="section contact-section" id="contacto-section">
+  <div class="container">
+    <div class="contact-grid">
+      <div class="contact-text reveal">
+        <p class="kicker">Siguiente paso</p>
+        <h2 class="section-title">¿Listo para<br><em>empezar?</em></h2>
+        <p class="section-body">El equipo de SPIYD trabaja directamente con cada cliente para configurar el sistema según su cobertura geográfica, nivel de acceso y necesidades operativas específicas. Sin costos de implementación ocultos.</p>
+        <div class="contact-options">
+          <div class="contact-option">
+            <span class="contact-option-icon" aria-hidden="true">⬡</span>
+            <div>
+              <strong>Demo personalizada</strong>
+              <p>30 minutos. Mostramos el sistema sobre datos reales de tu área de interés.</p>
+              <a href="demo.html" class="link-arrow">Solicitar demo →</a>
+            </div>
+          </div>
+          <div class="contact-option">
+            <span class="contact-option-icon" aria-hidden="true">◈</span>
+            <div>
+              <strong>Hablar con ventas</strong>
+              <p>Para propuestas institucionales, integraciones API y acuerdos marco de largo plazo.</p>
+              <a href="contacto.html" class="link-arrow">Contactar ventas →</a>
+            </div>
+          </div>
+          <div class="contact-option">
+            <span class="contact-option-icon" aria-hidden="true">▲</span>
+            <div>
+              <strong>Agendar reunión técnica</strong>
+              <p>Reunión con el equipo de ingeniería, en el horario que te sea conveniente.</p>
+              <a href="reunion.html" class="link-arrow">Agendar reunión →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="contact-form-wrapper reveal">
+        <form class="contact-form" id="contact-form" novalidate>
+          <h3 class="form-title">Contacto rápido</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cf-nombre">Nombre completo</label>
+              <input type="text" id="cf-nombre" name="nombre" placeholder="Juan Rodríguez" required autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label for="cf-org">Organismo / Empresa</label>
+              <input type="text" id="cf-org" name="organismo" placeholder="Defensa Civil Salta" required autocomplete="organization">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="cf-email">Correo electrónico</label>
+            <input type="email" id="cf-email" name="email" placeholder="juan@ejemplo.gov.ar" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="cf-tipo">Tipo de organización</label>
+            <select id="cf-tipo" name="tipo" required>
+              <option value="" disabled selected>Seleccionar…</option>
+              <option>Organismo estatal provincial</option>
+              <option>Organismo estatal nacional</option>
+              <option>Municipio</option>
+              <option>Empresa privada</option>
+              <option>Compañía aseguradora</option>
+              <option>Consultora ambiental</option>
+              <option>Productora agropecuaria</option>
+              <option>Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cf-mensaje">¿Qué necesitás monitorear?</label>
+            <textarea id="cf-mensaje" name="mensaje" rows="3" placeholder="Ej: Zona boscosa en el norte de Misiones, aprox. 80.000 ha de campo…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-fire btn-full">
+            <span class="btn-text">Enviar consulta</span>
+            <span class="btn-loading" aria-hidden="true">Enviando…</span>
+          </button>
+          <div class="form-success" role="alert" aria-live="polite">
+            <span class="success-icon" aria-hidden="true">✓</span>
+            <p>Consulta recibida. El equipo SPIYD responde en 24–48 hs hábiles.</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <span class="footer-logo-mark" aria-hidden="true">⬡</span>SPIYD
+        </div>
+        <p class="footer-tagline">Inteligencia geoespacial en tiempo real.<br>Argentina y el Cono Sur de América Latina.</p>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Sistema</h4>
+          <ul>
+            <li><a href="#tecnologia">Fuentes satelitales</a></li>
+            <li><a href="#como-funciona">Cómo funciona</a></li>
+            <li><a href="#inteligencia-artificial">Inteligencia artificial</a></li>
+            <li><a href="#cobertura">Cobertura geográfica</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Clientes</h4>
+          <ul>
+            <li><a href="#institucional">Sector público</a></li>
+            <li><a href="#institucional">Sector privado</a></li>
+            <li><a href="#cobertura">Casos de uso</a></li>
+            <li><a href="demo.html">Solicitar demo</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Acceso</h4>
+          <ul>
+            <li><a href="#" id="footer-login">Ingresar al sistema</a></li>
+            <li><a href="contacto.html">Contactar ventas</a></li>
+            <li><a href="reunion.html">Agendar reunión</a></li>
+            <li><a href="contacto.html">Soporte técnico</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-legal">© 2026 SPIYD. Plataforma de inteligencia geoespacial. República Argentina.</p>
+      <p class="footer-credit">Datos satelitales: NASA · INPE · NOAA · EUMETSAT · IA: Anthropic Claude</p>
+    </div>
+  </div>
+</footer>
+
+<script defer src="lib/gsap.min.js?v=20260517"></script>
+<script defer src="lib/ScrollTrigger.min.js?v=20260517"></script>
+<script defer src="main.js?v=20260517"></script>
+</body>
+</html>
