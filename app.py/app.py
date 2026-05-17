@@ -15,6 +15,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+DOCS_DIR = os.path.join(BASE_DIR, 'docs')
 
 app = Flask(__name__,
             template_folder=os.path.join(MODULE_DIR, 'templates'),
@@ -60,7 +61,35 @@ with app.app_context():
 
 @app.route('/')
 def landing():
-    return send_from_directory(BASE_DIR, 'landing_premium.html')
+    return send_from_directory(DOCS_DIR, 'index.html')
+
+@app.route('/styles.css')
+def docs_styles():
+    return send_from_directory(DOCS_DIR, 'styles.css')
+
+@app.route('/main.js')
+def docs_mainjs():
+    return send_from_directory(DOCS_DIR, 'main.js')
+
+@app.route('/assets/<path:filename>')
+def docs_assets(filename):
+    return send_from_directory(os.path.join(DOCS_DIR, 'assets'), filename)
+
+@app.route('/lib/<path:filename>')
+def docs_lib(filename):
+    return send_from_directory(os.path.join(DOCS_DIR, 'lib'), filename)
+
+@app.route('/demo.html')
+def docs_demo():
+    return send_from_directory(DOCS_DIR, 'demo.html')
+
+@app.route('/contacto.html')
+def docs_contacto():
+    return send_from_directory(DOCS_DIR, 'contacto.html')
+
+@app.route('/reunion.html')
+def docs_reunion():
+    return send_from_directory(DOCS_DIR, 'reunion.html')
 
 @app.route('/mapa')
 @login_required
