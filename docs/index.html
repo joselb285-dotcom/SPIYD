@@ -1,600 +1,784 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPIYD — Inteligencia Geoespacial en Tiempo Real</title>
-  <meta name="description" content="Plataforma SaaS de inteligencia geoespacial para detección, monitoreo y análisis predictivo de incendios forestales y deforestación en Argentina y el Cono Sur. 7 fuentes satelitales + IA.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260517">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPIYD — Sistema de Prevención de Incendios y Detección</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       hsl(220 70% 1.5%);
+      --surface:  hsl(220 55% 4%);
+      --text:     hsl(0 0% 97%);
+      --muted:    hsl(215 15% 52%);
+      --stroke:   hsl(220 35% 9%);
+      --accent-a: #0EA5E9;
+      --accent-b: #06B6D4;
+    }
+
+    html { scroll-behavior: smooth; }
+    html, body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+    body { background: var(--bg); color: var(--text); }
+
+    .di { font-family: 'Instrument Serif', serif; font-style: italic; }
+
+    .grad { background: linear-gradient(90deg, var(--accent-a) 0%, var(--accent-b) 100%); }
+    .grad-text {
+      background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── LOADING ──────────────────────────────────────── */
+    #loading {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      padding: 2rem;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+    #loading.out { opacity: 0; visibility: hidden; }
+
+    #load-label {
+      font-size: 0.68rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.3em;
+      opacity: 0; transform: translateY(-16px);
+      transition: all 0.5s ease 0.2s;
+    }
+    #loading.ready #load-label { opacity: 1; transform: translateY(0); }
+
+    #load-center { flex: 1; display: flex; align-items: center; justify-content: center; }
+    #load-word {
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      font-size: clamp(2.5rem, 8vw, 6rem);
+      color: rgba(245,250,255,0.75);
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    #load-word.fade { opacity: 0; transform: translateY(-18px); }
+
+    #load-counter {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(4rem, 12vw, 9rem);
+      color: var(--text); font-variant-numeric: tabular-nums;
+      line-height: 1; align-self: flex-end;
+    }
+
+    #load-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--stroke); }
+    #load-bar-fill {
+      height: 100%; width: 0;
+      background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+      box-shadow: 0 0 10px rgba(14,165,233,0.5);
+      transition: width 0.04s linear;
+    }
+
+    /* ── NAV ──────────────────────────────────────────── */
+    #nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      display: flex; justify-content: center;
+      padding: 1.25rem 1rem 0;
+    }
+    #nav-pill {
+      display: inline-flex; align-items: center;
+      border-radius: 9999px; gap: 0;
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.08);
+      background: hsla(220 55% 3% / 0.85);
+      padding: 0.35rem;
+      transition: box-shadow 0.3s;
+    }
+    #nav-pill.scrolled { box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+
+    .nav-logo {
+      width: 2rem; height: 2rem; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg); position: relative; cursor: pointer;
+      transition: transform 0.3s; text-decoration: none;
+    }
+    .nav-logo:hover { transform: scale(1.1); }
+    .nav-logo::before {
+      content: ''; position: absolute; inset: 0; border-radius: 50%; padding: 1.5px;
+      background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+    }
+    .nav-logo span { font-family:'Instrument Serif',serif; font-style:italic; font-size:0.7rem; color:var(--text); }
+
+    .nav-sep { width:1px; height:1.1rem; background: var(--stroke); margin: 0 0.2rem; }
+    @media(max-width:480px){ .nav-sep { display:none; } }
+
+    .nav-link {
+      font-size: 0.78rem; border-radius: 9999px;
+      padding: 0.35rem 0.85rem; color: var(--muted);
+      cursor: pointer; transition: all 0.2s; white-space: nowrap; text-decoration: none;
+    }
+    .nav-link:hover, .nav-link.active { color: var(--text); background: var(--stroke); }
+
+    .nav-cta {
+      font-size: 0.78rem; border-radius: 9999px;
+      padding: 0.35rem 1rem; color: var(--text);
+      background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+      cursor: pointer; transition: opacity 0.2s; text-decoration: none; white-space: nowrap;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* ── HERO ─────────────────────────────────────────── */
+    #hero {
+      position: relative; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Ken Burns keyframes */
+    @keyframes kb-hero {
+      0%   { transform: scale(1.12) translate(2%, 1%); }
+      33%  { transform: scale(1.06) translate(-1%, -2%); }
+      66%  { transform: scale(1.10) translate(-2%, 1%); }
+      100% { transform: scale(1.12) translate(2%, 1%); }
+    }
+    @keyframes kb-strip-1 {
+      0%   { transform: scale(1.10) translate(0%, 0%); }
+      50%  { transform: scale(1.04) translate(-2%, 1%); }
+      100% { transform: scale(1.10) translate(0%, 0%); }
+    }
+    @keyframes kb-strip-2 {
+      0%   { transform: scale(1.05) translate(-1%, -1%); }
+      50%  { transform: scale(1.10) translate(1%, 1%); }
+      100% { transform: scale(1.05) translate(-1%, -1%); }
+    }
+    @keyframes kb-strip-3 {
+      0%   { transform: scale(1.08) translate(1%, 1%); }
+      50%  { transform: scale(1.03) translate(-1%, -2%); }
+      100% { transform: scale(1.08) translate(1%, 1%); }
+    }
+    @keyframes kb-photo-section {
+      0%   { transform: scale(1.08) translate(0%, 0%); }
+      50%  { transform: scale(1.03) translate(-1.5%, 1%); }
+      100% { transform: scale(1.08) translate(0%, 0%); }
+    }
+    @keyframes kb-footer {
+      0%   { transform: scale(1.10) translate(-1%, 0%); }
+      50%  { transform: scale(1.05) translate(1%, -1%); }
+      100% { transform: scale(1.10) translate(-1%, 0%); }
+    }
+
+    /* Photo background */
+    #hero-photo {
+      position: absolute; inset: 0;
+      background-image: url('https://spiyd.com/img/hero-bg.jpg');
+      background-size: cover; background-position: center 40%;
+      animation: kb-hero 22s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    /* Overlays — imagen muy visible, sombra sólo detrás del texto */
+    #hero-ov1 { position:absolute; inset:0; background: linear-gradient(160deg, hsla(220,65%,4%,0.38) 0%, hsla(200,50%,4%,0.22) 100%); }
+    #hero-ov2 { position:absolute; inset:0; background: linear-gradient(to top, var(--bg) 0%, transparent 42%); }
+    /* Viñeta oscura centrada justo detrás del contenido para legibilidad */
+    #hero-ov3 { position:absolute; inset:0; background: radial-gradient(ellipse 70% 65% at 50% 52%, rgba(0,5,18,0.62) 0%, transparent 75%); }
+
+    /* Noise texture */
+    #hero-noise {
+      position: absolute; inset: 0; opacity: 0.04; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    #hero-content {
+      position: relative; z-index: 5;
+      text-align: center; padding: 0 1.5rem; max-width: 920px;
+    }
+
+    #hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.68rem; color: var(--accent-a);
+      border: 1px solid rgba(14,165,233,0.25);
+      background: rgba(14,165,233,0.08);
+      border-radius: 9999px; padding: 0.35rem 1rem;
+      text-transform: uppercase; letter-spacing: 0.2em;
+      margin-bottom: 1.75rem;
+      opacity: 0;
+    }
+    .badge-dot { width:5px; height:5px; border-radius:50%; background:var(--accent-a); animation: pdot 2s infinite; }
+    @keyframes pdot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.5)} }
+
+    #hero-title {
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      font-size: clamp(2.4rem, 6vw, 5.5rem);
+      line-height: 1.0; letter-spacing: -0.02em;
+      color: var(--text); margin-bottom: 0.75rem;
+      opacity: 0;
+      text-shadow: 0 2px 32px rgba(0,5,20,0.9), 0 1px 8px rgba(0,0,0,0.7);
+    }
+    #hero-title-sub {
+      font-size: clamp(0.85rem, 1.8vw, 1.15rem);
+      font-weight: 400; letter-spacing: 0.06em;
+      color: var(--accent-a);
+      text-transform: uppercase;
+      margin-bottom: 1.75rem;
+      opacity: 0;
+      text-shadow: 0 1px 12px rgba(0,5,20,0.8);
+    }
+
+    #hero-role {
+      font-size: clamp(0.85rem, 1.8vw, 1.05rem);
+      color: rgba(200,215,235,0.85); margin-bottom: 3rem; opacity: 0;
+      text-shadow: 0 1px 12px rgba(0,5,20,0.8);
+    }
+    #hero-role-word {
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      color: var(--text); display: inline-block;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    #hero-ctas { display:inline-flex; gap:0.875rem; flex-wrap:wrap; justify-content:center; opacity:0; }
+
+    .btn-a {
+      background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+      color: #fff; border: none; border-radius: 9999px;
+      font-size: 0.875rem; font-weight: 500; font-family: 'Inter', sans-serif;
+      padding: 0.875rem 2rem; cursor: pointer;
+      transition: opacity 0.2s, transform 0.2s;
+      box-shadow: 0 4px 24px rgba(14,165,233,0.3); text-decoration: none;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .btn-a:hover { opacity: 0.88; transform: scale(1.04); }
+
+    .btn-b {
+      background: transparent; color: var(--text);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 9999px; font-size: 0.875rem; font-weight: 500;
+      font-family: 'Inter', sans-serif; padding: 0.875rem 2rem;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .btn-b:hover { border-color: var(--accent-a); color: var(--accent-a); transform: scale(1.04); }
+
+    /* Scroll indicator */
+    #scroll-ind {
+      position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem; z-index: 5;
+    }
+    #scroll-ind span { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.25em; }
+    .sline { width: 1px; height: 2.5rem; background: var(--stroke); overflow: hidden; position: relative; }
+    .sline::after {
+      content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 50%;
+      background: linear-gradient(180deg, var(--accent-a), var(--accent-b));
+      animation: sdrop 1.6s ease-in-out infinite;
+    }
+    @keyframes sdrop { 0%{transform:translateY(-100%)} 100%{transform:translateY(300%)} }
+
+    /* ── PHOTO STRIP ──────────────────────────────────── */
+    #photo-strip {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      height: 320px; overflow: hidden;
+    }
+    @media(max-width:640px){ #photo-strip { grid-template-columns:1fr; height:220px; } }
+    .strip-photo {
+      overflow: hidden; position: relative;
+    }
+    .strip-photo-img {
+      width: 100%; height: 100%;
+      background-size: cover; background-position: center;
+      transform-origin: center;
+    }
+    /* Ken Burns individual por foto */
+    .strip-photo:nth-child(1) .strip-photo-img { animation: kb-strip-1 18s ease-in-out infinite; }
+    .strip-photo:nth-child(2) .strip-photo-img { animation: kb-strip-2 22s ease-in-out infinite; }
+    .strip-photo:nth-child(3) .strip-photo-img { animation: kb-strip-3 20s ease-in-out infinite; }
+
+    .strip-photo-label {
+      position: absolute; bottom: 1rem; left: 1rem; z-index: 2;
+      font-size: 0.65rem; color: rgba(255,255,255,0.85);
+      text-transform: uppercase; letter-spacing: 0.18em;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 0.3rem 0.75rem; border-radius: 9999px;
+    }
+    /* overlay más ligero para que se vean las fotos */
+    .strip-photo::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.55), transparent 55%);
+    }
+
+    /* ── FEATURES ─────────────────────────────────────── */
+    #features { background: var(--bg); padding: 5rem 0; }
+    .s-inner { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+
+    .s-head { margin-bottom: 3rem; }
+    .s-eyebrow {
+      display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.875rem;
+    }
+    .s-eyebrow-line { width: 2rem; height: 1px; background: var(--stroke); }
+    .s-eyebrow-txt { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3em; }
+    .s-h2 { font-size: clamp(2rem,5vw,3.2rem); font-weight: 300; line-height: 1.1; color: var(--text); margin-bottom: 0.75rem; }
+    .s-sub { font-size: 0.88rem; color: var(--muted); max-width: 34rem; line-height: 1.7; }
+
+    .bento { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+    @media(min-width:768px){ .bento { grid-template-columns: repeat(12,1fr); } }
+    .bc7 { grid-column: span 7; }
+    .bc5 { grid-column: span 5; }
+
+    .bcard {
+      background: var(--surface); border: 1px solid var(--stroke);
+      border-radius: 1.5rem; overflow: hidden; cursor: pointer;
+      transition: border-color 0.3s, transform 0.3s;
+      position: relative;
+    }
+    .bcard:hover { border-color: rgba(14,165,233,0.3); transform: translateY(-2px); }
+
+    .bcard-photo {
+      width: 100%; height: 200px; overflow: hidden; position: relative;
+    }
+    .bcard-photo-img {
+      width: 100%; height: 100%; object-fit: cover;
+      background-size: cover; background-position: center;
+      transition: transform 0.5s ease;
+    }
+    .bcard:hover .bcard-photo-img { transform: scale(1.05); }
+    .bcard-photo::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, var(--surface) 0%, rgba(0,0,0,0.3) 100%);
+    }
+
+    .bcard-body { padding: 1.5rem; }
+    .bcard-icon {
+      width: 2.25rem; height: 2.25rem; border-radius: 0.6rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; margin-bottom: 1rem;
+      background: linear-gradient(135deg, rgba(14,165,233,0.12), rgba(6,182,212,0.12));
+      border: 1px solid rgba(14,165,233,0.18);
+    }
+    .bcard-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 0.4rem; }
+    .bcard-title { font-size: 1.25rem; font-weight: 300; color: var(--text); margin-bottom: 0.6rem; line-height: 1.2; }
+    .bcard-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.65; }
+    .bcard-tag {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      margin-top: 1.25rem; font-size: 0.68rem; color: var(--accent-a);
+      background: rgba(14,165,233,0.08); border: 1px solid rgba(14,165,233,0.18);
+      padding: 0.28rem 0.75rem; border-radius: 9999px;
+    }
+    .tdot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent-a); }
+
+    /* ── FULL PHOTO SECTION ───────────────────────────── */
+    #photo-section {
+      position: relative; height: 480px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #photo-section-bg {
+      position: absolute; inset: 0;
+      background-image: url('https://spiyd.com/img/photo-section.jpg');
+      background-size: cover; background-position: center;
+      animation: kb-photo-section 24s ease-in-out infinite;
+      transform-origin: center;
+    }
+    #photo-section-ov {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, hsla(220,60%,4%,0.60) 0%, hsla(200,50%,4%,0.48) 100%);
+    }
+    .photo-section-content {
+      position: relative; z-index: 2; text-align: center; padding: 0 1.5rem;
+    }
+    .photo-section-label {
+      font-size: 0.68rem; color: var(--accent-b); text-transform: uppercase;
+      letter-spacing: 0.3em; margin-bottom: 1.25rem;
+    }
+    .photo-section-title {
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      color: var(--text); line-height: 1; margin-bottom: 1.5rem;
+    }
+    .photo-section-sub {
+      font-size: 0.95rem; color: rgba(245,250,255,0.55);
+      max-width: 42rem; margin: 0 auto 2rem; line-height: 1.7;
+    }
+
+    /* ── STATS ────────────────────────────────────────── */
+    #stats {
+      background: var(--bg); padding: 5rem 0;
+      border-top: 1px solid var(--stroke);
+    }
+    .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 2rem; }
+    @media(max-width:600px){ .stats-grid { grid-template-columns:1fr; text-align:center; } }
+    .stat { padding: 1.5rem 0; }
+    .stat-bar { width: 2rem; height: 2px; margin-bottom: 1.25rem; background: linear-gradient(90deg, var(--accent-a), var(--accent-b)); }
+    @media(max-width:600px){ .stat-bar { margin: 0 auto 1.25rem; } }
+    .stat-num { font-family: 'Instrument Serif', serif; font-style: italic; font-size: clamp(2.5rem,5vw,4rem); color: var(--text); line-height: 1; margin-bottom: 0.4rem; }
+    .stat-lbl { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── MARQUEE ──────────────────────────────────────── */
+    #marquee { overflow: hidden; padding: 2.5rem 0; border-top: 1px solid var(--stroke); }
+    .mtrack {
+      display: flex; white-space: nowrap;
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      font-size: clamp(2rem,5vw,3.5rem);
+      color: hsla(220 30% 80% / 0.05);
+      will-change: transform;
+    }
+    .mtrack span { padding-right: 1.5rem; }
+
+    /* ── FOOTER ───────────────────────────────────────── */
+    #footer { position: relative; padding: 5rem 0 3rem; overflow: hidden; }
+    #footer-photo {
+      position: absolute; inset: 0;
+      background-image: url('https://spiyd.com/img/footer-bg.jpg');
+      background-size: cover; background-position: center top;
+      animation: kb-footer 26s ease-in-out infinite;
+      transform-origin: center;
+    }
+    #footer-ov {
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, var(--bg) 0%, hsla(220,65%,2%,0.72) 50%, var(--bg) 100%);
+    }
+    .footer-inner { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+    .footer-cta { text-align: center; margin-bottom: 4rem; }
+    .footer-eyebrow { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 1.25rem; }
+    .footer-big {
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      font-size: clamp(3rem, 9vw, 7rem);
+      color: var(--text); line-height: 0.9; margin-bottom: 2.5rem;
+    }
+    .footer-bar {
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+      padding-top: 2rem; border-top: 1px solid var(--stroke);
+      font-size: 0.78rem; color: var(--muted);
+    }
+    .flinks { display: flex; gap: 1.5rem; }
+    .flinks a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    .flinks a:hover { color: var(--text); }
+    .fstatus { display: flex; align-items: center; gap: 0.5rem; }
+    .fdot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; animation: pdot 2s infinite; }
+
+    /* ── Scroll reveal ───────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.9s ease, transform 0.9s ease; }
+    .reveal.on { opacity: 1; transform: translateY(0); }
+    .d1 { transition-delay: 0.1s; } .d2 { transition-delay: 0.2s; }
+    .d3 { transition-delay: 0.3s; } .d4 { transition-delay: 0.4s; }
+  </style>
 </head>
 <body>
 
-<!-- SPLASH -->
-<div class="splash" data-splash aria-hidden="true">
-  <div class="splash-inner">
-    <div class="splash-logo">SPIYD</div>
-    <div class="splash-bar"><div class="splash-progress"></div></div>
-    <p class="splash-sub">Inicializando sistema satelital…</p>
-  </div>
+<!-- ── Loading ─────────────────────────────────────── -->
+<div id="loading">
+  <div id="load-label">SPIYD — Sistema de Prevención de Incendios</div>
+  <div id="load-center"><span id="load-word">Monitoreo</span></div>
+  <div id="load-counter">000</div>
+  <div id="load-bar"><div id="load-bar-fill"></div></div>
 </div>
 
-<!-- NAV -->
-<nav class="nav" id="nav">
-  <div class="nav-inner">
-    <a href="index.html" class="nav-logo">
-      <span class="nav-logo-mark">⬡</span>SPIYD
-    </a>
-    <ul class="nav-links">
-      <li><a href="#tecnologia">Tecnología</a></li>
-      <li><a href="#institucional">Para quién</a></li>
-      <li><a href="#cobertura">Casos de uso</a></li>
-      <li><a href="#contacto-section">Contacto</a></li>
-    </ul>
-    <div class="nav-actions">
-      <a href="#" class="btn btn-ghost btn-sm" id="btn-login">Ingresar al sistema</a>
-      <a href="demo.html" class="btn btn-fire btn-sm">Solicitar Demo</a>
-    </div>
-    <button class="nav-hamburger" aria-label="Menú" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-  <div class="nav-mobile" role="dialog" aria-label="Menú de navegación">
-    <ul>
-      <li><a href="#tecnologia">Tecnología</a></li>
-      <li><a href="#institucional">Para quién</a></li>
-      <li><a href="#cobertura">Casos de uso</a></li>
-      <li><a href="#contacto-section">Contacto</a></li>
-    </ul>
-    <div class="nav-mobile-actions">
-      <a href="#" class="btn btn-outline btn-full" id="btn-login-m">Ingresar al sistema</a>
-      <a href="demo.html" class="btn btn-fire btn-full">Solicitar Demo</a>
-      <a href="contacto.html" class="btn btn-ghost btn-full">Contactar Ventas</a>
-      <a href="reunion.html" class="btn btn-ghost btn-full">Agendar Reunión</a>
-    </div>
+<!-- ── Navbar ──────────────────────────────────────── -->
+<nav id="nav">
+  <div id="nav-pill">
+    <a href="https://spiyd.com/" class="nav-logo"><span>SP</span></a>
+    <div class="nav-sep"></div>
+    <a href="https://spiyd.com/" class="nav-link active">Inicio</a>
+    <a href="#features" class="nav-link">Sistema</a>
+    <a href="#stats" class="nav-link">Datos</a>
+    <div class="nav-sep"></div>
+    <a href="https://spiyd.com/login" class="nav-cta">Acceder ↗</a>
   </div>
 </nav>
 
-<!-- HERO -->
-<section class="hero" id="inicio">
-  <div class="hero-bg" aria-hidden="true">
-    <img src="assets/img/hero.jpg" alt="" class="hero-bg-img">
-    <div class="hero-bg-tint"></div>
-  </div>
-  <div class="hero-gradient" data-mouse-gradient aria-hidden="true"></div>
-  <div class="hero-grid" aria-hidden="true"></div>
-  <div class="hero-vignette" aria-hidden="true"></div>
+<!-- ── Hero ────────────────────────────────────────── -->
+<section id="hero">
+  <div id="hero-photo"></div>
+  <div id="hero-ov1"></div>
+  <div id="hero-ov2"></div>
+  <div id="hero-ov3"></div>
+  <div id="hero-noise"></div>
 
-  <div class="hero-content">
-    <div class="hero-badge">
-      <span class="hero-badge-dot" aria-hidden="true"></span>
-      <span>Sistema activo · 7 fuentes satelitales · Tiempo real</span>
+  <div id="hero-content">
+    <div id="hero-badge">
+      <div class="badge-dot"></div>
+      SPIYD · Argentina · Monitoreo Satelital · 24/7
     </div>
-    <h1 class="hero-title">
-      <span class="hero-line">Sistema de Prevención</span>
-      <span class="hero-line hero-line--accent">de Incendios y Deforestación.</span>
-    </h1>
-    <p class="hero-sub hero-sub--kicker">Inteligencia geoespacial en tiempo real</p>
-    <p class="hero-sub">Detección, monitoreo y análisis predictivo de incendios forestales y deforestación en la República Argentina y el Cono Sur de América Latina.</p>
-    <div class="hero-actions">
-      <a href="#" class="btn btn-fire btn-lg" id="hero-login">
-        Ingresar al Sistema →
-      </a>
-      <a href="demo.html" class="btn btn-outline btn-lg">Solicitar Demo</a>
-      <a href="contacto.html" class="btn btn-ghost btn-lg">Contactar Ventas</a>
-      <a href="reunion.html" class="btn btn-ghost btn-lg">Agendar Reunión</a>
+    <h1 id="hero-title">Sistema de Prevención de<br>Incendios y Deforestación</h1>
+    <div id="hero-title-sub">Inteligencia geoespacial en tiempo real</div>
+    <p id="hero-role">
+      Detección <span id="hero-role-word">satelital</span> de incendios en tiempo real para proteger el territorio.
+    </p>
+    <div id="hero-ctas">
+      <a href="https://spiyd.com/login" class="btn-a">Ver el Mapa →</a>
+      <a href="#features" class="btn-b">Conocer el Sistema</a>
     </div>
   </div>
 
-  <div class="hero-scroll-indicator" aria-hidden="true">
+  <div id="scroll-ind">
     <span>Scroll</span>
-    <div class="hero-scroll-line"></div>
+    <div class="sline"></div>
   </div>
 </section>
 
-<!-- METRICS -->
-<section class="metrics" aria-label="Métricas del sistema SPIYD">
-  <div class="metrics-inner">
-    <div class="metric-item">
-      <div class="metric-num-wrap">
-        <span class="metric-num" data-count-to="7">7</span>
-      </div>
-      <span class="metric-label">Fuentes satelitales<br>simultáneas</span>
-    </div>
-    <div class="metric-divider" aria-hidden="true"></div>
-    <div class="metric-item">
-      <div class="metric-num-wrap">
-        <span class="metric-num" data-count-to="3800000" data-suffix="km²">3,8M km²</span>
-      </div>
-      <span class="metric-label">Superficie<br>monitoreable</span>
-    </div>
-    <div class="metric-divider" aria-hidden="true"></div>
-    <div class="metric-item">
-      <div class="metric-num-wrap">
-        <span class="metric-prefix">&lt;</span><span class="metric-num" data-count-to="15">15</span><span class="metric-unit"> min</span>
-      </div>
-      <span class="metric-label">Detección de<br>focos activos</span>
-    </div>
-    <div class="metric-divider" aria-hidden="true"></div>
-    <div class="metric-item">
-      <div class="metric-num-wrap">
-        <span class="metric-num metric-num--text">24/7</span>
-      </div>
-      <span class="metric-label">Monitoreo<br>continuo</span>
-    </div>
-    <div class="metric-divider" aria-hidden="true"></div>
-    <div class="metric-item">
-      <div class="metric-num-wrap">
-        <span class="metric-num" data-count-to="3">3</span>
-      </div>
-      <span class="metric-label">Niveles de<br>suscripción SaaS</span>
-    </div>
+<!-- ── Photo Strip ─────────────────────────────────── -->
+<div id="photo-strip">
+  <div class="strip-photo">
+    <div class="strip-photo-img" style="background-image:url('https://spiyd.com/img/strip-1.jpg')"></div>
+    <div class="strip-photo-label">Detección Activa</div>
   </div>
-</section>
-
-<!-- PROBLEM -->
-<section class="section problem-section" id="problema">
-  <div class="container">
-    <div class="problem-grid">
-      <div class="problem-text">
-        <p class="kicker">El costo de cada hora</p>
-        <h2 class="section-title">El fuego avanza<br><em>a 90 km/h.</em></h2>
-        <p class="section-body">Los incendios forestales son una de las mayores amenazas ambientales, económicas y humanas de América del Sur. En Argentina, más de 900.000 hectáreas ardieron en un solo año. Cada hora sin información precisa es tierra perdida, vidas en riesgo y daño irreversible al ecosistema.</p>
-        <p class="section-body">SPIYD fue diseñado para eliminar ese margen de incertidumbre. No sólo detecta: anticipa, analiza y genera respuestas operativas accionables en minutos.</p>
-      </div>
-      <div class="problem-stats">
-        <div class="problem-stat reveal">
-          <span class="pstat-num">+900.000</span>
-          <span class="pstat-label">hectáreas quemadas en Argentina en un solo año</span>
-        </div>
-        <div class="problem-stat reveal">
-          <span class="pstat-num">70%</span>
-          <span class="pstat-label">de incendios detectables antes de escalar con monitoreo satelital temprano</span>
-        </div>
-        <div class="problem-stat reveal">
-          <span class="pstat-num">USD 2.000M</span>
-          <span class="pstat-label">en pérdidas anuales estimadas para el sector agropecuario regional</span>
-        </div>
-      </div>
-    </div>
-    <div class="problem-image reveal">
-      <img src="assets/img/forest.jpg" alt="Vista aérea de zona forestal afectada por incendio en Argentina">
-      <div class="problem-image-caption">Vista satelital procesada — Región NEA · República Argentina</div>
-    </div>
+  <div class="strip-photo">
+    <div class="strip-photo-img" style="background-image:url('https://spiyd.com/img/strip-2.jpg')"></div>
+    <div class="strip-photo-label">Análisis de Riesgo IA</div>
   </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section class="section how-section" id="como-funciona">
-  <div class="container">
-    <div class="section-header">
-      <p class="kicker">Proceso operativo</p>
-      <h2 class="section-title">De datos brutos a<br><em>decisiones accionables.</em></h2>
-    </div>
-    <div class="steps-grid">
-      <div class="step reveal">
-        <div class="step-num">01</div>
-        <div class="step-icon" aria-hidden="true">⬡</div>
-        <h3 class="step-title">Ingesta Satelital</h3>
-        <p class="step-body">Siete fuentes de datos satelitales activas en forma simultánea. Cobertura continua sin dependencia de ninguna agencia única. Actualización cada 15 minutos en condiciones operativas normales.</p>
-      </div>
-      <div class="step-connector" aria-hidden="true"><div class="step-line"></div></div>
-      <div class="step reveal">
-        <div class="step-num">02</div>
-        <div class="step-icon" aria-hidden="true">◈</div>
-        <h3 class="step-title">Análisis e IA</h3>
-        <p class="step-body">Motor de inteligencia artificial (Claude AI de Anthropic) que correlaciona datos satelitales con variables meteorológicas, cobertura vegetal, cartografía hídrica y algoritmos de riesgo internacionales.</p>
-      </div>
-      <div class="step-connector" aria-hidden="true"><div class="step-line"></div></div>
-      <div class="step reveal">
-        <div class="step-num">03</div>
-        <div class="step-icon" aria-hidden="true">▲</div>
-        <h3 class="step-title">Alerta y Acción</h3>
-        <p class="step-body">Recomendaciones operativas en lenguaje natural, alertas georreferenciadas en tiempo real y reportes estructurados para equipos técnicos y tomadores de decisión institucional.</p>
-      </div>
-    </div>
+  <div class="strip-photo">
+    <div class="strip-photo-img" style="background-image:url('https://spiyd.com/img/strip-3.jpg')"></div>
+    <div class="strip-photo-label">Alertas en Tiempo Real</div>
   </div>
-</section>
+</div>
 
-<!-- TECHNOLOGY -->
-<section class="section tech-section" id="tecnologia">
-  <div class="container">
-    <div class="section-header">
-      <p class="kicker">Infraestructura técnica</p>
-      <h2 class="section-title">Siete fuentes.<br><em>Un sistema unificado.</em></h2>
-      <p class="section-sub">SPIYD integra simultáneamente datos de siete fuentes satelitales internacionales. Es la plataforma más completa de monitoreo de incendios del Cono Sur.</p>
+<!-- ── Features ────────────────────────────────────── -->
+<section id="features">
+  <div class="s-inner">
+    <div class="s-head reveal">
+      <div class="s-eyebrow"><div class="s-eyebrow-line"></div><span class="s-eyebrow-txt">Capacidades del Sistema</span></div>
+      <h2 class="s-h2">Tecnología al servicio de la <span class="di">prevención</span></h2>
+      <p class="s-sub">Integración de satélites, modelos climáticos y análisis de IA para una respuesta rápida y efectiva ante cada amenaza.</p>
     </div>
 
-    <div class="satellites-grid">
-      <div class="sat-card reveal">
-        <div class="sat-agency">NASA</div>
-        <div class="sat-name">FIRMS</div>
-        <div class="sat-desc">Fire Information for Resource Management System. Detección activa de fuego global con resolución de 375 m.</div>
+    <div class="bento">
+      <!-- Card 1 — Mapa (7 col) -->
+      <div class="bcard bc7 reveal d1">
+        <div class="bcard-photo">
+          <div class="bcard-photo-img" style="background-image:url('https://spiyd.com/img/bento-1.jpg')"></div>
+        </div>
+        <div class="bcard-body">
+          <div class="bcard-label">Visualización</div>
+          <div class="bcard-title">Mapa <span class="di">interactivo</span> en vivo</div>
+          <p class="bcard-desc">Focos de calor de NASA FIRMS, capas de viento Leaflet-Velocity, radar meteorológico y vegetación en una sola vista unificada.</p>
+          <div class="bcard-tag"><div class="tdot"></div>Actualización cada 3 horas</div>
+        </div>
       </div>
-      <div class="sat-card reveal">
-        <div class="sat-agency">INPE · Brasil</div>
-        <div class="sat-name">BDQueimadas</div>
-        <div class="sat-desc">Base de datos de quemas del Instituto Nacional de Pesquisas Espaciais de Brasil. Cobertura regional prioritaria.</div>
-      </div>
-      <div class="sat-card reveal">
-        <div class="sat-agency">NOAA</div>
-        <div class="sat-name">GOES-16</div>
-        <div class="sat-desc">Satélite geoestacionario operacional. Cobertura en tiempo casi real de América del Sur y Central.</div>
-      </div>
-      <div class="sat-card reveal">
-        <div class="sat-agency">NOAA / NASA</div>
-        <div class="sat-name">NOAA-20</div>
-        <div class="sat-desc">Satélite de órbita polar con sensor VIIRS de última generación. Detección infrarroja de alta precisión.</div>
-      </div>
-      <div class="sat-card reveal">
-        <div class="sat-agency">EUMETSAT</div>
-        <div class="sat-name">METOP-B/C</div>
-        <div class="sat-desc">Dos satélites meteorológicos europeos con sensores infrarrojos. Complemento indispensable para cobertura polar.</div>
-      </div>
-      <div class="sat-card reveal">
-        <div class="sat-agency">NASA</div>
-        <div class="sat-name">AQUA</div>
-        <div class="sat-desc">Satélite de observación terrestre con sensor MODIS. Análisis espectral de temperatura superficial y humedad.</div>
-      </div>
-      <div class="sat-card reveal">
-        <div class="sat-agency">NASA</div>
-        <div class="sat-name">TERRA</div>
-        <div class="sat-desc">Primera plataforma Earth Observing System. Teledetección multiespectral para análisis de cobertura vegetal.</div>
-      </div>
-    </div>
 
-    <div class="algo-section reveal">
-      <div class="algo-header">
-        <p class="kicker">Algoritmos meteorológicos</p>
-        <h3 class="algo-title">Modelos de riesgo<br>validados internacionalmente.</h3>
+      <!-- Card 2 — IA (5 col) -->
+      <div class="bcard bc5 reveal d2">
+        <div class="bcard-body">
+          <div class="bcard-icon">🧠</div>
+          <div class="bcard-label">Inteligencia Artificial</div>
+          <div class="bcard-title">Análisis de <span class="di">riesgo</span></div>
+          <p class="bcard-desc">Claude AI analiza condiciones climáticas, vegetación y focos activos para generar reportes de riesgo contextualizados por zona y momento.</p>
+          <div class="bcard-tag"><div class="tdot"></div>Claude Haiku · Rate-limited</div>
+        </div>
       </div>
-      <div class="algo-grid">
-        <div class="algo-card">
-          <div class="algo-tag">Regla 30-30-30</div>
-          <p>Temperatura superior a 30°C, humedad relativa inferior al 30%, velocidad del viento mayor a 30 km/h. Combinación crítica para la propagación explosiva de incendios.</p>
+
+      <!-- Card 3 — Alertas (5 col) -->
+      <div class="bcard bc5 reveal d3">
+        <div class="bcard-body">
+          <div class="bcard-icon">🔔</div>
+          <div class="bcard-label">Notificaciones</div>
+          <div class="bcard-title">Alertas <span class="di">automáticas</span></div>
+          <p class="bcard-desc">Notificaciones instantáneas vía Telegram cuando se detectan nuevos focos o cuando el nivel de alerta SMN escala en tu región.</p>
+          <div class="bcard-tag"><div class="tdot"></div>Telegram Bot · Tiempo real</div>
         </div>
-        <div class="algo-card">
-          <div class="algo-tag">Fire Weather Index (FWI)</div>
-          <p>Sistema canadiense de índices de peligro de incendio forestal. Estándar internacional adoptado por más de 60 países. Integrado y georreferenciado en tiempo real.</p>
-        </div>
-        <div class="algo-card">
-          <div class="algo-tag">Cobertura Vegetal</div>
-          <p>Cartografía dinámica de biomasa, densidad forestal e índice NDVI actualizado por escenas satelitales. Correlación automática con riesgo de propagación.</p>
-        </div>
-        <div class="algo-card">
-          <div class="algo-tag">Recursos Hídricos</div>
-          <p>Capa de cuerpos de agua, cursos fluviales y cortafuegos naturales integrada en el modelo predictivo. Análisis de contención georreferenciado.</p>
+      </div>
+
+      <!-- Card 4 — Clima (7 col) -->
+      <div class="bcard bc7 reveal d4">
+        <div class="bcard-body">
+          <div class="bcard-icon">🌬️</div>
+          <div class="bcard-label">Meteorología</div>
+          <div class="bcard-title">Clima y <span class="di">viento</span> en tiempo real</div>
+          <p class="bcard-desc">Open-Meteo para pronóstico de viento, temperatura y humedad. INPE BDQueimadas y RainViewer para correlación de lluvias con riesgo de incendio en todo el Cono Sur.</p>
+          <div class="bcard-tag"><div class="tdot"></div>SMN Argentina · Open-Meteo · INPE</div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- AI SECTION -->
-<section class="section ai-section" id="inteligencia-artificial">
-  <div class="container">
-    <div class="ai-grid">
-      <div class="ai-text reveal">
-        <p class="kicker">Motor de inteligencia artificial</p>
-        <h2 class="section-title">Claude AI.<br><em>Análisis en lenguaje<br>que se entiende.</em></h2>
-        <p class="section-body">SPIYD integra la API de Claude (Anthropic) como motor central de análisis. El sistema no solo detecta: interpreta, correlaciona y genera recomendaciones operativas comprensibles para cualquier perfil de usuario, desde el técnico de campo hasta el funcionario de máxima decisión.</p>
-        <ul class="ai-features">
-          <li><span class="ai-dot" aria-hidden="true"></span>Resúmenes ejecutivos automáticos de situación de riesgo</li>
-          <li><span class="ai-dot" aria-hidden="true"></span>Recomendaciones de evacuación y asignación de recursos</li>
-          <li><span class="ai-dot" aria-hidden="true"></span>Análisis comparativo histórico por región y temporada</li>
-          <li><span class="ai-dot" aria-hidden="true"></span>Generación de informes técnicos y oficiales en minutos</li>
-          <li><span class="ai-dot" aria-hidden="true"></span>Consulta en lenguaje natural sobre cualquier zona del mapa</li>
-          <li><span class="ai-dot" aria-hidden="true"></span>Predicción de propagación con variables meteorológicas en tiempo real</li>
-        </ul>
+<!-- ── Full photo section ───────────────────────────── -->
+<div id="photo-section">
+  <div id="photo-section-bg"></div>
+  <div id="photo-section-ov"></div>
+  <div class="photo-section-content reveal">
+    <div class="photo-section-label">Misión</div>
+    <h2 class="photo-section-title">Cada minuto<br>cuenta.</h2>
+    <p class="photo-section-sub">Los incendios forestales pueden duplicar su tamaño en horas. SPIYD centraliza la información que las brigadas necesitan para actuar antes de que sea tarde.</p>
+    <a href="https://spiyd.com/login" class="btn-a">Ingresar al sistema →</a>
+  </div>
+</div>
+
+<!-- ── Stats ────────────────────────────────────────── -->
+<section id="stats">
+  <div class="s-inner">
+    <div class="stats-grid">
+      <div class="stat reveal">
+        <div class="stat-bar"></div>
+        <div class="stat-num">7+</div>
+        <div class="stat-lbl">Fuentes satelitales<br>integradas</div>
       </div>
-      <div class="ai-terminal reveal" aria-label="Ejemplo de análisis generado por IA">
-        <div class="terminal-header" aria-hidden="true">
-          <span class="terminal-dot terminal-dot--red"></span>
-          <span class="terminal-dot terminal-dot--yellow"></span>
-          <span class="terminal-dot terminal-dot--green"></span>
-          <span class="terminal-title">SPIYD · Análisis IA · 15:47 UTC</span>
-        </div>
-        <div class="terminal-body">
-          <div class="terminal-prompt" aria-hidden="true">
-            <span class="prompt-prefix">$</span> analizar provincia=corrientes timestamp=2026-05-16T15:47Z
-          </div>
-          <div class="terminal-output" role="log">
-            <span class="out-section">▸ ANÁLISIS SPIYD — CORRIENTES</span>
-            <span class="out-normal">Timestamp: 2026-05-16 15:47 UTC · Fuentes: 7/7 ■■■■■■■■■■</span>
-            <span class="out-break"></span>
-            <span class="out-alert">⚠  ALERTA NIVEL 3 — FOCO ACTIVO DETECTADO</span>
-            <span class="out-normal">Coordenadas: -28.4°S / -58.7°W · Superficie: ~340 ha</span>
-            <span class="out-normal">Propagación estimada: 12 km/h dirección NNO</span>
-            <span class="out-break"></span>
-            <span class="out-section">▸ CONDICIONES METEOROLÓGICAS</span>
-            <span class="out-warn">Regla 30-30-30: ACTIVA ■■■■■■■■■■ (EXTREMO)</span>
-            <span class="out-normal">Temp: 36°C · HR: 18% · Viento: 38 km/h NNO</span>
-            <span class="out-normal">FWI Canadiense: 82/100 — clasificación EXTREMA</span>
-            <span class="out-break"></span>
-            <span class="out-section">▸ RECOMENDACIÓN OPERATIVA</span>
-            <span class="out-success">→ Activar Brigada Norte. Coordinar con Defensa Civil.</span>
-            <span class="out-success">→ Evacuar sector residencial radio 8 km.</span>
-            <span class="out-success">→ Bloquear acceso Ruta 12 km 87–94.</span>
-          </div>
-        </div>
+      <div class="stat reveal d2">
+        <div class="stat-bar"></div>
+        <div class="stat-num">24/7</div>
+        <div class="stat-lbl">Monitoreo continuo<br>del territorio argentino</div>
+      </div>
+      <div class="stat reveal d3">
+        <div class="stat-bar"></div>
+        <div class="stat-num">3h</div>
+        <div class="stat-lbl">Latencia máxima<br>de datos NASA FIRMS</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- WHO IT'S FOR -->
-<section class="section audience-section" id="institucional">
-  <div class="container">
-    <div class="section-header">
-      <p class="kicker">Para quién es SPIYD</p>
-      <h2 class="section-title">Diseñado para los que<br><em>toman decisiones críticas.</em></h2>
-    </div>
-    <div class="audience-grid">
-      <div class="audience-card audience-card--state reveal">
-        <div class="audience-icon" aria-hidden="true">⬡</div>
-        <div class="audience-tag">Sector Público</div>
-        <h3 class="audience-title">Organismos del Estado</h3>
-        <ul class="audience-list">
-          <li>Defensa Civil provincial y municipal</li>
-          <li>Secretarías de Ambiente y Desarrollo Sostenible</li>
-          <li>Administración de Parques Nacionales</li>
-          <li>Ministerios de Seguridad y Gestión del Riesgo</li>
-          <li>CONAE y organismos de monitoreo ambiental</li>
-          <li>Municipios en zonas de interfaz urbano-forestal</li>
-        </ul>
-        <a href="contacto.html" class="btn btn-fire audience-btn">Consulta para organismos públicos</a>
-      </div>
-      <div class="audience-card audience-card--private reveal">
-        <div class="audience-icon" aria-hidden="true">◈</div>
-        <div class="audience-tag">Sector Privado</div>
-        <h3 class="audience-title">Empresas y Consultoras</h3>
-        <ul class="audience-list">
-          <li>Compañías aseguradoras del agro y sector forestal</li>
-          <li>Empresas forestales y madereras de gran escala</li>
-          <li>Productores agropecuarios con superficie extensa</li>
-          <li>Consultoras ambientales y de gestión de riesgo</li>
-          <li>Empresas de energía renovable (eólica, solar)</li>
-          <li>Operadoras de infraestructura crítica nacional</li>
-        </ul>
-        <a href="demo.html" class="btn btn-outline audience-btn">Solicitar demostración técnica</a>
-      </div>
-    </div>
+<!-- ── Marquee ──────────────────────────────────────── -->
+<div id="marquee">
+  <div class="mtrack" id="mtrack">
+    <span>Detección</span><span>•</span><span>Alertas</span><span>•</span>
+    <span>Prevención</span><span>•</span><span>Satélite</span><span>•</span>
+    <span>Inteligencia</span><span>•</span><span>Clima</span><span>•</span>
+    <span>Argentina</span><span>•</span><span>Incendios</span><span>•</span>
+    <span>Detección</span><span>•</span><span>Alertas</span><span>•</span>
+    <span>Prevención</span><span>•</span><span>Satélite</span><span>•</span>
+    <span>Inteligencia</span><span>•</span><span>Clima</span><span>•</span>
+    <span>Argentina</span><span>•</span><span>Incendios</span><span>•</span>
   </div>
-</section>
+</div>
 
-<!-- USE CASES -->
-<section class="section cases-section" id="cobertura">
-  <div class="container">
-    <div class="section-header">
-      <p class="kicker">Casos de uso</p>
-      <h2 class="section-title">Una plataforma.<br><em>Múltiples aplicaciones.</em></h2>
-    </div>
-    <div class="cases-grid">
-      <div class="case-card reveal">
-        <div class="case-num">01</div>
-        <h3 class="case-title">Respuesta a Emergencias</h3>
-        <p>Coordinación en tiempo real de brigadas, recursos hídricos y accesos. Reducción comprobada del tiempo de respuesta inicial de horas a minutos.</p>
-      </div>
-      <div class="case-card reveal">
-        <div class="case-num">02</div>
-        <h3 class="case-title">Análisis de Riesgo Asegurador</h3>
-        <p>Evaluación dinámica de exposición de cartera agropecuaria y forestal con datos satelitales actualizados. Cálculo continuo de índice de riesgo por parcela.</p>
-      </div>
-      <div class="case-card reveal">
-        <div class="case-num">03</div>
-        <h3 class="case-title">Monitoreo de Cumplimiento</h3>
-        <p>Verificación satelital de áreas de conservación, reservas naturales y zonas de amortiguamiento para organismos de control y auditoría ambiental.</p>
-      </div>
-      <div class="case-card reveal">
-        <div class="case-num">04</div>
-        <h3 class="case-title">Planificación Territorial</h3>
-        <p>Análisis histórico de incendios y deforestación para planificación de uso del suelo, corredores biológicos y zonificación de interfaz urbano-forestal.</p>
-      </div>
-      <div class="case-card reveal">
-        <div class="case-num">05</div>
-        <h3 class="case-title">Protección de Infraestructura</h3>
-        <p>Monitoreo continuo de corredores de transmisión eléctrica, oleoductos, gasoductos y rutas nacionales en zonas de alto riesgo de incendio forestal.</p>
-      </div>
-      <div class="case-card reveal">
-        <div class="case-num">06</div>
-        <h3 class="case-title">Reporting ESG y Ambiental</h3>
-        <p>Generación automatizada de informes de impacto ambiental, pérdida de cobertura forestal y métricas de huella de carbono para reportes corporativos ESG.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- SATELLITE BG SECTION -->
-<section class="satellite-section">
-  <div class="satellite-bg" aria-hidden="true">
-    <img src="assets/img/bomberos-ruta.jpeg" alt="" class="satellite-img">
-    <div class="satellite-overlay"></div>
-  </div>
-  <div class="container">
-    <div class="satellite-content reveal">
-      <p class="kicker">Cobertura geográfica</p>
-      <h2 class="section-title">Argentina.<br><em>Y el Cono Sur completo.</em></h2>
-      <p class="section-body">SPIYD cubre la totalidad del territorio argentino y se extiende al Cono Sur, incluyendo Chile, Uruguay, Paraguay, Bolivia y el sur de Brasil. Cobertura sin zonas ciegas a resolución de 375 metros por píxel, actualizada en tiempo real.</p>
-      <div class="coverage-tags">
-        <span class="ctag">Argentina</span>
-        <span class="ctag">Chile</span>
-        <span class="ctag">Uruguay</span>
-        <span class="ctag">Paraguay</span>
-        <span class="ctag">Bolivia</span>
-        <span class="ctag">Sur de Brasil</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- TECH STACK -->
-<section class="section stack-section">
-  <div class="container">
-    <div class="section-header">
-      <p class="kicker">Arquitectura del sistema</p>
-      <h2 class="section-title">Tecnología de producción.<br><em>Lista para escalar.</em></h2>
-    </div>
-    <div class="stack-grid">
-      <div class="stack-card reveal">
-        <div class="stack-icon" aria-hidden="true">◉</div>
-        <h3 class="stack-title">Backend robusto</h3>
-        <p>Python/Flask con arquitectura modular. Autenticación, gestión de usuarios, APIs de datos y sistema de auditoría completo. Compatible con Gunicorn + Nginx.</p>
-      </div>
-      <div class="stack-card reveal">
-        <div class="stack-icon" aria-hidden="true">◎</div>
-        <h3 class="stack-title">Cartografía interactiva</h3>
-        <p>Frontend con Leaflet.js para visualización geoespacial. Capas dinámicas, filtros por región, zoom a nivel parcela, exportación de reportes.</p>
-      </div>
-      <div class="stack-card reveal">
-        <div class="stack-icon" aria-hidden="true">⬢</div>
-        <h3 class="stack-title">IA integrada nativamente</h3>
-        <p>Integración directa con la API de Anthropic (Claude AI). Análisis contextual en lenguaje natural. Actualizable con cada nuevo modelo sin rediseño.</p>
-      </div>
-      <div class="stack-card reveal">
-        <div class="stack-icon" aria-hidden="true">▣</div>
-        <h3 class="stack-title">SaaS escalable</h3>
-        <p>Tres niveles de suscripción con modelos de facturación diferenciados. Compatible con AWS, GCP, Azure o infraestructura propia del cliente.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CONTACT SECTION -->
-<section class="section contact-section" id="contacto-section">
-  <div class="container">
-    <div class="contact-grid">
-      <div class="contact-text reveal">
-        <p class="kicker">Siguiente paso</p>
-        <h2 class="section-title">¿Listo para<br><em>empezar?</em></h2>
-        <p class="section-body">El equipo de SPIYD trabaja directamente con cada cliente para configurar el sistema según su cobertura geográfica, nivel de acceso y necesidades operativas específicas. Sin costos de implementación ocultos.</p>
-        <div class="contact-options">
-          <div class="contact-option">
-            <span class="contact-option-icon" aria-hidden="true">⬡</span>
-            <div>
-              <strong>Demo personalizada</strong>
-              <p>30 minutos. Mostramos el sistema sobre datos reales de tu área de interés.</p>
-              <a href="demo.html" class="link-arrow">Solicitar demo →</a>
-            </div>
-          </div>
-          <div class="contact-option">
-            <span class="contact-option-icon" aria-hidden="true">◈</span>
-            <div>
-              <strong>Hablar con ventas</strong>
-              <p>Para propuestas institucionales, integraciones API y acuerdos marco de largo plazo.</p>
-              <a href="contacto.html" class="link-arrow">Contactar ventas →</a>
-            </div>
-          </div>
-          <div class="contact-option">
-            <span class="contact-option-icon" aria-hidden="true">▲</span>
-            <div>
-              <strong>Agendar reunión técnica</strong>
-              <p>Reunión con el equipo de ingeniería, en el horario que te sea conveniente.</p>
-              <a href="reunion.html" class="link-arrow">Agendar reunión →</a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="contact-form-wrapper reveal">
-        <form class="contact-form" id="contact-form" novalidate>
-          <h3 class="form-title">Contacto rápido</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="cf-nombre">Nombre completo</label>
-              <input type="text" id="cf-nombre" name="nombre" placeholder="Juan Rodríguez" required autocomplete="name">
-            </div>
-            <div class="form-group">
-              <label for="cf-org">Organismo / Empresa</label>
-              <input type="text" id="cf-org" name="organismo" placeholder="Defensa Civil Salta" required autocomplete="organization">
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="cf-email">Correo electrónico</label>
-            <input type="email" id="cf-email" name="email" placeholder="juan@ejemplo.gov.ar" required autocomplete="email">
-          </div>
-          <div class="form-group">
-            <label for="cf-tipo">Tipo de organización</label>
-            <select id="cf-tipo" name="tipo" required>
-              <option value="" disabled selected>Seleccionar…</option>
-              <option>Organismo estatal provincial</option>
-              <option>Organismo estatal nacional</option>
-              <option>Municipio</option>
-              <option>Empresa privada</option>
-              <option>Compañía aseguradora</option>
-              <option>Consultora ambiental</option>
-              <option>Productora agropecuaria</option>
-              <option>Otro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="cf-mensaje">¿Qué necesitás monitorear?</label>
-            <textarea id="cf-mensaje" name="mensaje" rows="3" placeholder="Ej: Zona boscosa en el norte de Misiones, aprox. 80.000 ha de campo…"></textarea>
-          </div>
-          <button type="submit" class="btn btn-fire btn-full">
-            <span class="btn-text">Enviar consulta</span>
-            <span class="btn-loading" aria-hidden="true">Enviando…</span>
-          </button>
-          <div class="form-success" role="alert" aria-live="polite">
-            <span class="success-icon" aria-hidden="true">✓</span>
-            <p>Consulta recibida. El equipo SPIYD responde en 24–48 hs hábiles.</p>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer class="footer">
+<!-- ── Footer ───────────────────────────────────────── -->
+<footer id="footer">
+  <div id="footer-photo"></div>
+  <div id="footer-ov"></div>
   <div class="footer-inner">
-    <div class="footer-top">
-      <div class="footer-brand">
-        <div class="footer-logo">
-          <span class="footer-logo-mark" aria-hidden="true">⬡</span>SPIYD
-        </div>
-        <p class="footer-tagline">Inteligencia geoespacial en tiempo real.<br>Argentina y el Cono Sur de América Latina.</p>
-      </div>
-      <div class="footer-links">
-        <div class="footer-col">
-          <h4>Sistema</h4>
-          <ul>
-            <li><a href="#tecnologia">Fuentes satelitales</a></li>
-            <li><a href="#como-funciona">Cómo funciona</a></li>
-            <li><a href="#inteligencia-artificial">Inteligencia artificial</a></li>
-            <li><a href="#cobertura">Cobertura geográfica</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Clientes</h4>
-          <ul>
-            <li><a href="#institucional">Sector público</a></li>
-            <li><a href="#institucional">Sector privado</a></li>
-            <li><a href="#cobertura">Casos de uso</a></li>
-            <li><a href="demo.html">Solicitar demo</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Acceso</h4>
-          <ul>
-            <li><a href="#" id="footer-login">Ingresar al sistema</a></li>
-            <li><a href="contacto.html">Contactar ventas</a></li>
-            <li><a href="reunion.html">Agendar reunión</a></li>
-            <li><a href="contacto.html">Soporte técnico</a></li>
-          </ul>
-        </div>
-      </div>
+    <div class="footer-cta reveal">
+      <p class="footer-eyebrow">¿Necesitás acceso?</p>
+      <h2 class="footer-big">Proteger<br>el territorio.</h2>
+      <a href="https://spiyd.com/login" class="btn-a">Ingresar al sistema ↗</a>
     </div>
-    <div class="footer-bottom">
-      <p class="footer-legal">© 2026 SPIYD. Plataforma de inteligencia geoespacial. República Argentina.</p>
-      <p class="footer-credit">Datos satelitales: NASA · INPE · NOAA · EUMETSAT · IA: Anthropic Claude</p>
+    <div class="footer-bar">
+      <span>© 2026 SPIYD · Sistema de Prevención de Incendios y Detección</span>
+      <div class="flinks">
+        <a href="https://spiyd.com/login">Acceder</a>
+        <a href="#features">Sistema</a>
+        <a href="#stats">Datos</a>
+        <a href="https://spiyd.com/precios">Precios</a>
+      </div>
+      <div class="fstatus"><div class="fdot"></div><span>Sistema operativo</span></div>
     </div>
   </div>
 </footer>
 
-<script defer src="lib/gsap.min.js?v=20260517"></script>
-<script defer src="lib/ScrollTrigger.min.js?v=20260517"></script>
-<script defer src="main.js?v=20260517"></script>
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+// ── Loading ────────────────────────────────────────────
+(function(){
+  const screen  = document.getElementById('loading');
+  const wordEl  = document.getElementById('load-word');
+  const counter = document.getElementById('load-counter');
+  const bar     = document.getElementById('load-bar-fill');
+
+  const words = ['Monitoreo','Alertas','Protección','Detección'];
+  let wi = 0;
+  const start = performance.now();
+  const dur   = 2600;
+
+  setTimeout(() => screen.classList.add('ready'), 80);
+
+  const wi_int = setInterval(() => {
+    wordEl.classList.add('fade');
+    setTimeout(() => {
+      wi = (wi+1) % words.length;
+      wordEl.textContent = words[wi];
+      wordEl.classList.remove('fade');
+    }, 250);
+  }, 850);
+
+  (function tick(now){
+    const n = Math.min(100, Math.round((now - start) / dur * 100));
+    counter.textContent = String(n).padStart(3,'0');
+    bar.style.width = n + '%';
+    if(n < 100){
+      requestAnimationFrame(tick);
+    } else {
+      clearInterval(wi_int);
+      setTimeout(() => {
+        screen.classList.add('out');
+        initAnimations();
+      }, 350);
+    }
+  })(start);
+})();
+
+// ── Navbar scroll ──────────────────────────────────────
+window.addEventListener('scroll', () => {
+  document.getElementById('nav-pill').classList.toggle('scrolled', scrollY > 80);
+});
+
+// ── Hero photo: CSS animation handles Ken Burns (no JS needed) ──
+
+// ── GSAP hero entrance ─────────────────────────────────
+function initAnimations(){
+  gsap.fromTo('#hero-badge',
+    { opacity:0, y:20, filter:'blur(8px)' },
+    { opacity:1, y:0, filter:'blur(0px)', duration:0.9, ease:'power3.out', delay:0.1 }
+  );
+  gsap.fromTo('#hero-title',
+    { opacity:0, y:60 },
+    { opacity:1, y:0, duration:1.3, ease:'power3.out', delay:0.2 }
+  );
+  gsap.fromTo('#hero-title-sub',
+    { opacity:0, y:30 },
+    { opacity:1, y:0, duration:1, ease:'power3.out', delay:0.4 }
+  );
+  gsap.fromTo(['#hero-role','#hero-ctas'],
+    { opacity:0, y:20, filter:'blur(6px)' },
+    { opacity:1, y:0, filter:'blur(0px)', duration:1, stagger:0.15, ease:'power3.out', delay:0.55 }
+  );
+
+  // Role word cycling
+  const roles = ['satelital','predictiva','continua','geoespacial'];
+  let ri = 0;
+  const rw = document.getElementById('hero-role-word');
+  setInterval(() => {
+    rw.style.opacity = '0'; rw.style.transform = 'translateY(-8px)';
+    setTimeout(() => {
+      ri = (ri+1) % roles.length;
+      rw.textContent = roles[ri];
+      rw.style.transition = 'none'; rw.style.opacity='0'; rw.style.transform='translateY(8px)';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        rw.style.transition = 'opacity .4s, transform .4s';
+        rw.style.opacity='1'; rw.style.transform='translateY(0)';
+      }));
+    }, 200);
+  }, 2200);
+
+  // Scroll reveals
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('on'); });
+  }, { rootMargin: '-60px' });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+  // Marquee
+  gsap.to('#mtrack', { xPercent: -50, duration: 35, ease: 'none', repeat: -1 });
+
+  // Parallax suave en hero (solo translateY, no interfiere con Ken Burns en scale)
+  gsap.to('#hero-photo', {
+    y: '12%',
+    ease: 'none',
+    scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true }
+  });
+
+  // Counter animate on scroll
+  document.querySelectorAll('.stat-num').forEach(el => {
+    const txt = el.textContent;
+    if(!/\d/.test(txt)) return;
+    const num = parseFloat(txt);
+    const suffix = txt.replace(/[\d.]/g,'');
+    ScrollTrigger.create({
+      trigger: el, start: 'top 85%', once: true,
+      onEnter(){
+        gsap.fromTo({v:0}, {v:num}, {
+          duration: 1.8, ease: 'power2.out',
+          onUpdate() { el.textContent = (this.targets()[0].v % 1 === 0 ? Math.round(this.targets()[0].v) : this.targets()[0].v.toFixed(0)) + suffix; }
+        });
+      }
+    });
+  });
+}
+</script>
 </body>
 </html>
