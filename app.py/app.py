@@ -60,7 +60,7 @@ with app.app_context():
 
 @app.route('/')
 def landing():
-    return render_template('landing.html')
+    return send_from_directory(BASE_DIR, 'landing_premium.html')
 
 @app.route('/mapa')
 @login_required
