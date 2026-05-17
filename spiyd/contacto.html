@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contactar Ventas — SPIYD</title>
+  <meta name="description" content="Contacte al equipo comercial de SPIYD para propuestas institucionales, integraciones y acuerdos marco.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260516">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav is-solid" id="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">
+      <span class="nav-logo-mark">⬡</span>SPIYD
+    </a>
+    <ul class="nav-links">
+      <li><a href="index.html#tecnologia">Tecnología</a></li>
+      <li><a href="index.html#institucional">Para quién</a></li>
+      <li><a href="index.html#cobertura">Casos de uso</a></li>
+      <li><a href="index.html#contacto-section">Contacto</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="#" class="btn btn-ghost btn-sm" id="btn-login">Ingresar al sistema</a>
+      <a href="demo.html" class="btn btn-fire btn-sm">Solicitar Demo</a>
+    </div>
+    <button class="nav-hamburger" aria-label="Menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="nav-mobile">
+    <ul>
+      <li><a href="index.html#tecnologia">Tecnología</a></li>
+      <li><a href="index.html#institucional">Para quién</a></li>
+      <li><a href="index.html#cobertura">Casos de uso</a></li>
+    </ul>
+    <div class="nav-mobile-actions">
+      <a href="index.html" class="btn btn-outline btn-full">Volver al inicio</a>
+      <a href="demo.html" class="btn btn-fire btn-full">Solicitar Demo</a>
+    </div>
+  </div>
+</nav>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="page-hero-gradient" aria-hidden="true"></div>
+  <div class="page-hero-grid" aria-hidden="true"></div>
+  <div class="container">
+    <a href="index.html" class="back-link">← Volver al inicio</a>
+    <p class="kicker">Equipo comercial</p>
+    <h1 class="page-title">Contactar<br><em>Ventas.</em></h1>
+    <p class="page-sub">Para propuestas institucionales, integraciones de API, acuerdos marco y negociaciones de largo plazo. El equipo responde en 24–48 hs hábiles.</p>
+  </div>
+</section>
+
+<!-- FORM -->
+<section class="form-page">
+  <div class="form-page-inner">
+    <div class="form-page-card">
+      <h2 class="form-page-title">Consulta comercial</h2>
+      <p class="form-page-sub">Cuéntenos sobre su organización y sus necesidades. Elaboramos propuestas a medida según cobertura geográfica, cantidad de usuarios y nivel de integración requerido.</p>
+
+      <form data-subpage-form novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="c-nombre">Nombre completo</label>
+            <input type="text" id="c-nombre" name="nombre" placeholder="María González" required autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label for="c-cargo">Cargo</label>
+            <input type="text" id="c-cargo" name="cargo" placeholder="Gerente de Operaciones" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="c-org">Organismo / Empresa</label>
+            <input type="text" id="c-org" name="organismo" placeholder="Ministerio de Seguridad" required autocomplete="organization">
+          </div>
+          <div class="form-group">
+            <label for="c-tipo">Tipo de organización</label>
+            <select id="c-tipo" name="tipo" required>
+              <option value="" disabled selected>Seleccionar…</option>
+              <option>Organismo estatal nacional</option>
+              <option>Organismo estatal provincial</option>
+              <option>Municipio / ente municipal</option>
+              <option>Empresa privada nacional</option>
+              <option>Empresa privada multinacional</option>
+              <option>Compañía aseguradora</option>
+              <option>Empresa forestal / maderera</option>
+              <option>Productora agropecuaria</option>
+              <option>Consultora ambiental</option>
+              <option>Empresa de infraestructura / energía</option>
+              <option>Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="c-email">Correo electrónico</label>
+            <input type="email" id="c-email" name="email" placeholder="mgonzalez@ministerio.gob.ar" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="c-tel">Teléfono de contacto</label>
+            <input type="tel" id="c-tel" name="telefono" placeholder="+54 11 0000 0000" autocomplete="tel">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="c-cobertura">Cobertura geográfica requerida</label>
+          <input type="text" id="c-cobertura" name="cobertura" placeholder="Ej: Provincias de Chaco, Formosa y norte de Santa Fe" required>
+        </div>
+        <div class="form-group">
+          <label for="c-usuarios">Cantidad estimada de usuarios</label>
+          <select id="c-usuarios" name="usuarios">
+            <option value="" disabled selected>Seleccionar…</option>
+            <option>1–5 usuarios</option>
+            <option>6–20 usuarios</option>
+            <option>21–50 usuarios</option>
+            <option>Más de 50 usuarios</option>
+            <option>No lo sé aún</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="c-integracion">¿Requiere integración con sistemas propios?</label>
+          <select id="c-integracion" name="integracion">
+            <option value="" disabled selected>Seleccionar…</option>
+            <option>Sí, tenemos sistemas propios a integrar</option>
+            <option>Posiblemente, evaluar en propuesta</option>
+            <option>No, usaremos SPIYD como plataforma independiente</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="c-mensaje">Descripción de la necesidad</label>
+          <textarea id="c-mensaje" name="mensaje" rows="4" placeholder="Cuéntenos qué necesita monitorear, con qué urgencia, y cualquier detalle relevante para armar una propuesta específica…" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-fire btn-full" style="padding-top:1rem;padding-bottom:1rem;font-size:1rem;">
+          <span class="btn-text">Enviar consulta comercial</span>
+          <span class="btn-loading" aria-hidden="true">Enviando…</span>
+        </button>
+        <div class="form-success" role="alert" aria-live="polite">
+          <span class="success-icon" aria-hidden="true">✓</span>
+          <p>Consulta recibida. El equipo comercial SPIYD responde con una propuesta en 24–48 hs hábiles.</p>
+        </div>
+      </form>
+    </div>
+
+    <div style="margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap;">
+      <a href="demo.html" class="btn btn-outline">Solicitar demo primero</a>
+      <a href="reunion.html" class="btn btn-ghost">Agendar reunión</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-bottom" style="padding-top:0;border-top:none;">
+      <p class="footer-legal">© 2026 SPIYD. Plataforma de inteligencia geoespacial. República Argentina.</p>
+      <a href="index.html" class="footer-legal" style="color:var(--fire);">← Volver al inicio</a>
+    </div>
+  </div>
+</footer>
+
+<script defer src="lib/gsap.min.js?v=20260516"></script>
+<script defer src="main.js?v=20260516"></script>
+</body>
+</html>
