@@ -417,6 +417,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
   <script src="https://unpkg.com/leaflet-velocity/dist/leaflet-velocity.min.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
   <script>
     // ── Constantes ──────────────────────────────────────────────────────────
@@ -1033,20 +1034,20 @@
 
     function renderizarZonasRiesgo(datos) {
       capaRiesgo30.clearLayers();
+      const puntos = [];
       datos.forEach(d => {
-        const f = d.factores_30||0; if (!f) return;
-        const cfg = f===3 ? {fc:'#e53935',fo:.50,bc:'#e53935'} : f===2 ? {fc:'#ff8f00',fo:.38,bc:'#fb8c00'} : {fc:'#fdd835',fo:.22,bc:'#fdd835'};
-        const half=1.5;
-        const r=L.rectangle([[d.lat-half,d.lon-half],[d.lat+half,d.lon+half]],{fillColor:cfg.fc,fillOpacity:cfg.fo,color:cfg.bc,weight:.5,renderer:L.canvas()});
-        r.bindPopup(`<div style="font-family:monospace;font-size:11px;">
-          <b style="color:${cfg.bc};">⚡ Zona 30-30-30 — ${f}/3 condiciones</b><br>
-          🌡 Temp: ${d.temp!==null?d.temp+'°C':'N/D'} ${d.temp!==null&&d.temp>=30?'✓':'✗'}<br>
-          💨 Viento: ${d.wind_speed!==null?d.wind_speed+' km/h':'N/D'} ${d.wind_speed!==null&&d.wind_speed>=30?'✓':'✗'}<br>
-          💧 Humedad: ${d.humidity!==null?d.humidity+'%':'N/D'} ${d.humidity!==null&&d.humidity<=30?'✓':'✗'}<br>
-          <small style="color:#888;">Lat ${d.lat} | Lon ${d.lon}</small>
-        </div>`);
-        capaRiesgo30.addLayer(r);
+        const f = d.factores_30 || 0;
+        if (!f) return;
+        puntos.push([d.lat, d.lon, f / 3]);
       });
+      if (!puntos.length) return;
+      const heat = L.heatLayer(puntos, {
+        radius: 90,
+        blur: 50,
+        max: 1.0,
+        gradient: { 0.33: '#fdd835', 0.66: '#ff8f00', 1.0: '#e53935' }
+      });
+      capaRiesgo30.addLayer(heat);
       if (!mapa.hasLayer(capaRiesgo30)) mapa.addLayer(capaRiesgo30);
       document.getElementById('togRiesgo').checked = true;
     }
