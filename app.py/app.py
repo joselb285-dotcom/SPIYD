@@ -100,6 +100,11 @@ def mapa():
     html = html.replace('__MAPTILER_KEY__', maptiler_key)
     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
+@app.route('/provincias-arg.geojson')
+def provincias_geojson():
+    return send_from_directory(BASE_DIR, 'provincias_arg.geojson',
+                               mimetype='application/json')
+
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "")
 NASA_MAP_KEY = os.environ.get("NASA_MAP_KEY", "")

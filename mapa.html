@@ -553,10 +553,7 @@
     }
 
     // ── GeoJSON provincias ──────────────────────────────────────────────────
-    const GJ_URLS = [
-      'https://raw.githubusercontent.com/juanmansilla/Argentina-Geojson/master/argentina-provincias.geojson',
-      'https://api.allorigins.win/raw?url=https%3A%2F%2Finfra.datos.gob.ar%2Fcatalog%2Fotros%2Fdataset%2F2%2Fdistribution%2F2.4%2Fdownload%2Fprovincias.geojson'
-    ];
+    const GJ_URLS = [`${BACKEND}/provincias-arg.geojson`];
     async function cargarGeoJSON() {
       if (geojsonArg) return geojsonArg;
       for (const u of GJ_URLS) {
