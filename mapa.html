@@ -449,7 +449,7 @@
         { attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; OpenStreetMap', maxZoom:19, maxNativeZoom:19 }
       )
     };
-    basemaps["🛰 Satelital"].addTo(mapa);
+    basemaps["🗺 Calles"].addTo(mapa);
 
     // ── Capas de overlay ────────────────────────────────────────────────────
     const clusterFocos  = L.markerClusterGroup({ spiderfyOnMaxZoom:true, showCoverageOnHover:false, zoomToBoundsOnClick:true, chunkedLoading:true, maxClusterRadius:50 });
@@ -917,18 +917,85 @@
       }
     }
 
+    const REGION_PROVINCIAS = {
+      'patagonia':   ['Neuquén','Río Negro','Chubut','Santa Cruz','Tierra del Fuego'],
+      'noa':         ['Salta','Jujuy','Tucumán','Catamarca','La Rioja','Santiago del Estero'],
+      'nea':         ['Corrientes','Misiones','Formosa','Chaco'],
+      'cuyo':        ['Mendoza','San Juan','San Luis'],
+      'centro':      ['Córdoba','Santa Fe','Buenos Aires','Entre Ríos','La Pampa'],
+      'litoral':     ['Corrientes','Misiones','Entre Ríos','Santa Fe','Chaco','Formosa'],
+      'mesopotamia': ['Corrientes','Entre Ríos','Misiones'],
+      'puna':        ['Jujuy','Salta'],
+      'andino':      ['Mendoza','San Juan','Neuquén','Río Negro','Chubut'],
+      'pampa':       ['Buenos Aires','La Pampa','Santa Fe'],
+      'buenosaires': ['Buenos Aires'],
+      'cordoba':     ['Córdoba'],
+      'santafe':     ['Santa Fe'],
+      'mendoza':     ['Mendoza'],
+      'salta':       ['Salta'],
+      'jujuy':       ['Jujuy'],
+      'tucuman':     ['Tucumán'],
+      'entrerios':   ['Entre Ríos'],
+      'corrientes':  ['Corrientes'],
+      'misiones':    ['Misiones'],
+      'chaco':       ['Chaco'],
+      'formosa':     ['Formosa'],
+      'santiagodel': ['Santiago del Estero'],
+      'lapampa':     ['La Pampa'],
+      'sanjuan':     ['San Juan'],
+      'sanluis':     ['San Luis'],
+      'catamarca':   ['Catamarca'],
+      'larioja':     ['La Rioja'],
+      'neuquen':     ['Neuquén'],
+      'rionegro':    ['Río Negro'],
+      'chubut':      ['Chubut'],
+      'santacruz':   ['Santa Cruz'],
+      'tierradelfuego': ['Tierra del Fuego'],
+    };
+
     async function renderizarCapasSMN(alertas) {
       capasAlertaSMN.clearLayers();
       const gd = await cargarGeoJSON(); if (!gd) return;
       const prio = { rojo:4, naranja:3, amarillo:2, verde:1 }, nivelProv = {};
+
+      function asignar(prov, nivel) {
+        if (!nivelProv[prov] || prio[nivel] > prio[nivelProv[prov]]) nivelProv[prov] = nivel;
+      }
+
       alertas.forEach(a => {
+        // 1. buscar nombres de provincia en el texto
         const txt = normProv(a.title+' '+a.description+' '+(a.category||[]).join(' '));
-        PROVINCIAS.forEach(p => { if (txt.includes(normProv(p)) && (!nivelProv[p] || prio[a.nivel]>prio[nivelProv[p]])) nivelProv[p]=a.nivel; });
+        PROVINCIAS.forEach(p => { if (txt.includes(normProv(p))) asignar(p, a.nivel); });
+
+        // 2. extraer región del link (ej: CAP_20260515_Viento_Patagonia_alertas_5.xml)
+        if (a.link) {
+          const m = a.link.match(/CAP_\d+_[^_]+_([^_]+(?:_[^_]+)?)_alertas/i);
+          if (m) {
+            const region = m[1].toLowerCase().replace(/[_\s-]/g,'');
+            const provs = REGION_PROVINCIAS[region] || [];
+            provs.forEach(p => asignar(p, a.nivel));
+          }
+        }
+
+        // 3. buscar nombre de región en el texto como fallback
+        Object.entries(REGION_PROVINCIAS).forEach(([region, provs]) => {
+          if (txt.includes(region)) provs.forEach(p => asignar(p, a.nivel));
+        });
       });
+
       if (!Object.keys(nivelProv).length) return;
       L.geoJSON(gd, {
-        style: f => { const m=Object.keys(nivelProv).find(p=>normProv(p)===normProv(nomFeat(f.properties))); return m ? colorAlerta[nivelProv[m]] : {fillOpacity:0,opacity:0}; },
-        onEachFeature: (f,l) => { const g=nomFeat(f.properties),m=Object.keys(nivelProv).find(p=>normProv(p)===normProv(g)); if(!m)return; const nv=nivelProv[m]; l.bindPopup(`<b>${g}</b><br>Alerta: <b style="color:${colorAlerta[nv].color}">${nv.toUpperCase()}</b>`); }
+        style: f => {
+          const m = Object.keys(nivelProv).find(p => normProv(p) === normProv(nomFeat(f.properties)));
+          return m ? colorAlerta[nivelProv[m]] : { fillOpacity:0, opacity:0 };
+        },
+        onEachFeature: (f,l) => {
+          const g = nomFeat(f.properties);
+          const m = Object.keys(nivelProv).find(p => normProv(p) === normProv(g));
+          if (!m) return;
+          const nv = nivelProv[m];
+          l.bindPopup(`<b>${g}</b><br>Alerta SMN: <b style="color:${colorAlerta[nv].color}">${nv.toUpperCase()}</b>`);
+        }
       }).addTo(capasAlertaSMN);
     }
 
