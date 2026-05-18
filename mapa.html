@@ -1495,7 +1495,8 @@
         </div>`);
         capaFWI.addLayer(r);
       });
-      if (document.getElementById('togFWI').checked && !mapa.hasLayer(capaFWI)) mapa.addLayer(capaFWI);
+      if (!mapa.hasLayer(capaFWI)) mapa.addLayer(capaFWI);
+      document.getElementById('togFWI').checked = true;
 
       const maxFWI = Math.max(...datos.filter(d=>d.fwi!==null).map(d=>d.fwi), 0);
       document.getElementById('numFWI').textContent = maxFWI > 0 ? maxFWI : '—';
