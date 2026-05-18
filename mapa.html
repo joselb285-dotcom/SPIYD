@@ -742,7 +742,7 @@
       if (radarActivo) {
         radarActivo = false;
         radarDetener();
-        radarFrames.forEach(f => { if (f.layer && mapa.hasLayer(f.layer)) mapa.removeLayer(f.layer); });
+        radarFrames.forEach(f => { try { mapa.removeLayer(f.layer); } catch(_){} });
         radarFrames = [];
         document.getElementById('radarAnimPanel').style.display = 'none';
         document.getElementById('radarStatus').textContent = 'Radar ocultado.';
@@ -769,40 +769,41 @@
         const past = data.radar?.past || [];
         if (!past.length) return false;
 
+        // Crear todas las capas y agregarlas al mapa a opacity 0
+        // para que los tiles precarguen en background
         radarFrames = past.map(f => ({
           time:  f.time,
           path:  f.path,
           layer: L.tileLayer(
-            `https://tilecache.rainviewer.com${f.path}/256/{z}/{x}/{y}/2/1_1.png`,
-            { opacity:0.65, maxZoom:19, maxNativeZoom:12, zIndex:480,
-              attribution:'RainViewer' }
+            `https://tilecache.rainviewer.com${f.path}/256/{z}/{x}/{y}/6/1_1.png`,
+            { opacity:0, maxZoom:19, maxNativeZoom:12, zIndex:480, attribution:'RainViewer' }
           )
         }));
+
+        // Agregar TODOS al mapa con opacity 0 → tiles cargan en paralelo
+        radarFrames.forEach(f => mapa.addLayer(f.layer));
 
         // Slider
         const sl = document.getElementById('radarSlider');
         sl.max = radarFrames.length - 1;
 
-        // Label inicio
         const t0 = new Date(radarFrames[0].time * 1000);
         document.getElementById('radarT0').textContent =
           t0.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
 
         document.getElementById('radarAnimPanel').style.display = 'block';
 
-        // Mostrar último frame y arrancar animación
-        radarFrameIdx = 0;
-        radarMostrarFrame(0);
-        radarArrancar();
+        // Esperar 1.5s para que los tiles más recientes carguen, luego arrancar
+        radarFrameIdx = radarFrames.length - 1;
+        radarMostrarFrame(radarFrameIdx);
+        setTimeout(() => { radarFrameIdx = 0; radarArrancar(); }, 1500);
         return true;
       } catch(e) { console.error(e); return false; }
     }
 
     function radarMostrarFrame(idx) {
-      radarFrames.forEach((f, i) => {
-        if (i === idx) { if (!mapa.hasLayer(f.layer)) mapa.addLayer(f.layer); }
-        else           { if (f.layer && mapa.hasLayer(f.layer)) mapa.removeLayer(f.layer); }
-      });
+      // Solo cambia opacity — los tiles ya están cargados en background
+      radarFrames.forEach((f, i) => f.layer.setOpacity(i === idx ? 0.7 : 0));
       radarFrameIdx = idx;
       const ts = new Date(radarFrames[idx].time * 1000);
       document.getElementById('radarTimestamp').textContent =
@@ -860,7 +861,7 @@
       if (mapa.hasLayer(capaPrecipMap)) mapa.removeLayer(capaPrecipMap);
       if (radarActivo) {
         radarDetener();
-        radarFrames.forEach(f => { if (f.layer && mapa.hasLayer(f.layer)) mapa.removeLayer(f.layer); });
+        radarFrames.forEach(f => { try { mapa.removeLayer(f.layer); } catch(_){} });
         radarActivo = false;
         document.getElementById('radarAnimPanel').style.display = 'none';
         document.getElementById('btnRadarAnim').textContent = '📡 Radar animado';
