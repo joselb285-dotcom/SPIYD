@@ -73,9 +73,7 @@ with app.app_context():
 
 @app.route('/')
 def landing():
-    if current_user.is_authenticated:
-        return redirect(url_for('mapa'))
-    return redirect(url_for('auth.login'))
+    return send_from_directory(DOCS_DIR, 'index.html')
 
 @app.route('/styles.css')
 def docs_styles():
