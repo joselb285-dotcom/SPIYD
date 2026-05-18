@@ -1706,6 +1706,48 @@
     }
 
     // ── Análisis IA ──────────────────────────────────────────────────────────
+    const IA_SECCIONES = [
+      { emoji:'🚨', color:'#e53935', bg:'rgba(229,57,53,0.13)'  },
+      { emoji:'📍', color:'#ff6f00', bg:'rgba(255,111,0,0.12)'  },
+      { emoji:'💧', color:'#0288d1', bg:'rgba(2,136,209,0.12)'  },
+      { emoji:'🌿', color:'#388e3c', bg:'rgba(56,142,60,0.13)'  },
+      { emoji:'🚗', color:'#8d6e63', bg:'rgba(141,110,99,0.13)' },
+      { emoji:'⚡', color:'#f9a825', bg:'rgba(249,168,37,0.12)' },
+    ];
+
+    function renderIAAnalysis(text) {
+      const lines = text.split('\n');
+      const sections = [];
+      let cur = null;
+      for (const line of lines) {
+        const m = line.match(/^\s*\d\.\s*([\u{1F300}-\u{1FAFF}]|\S+)\s*([^:]+):\s*(.*)/u);
+        if (m) {
+          if (cur) sections.push(cur);
+          cur = { title: m[2].trim(), content: m[3].trim() };
+        } else if (cur && line.trim()) {
+          cur.content += ' ' + line.trim();
+        }
+      }
+      if (cur) sections.push(cur);
+
+      if (!sections.length) return `<div class="ia-resultado" style="white-space:pre-wrap;font-size:11px;">${text}</div>`;
+
+      return sections.map((s, i) => {
+        const meta = IA_SECCIONES[i] || { color:'#aaa', bg:'rgba(255,255,255,0.05)' };
+        let contentColor = '#ccc';
+        if (i === 0) {
+          if (s.content.includes('CRÍTICO'))  contentColor = '#ef5350';
+          else if (s.content.includes('ALTO'))      contentColor = '#ffa726';
+          else if (s.content.includes('MODERADO'))  contentColor = '#fdd835';
+          else if (s.content.includes('BAJO'))      contentColor = '#66bb6a';
+        }
+        return `<div style="margin-bottom:8px;padding:9px 12px;background:${meta.bg};border-left:3px solid ${meta.color};border-radius:4px;">
+          <div style="font-weight:700;color:${meta.color};font-size:10px;letter-spacing:.6px;margin-bottom:3px;">${meta.emoji} ${s.title.toUpperCase()}</div>
+          <div style="color:${contentColor};font-size:11.5px;line-height:1.55;">${s.content}</div>
+        </div>`;
+      }).join('');
+    }
+
     async function ejecutarAnalisisIA() {
       const btn=document.getElementById('btnIA'), div=document.getElementById('iaResultado');
       const sec=document.getElementById('secIA');
@@ -1716,21 +1758,31 @@
       }
 
       btn.disabled=true; btn.textContent='⏳ Analizando…';
-      div.innerHTML='<div class="ia-loading"><div class="spinner"></div> Consultando Claude IA (análisis completo)…</div>';
+      div.innerHTML='<div class="ia-loading"><div class="spinner"></div> Consultando Claude IA…</div>';
 
       try {
-        const maxFWI = datosFWI.length ? Math.max(...datosFWI.filter(d=>d.fwi!==null).map(d=>d.fwi), 0) : 0;
+        const fwiValidos = datosFWI.filter(d=>d.fwi!==null);
+        const maxFWI     = fwiValidos.length ? Math.max(...fwiValidos.map(d=>d.fwi), 0) : 0;
+        const dias       = parseInt(document.getElementById('dias')?.value || '1');
+
         const body = {
-          weather:      datosClima,
-          fire_count:   ultimoFocos,
-          fire_points:  firePts.slice(0, 30),
-          water:        datosAgua,
-          vegetation:   datosVeg,
-          inpe_count:   datosINPE.length,
-          inpe_satelites: [...new Set(datosINPE.map(f=>f.satelite))],
-          fwi_max:      maxFWI,
-          fwi_extremos: datosFWI.filter(d=>d.fwi>=24).length
+          weather:       datosClima,
+          fire_count:    ultimoFocos,
+          fire_points:   firePts.slice(0, 30),
+          water:         datosAgua,
+          vegetation:    datosVeg,
+          inpe_count:    datosINPE.length,
+          inpe_satelites:[...new Set(datosINPE.map(f=>f.satelite))],
+          fwi_max:       maxFWI,
+          fwi_extremos:  fwiValidos.filter(d=>d.fwi>=24).length,
+          fwi_muy_alto:  fwiValidos.filter(d=>d.fwi>=17 && d.fwi<24).length,
+          fwi_alto:      fwiValidos.filter(d=>d.fwi>=10 && d.fwi<17).length,
+          smn_amarillo:  ultimoSMN.amarillo || 0,
+          smn_naranja:   ultimoSMN.naranja  || 0,
+          smn_rojo:      ultimoSMN.rojo     || 0,
+          dias:          dias,
         };
+
         const data = await fetch(`${BACKEND}/ai-risk-analysis`,{
           method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
         }).then(r=>r.json());
@@ -1738,16 +1790,16 @@
         if (data.error) {
           div.innerHTML=`<div class="ia-resultado" style="border-color:#e53935;color:#ff8a80;">❌ ${data.error}</div>`;
         } else {
-          div.innerHTML=`<div class="ia-resultado">${data.analysis}</div>
-            <div style="font-size:9px;color:#444;margin-top:3px;text-align:right;">
-              Claude Haiku · ${new Date().toLocaleTimeString('es-AR')} ·
-              NASA:${ultimoFocos} INPE:${datosINPE.length} FWI:${maxFWI} Agua:${datosAgua.length}
+          div.innerHTML = renderIAAnalysis(data.analysis) +
+            `<div style="font-size:9px;color:#555;margin-top:6px;text-align:right;border-top:1px solid rgba(255,255,255,0.07);padding-top:4px;">
+              🤖 Claude Haiku · ${new Date().toLocaleTimeString('es-AR')} &nbsp;|&nbsp;
+              NASA: ${ultimoFocos} · INPE: ${datosINPE.length} · FWI max: ${maxFWI.toFixed(0)} · SMN 🔴${ultimoSMN.rojo||0} 🟠${ultimoSMN.naranja||0} 🟡${ultimoSMN.amarillo||0}
             </div>`;
         }
         btn.textContent='✅ Análisis listo';
-        setTimeout(()=>{btn.textContent='🤖 Análisis IA completo';btn.disabled=false;},3000);
+        setTimeout(()=>{btn.textContent='🤖 Análisis IA completo';btn.disabled=false;},4000);
       } catch(e) {
-        div.innerHTML='<span style="color:#e53935;">Error de conexión. ¿app.py corriendo?</span>';
+        div.innerHTML='<span style="color:#e53935;">Error de conexión.</span>';
         btn.textContent='🤖 Análisis IA completo'; btn.disabled=false;
       }
     }

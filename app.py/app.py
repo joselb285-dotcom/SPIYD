@@ -504,13 +504,19 @@ def ai_risk_analysis():
     body         = request.get_json(silent=True) or {}
     weather_data = body.get("weather", [])
     fire_count   = int(body.get("fire_count", 0))
-    fire_pts     = body.get("fire_points", [])      # [{lat,lon,conf}]
+    fire_pts     = body.get("fire_points", [])
     agua_data    = body.get("water", [])
     veg_data     = body.get("vegetation", [])
     inpe_count   = int(body.get("inpe_count", 0))
     inpe_sats    = body.get("inpe_satelites", [])
     fwi_max      = float(body.get("fwi_max", 0))
     fwi_extremos = int(body.get("fwi_extremos", 0))
+    smn_amarillo = int(body.get("smn_amarillo", 0))
+    smn_naranja  = int(body.get("smn_naranja", 0))
+    smn_rojo     = int(body.get("smn_rojo", 0))
+    dias         = int(body.get("dias", 1))
+    fwi_alto     = int(body.get("fwi_alto", 0))
+    fwi_muy_alto = int(body.get("fwi_muy_alto", 0))
 
     # Calcular condiciones 30-30-30
     zonas_3 = [d for d in weather_data if d.get("factores_30") == 3]
@@ -542,46 +548,56 @@ def ai_risk_analysis():
         for f in focos_criticos
     ) or "  (sin focos de alta confianza)"
 
-    prompt = f"""Eres un experto en combate de incendios forestales en Argentina. Analizá estos datos en tiempo real:
+    smn_resumen = f"Amarillas: {smn_amarillo} | Naranja: {smn_naranja} | Rojas: {smn_rojo}" if (smn_amarillo + smn_naranja + smn_rojo) > 0 else "Sin alertas activas"
+    inpe_resumen = f"{inpe_count} focos — satélites: {', '.join(inpe_sats)}" if inpe_count else "Sin datos INPE"
+
+    prompt = f"""Sos un experto operativo en combate de incendios forestales en Argentina. Analizá los datos en tiempo real del período de {dias} día(s):
 
 ═══ FOCOS NASA FIRMS ═══
 Total focos activos: {fire_count}
 Focos de alta confianza (≥80%):
 {focos_txt}
 
-═══ REGLA 30-30-30 ═══
-Zonas con 3/3 condiciones (temp>30°C, viento>30 km/h, humedad<30%): {len(zonas_3)}
-Zonas con 2/3 condiciones: {len(zonas_2)}
-Temperatura máxima registrada: {max(temps, default='N/D')}°C
-Humedad mínima: {min(humedds, default='N/D')}%
-Viento máximo: {max(vientos, default='N/D')} km/h
+═══ FOCOS INPE (GOES-16 / METOP) ═══
+{inpe_resumen}
 
-═══ FUENTES DE AGUA DETECTADAS (OSM) ═══
-{resumen_agua}
-Total fuentes: {len(agua_data)}
+═══ ALERTAS SMN ARGENTINA ═══
+{smn_resumen}
+
+═══ REGLA 30-30-30 ═══
+Zonas con 3/3 condiciones críticas (temp>30°C, viento>30km/h, humedad<30%): {len(zonas_3)}
+Zonas con 2/3 condiciones: {len(zonas_2)}
+Temperatura máxima: {max(temps, default='N/D')}°C | Humedad mínima: {min(humedds, default='N/D')}% | Viento máximo: {max(vientos, default='N/D')} km/h
+
+═══ ÍNDICE FWI (Fire Weather Index) ═══
+FWI máximo detectado: {fwi_max:.1f}
+Zonas FWI extremo (≥24): {fwi_extremos} | Zonas FWI muy alto (≥17): {fwi_muy_alto} | Zonas FWI alto (≥10): {fwi_alto}
+
+═══ FUENTES DE AGUA (OSM) ═══
+{resumen_agua} — Total: {len(agua_data)} fuentes
 
 ═══ VEGETACIÓN EN EL ÁREA ═══
-Tipos detectados: {resumen_veg}
-Especies identificadas: {resumen_especies}
+Tipos: {resumen_veg}
+Especies: {resumen_especies}
 
-Respondé en español estructurado con estas secciones (máx 280 palabras total):
+Respondé en español con exactamente estas 6 secciones numeradas (máx 320 palabras total, cada sección en 1-2 oraciones directas y operativas):
 
-1. 🚨 NIVEL DE RIESGO: [BAJO/MODERADO/ALTO/CRÍTICO] — una oración explicando por qué.
+1. 🚨 NIVEL DE RIESGO: [BAJO/MODERADO/ALTO/CRÍTICO] — explicá en una oración el factor determinante.
 
-2. 📍 ZONAS PRIORITARIAS: Provincias/regiones en mayor peligro (identificá por coordenadas de focos).
+2. 📍 ZONAS PRIORITARIAS: Regiones/provincias en mayor peligro según coordenadas de focos de alta confianza.
 
-3. 💧 ESTRATEGIA DE AGUA: Qué fuentes usar, accesibilidad estimada, cantidad disponible.
+3. 💧 ESTRATEGIA DE AGUA: Qué fuentes usar, accesibilidad estimada y logística de abastecimiento.
 
-4. 🌿 RIESGO POR VEGETACIÓN: Cuáles tipos/especies presentes son más combustibles y por qué.
+4. 🌿 RIESGO POR VEGETACIÓN: Qué tipos presentes son más combustibles y velocidad de propagación esperada.
 
-5. 🚗 ACCESO VEHICULAR: Recomendaciones de acceso al terreno según topografía y vegetación.
+5. 🚗 ACCESO VEHICULAR: Rutas recomendadas, restricciones de terreno y puntos de acceso crítico.
 
-6. ⚡ ACCIÓN INMEDIATA: Las 3 acciones más urgentes en orden de prioridad."""
+6. ⚡ ACCIÓN INMEDIATA: Las 3 acciones más urgentes, en orden de prioridad, con tiempo estimado de ejecución."""
 
     client = anthropic.Anthropic(api_key=api_key)
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=700,
+        max_tokens=900,
         messages=[{"role": "user", "content": prompt}]
     )
 
