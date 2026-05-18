@@ -28,14 +28,13 @@ def login():
                 elif user.role == 'admin':
                     next_page = url_for('admin.dashboard')
                 else:
-                    next_page = url_for('mapa')
+                    next_page = url_for('mapa') + '?auth=1'
             return redirect(next_page)
         flash('Usuario o contraseña incorrectos', 'error')
     return render_template('auth/login.html')
 
 
 @auth_bp.route('/logout')
-@login_required
 def logout():
     logout_user()
-    return redirect(url_for('landing'))
+    return redirect(url_for('auth.login'))
