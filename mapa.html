@@ -166,7 +166,7 @@
       <label class="capa-toggle"><input type="checkbox" id="togFocos" checked><span class="capa-dot" style="background:#c62828;"></span>Focos NASA (VIIRS/MODIS)</label>
       <label class="capa-toggle"><input type="checkbox" id="togRiesgo"><span class="capa-dot" style="background:#ff7043;"></span>Zonas 30-30-30</label>
       <label class="capa-toggle"><input type="checkbox" id="togViento"><span class="capa-dot" style="background:#29b6f6;"></span>Animación de viento</label>
-      <label class="capa-toggle"><input type="checkbox" id="togSMN" checked><span class="capa-dot" style="background:#fdd835;"></span>Alertas SMN</label>
+      <label class="capa-toggle"><input type="checkbox" id="togSMN"><span class="capa-dot" style="background:#fdd835;"></span>Alertas SMN</label>
       <label class="capa-toggle"><input type="checkbox" id="togAgua"><span class="capa-dot" style="background:#00acc1;"></span>Fuentes de agua</label>
       <label class="capa-toggle"><input type="checkbox" id="togVeg"><span class="capa-dot" style="background:#66bb6a;"></span>Vegetación</label>
       <label class="capa-toggle"><input type="checkbox" id="togINPE"><span class="capa-dot" style="background:#ff8f00;"></span>Focos INPE (GOES-16/METOP)</label>
@@ -451,7 +451,7 @@
         { attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; OpenStreetMap', maxZoom:19, maxNativeZoom:19 }
       )
     };
-    basemaps["🗺 Calles"].addTo(mapa);
+    basemaps["⛰ Terreno"].addTo(mapa);
 
     // ── Capas de overlay ────────────────────────────────────────────────────
     const clusterFocos  = L.markerClusterGroup({ spiderfyOnMaxZoom:true, showCoverageOnHover:false, zoomToBoundsOnClick:true, chunkedLoading:true, maxClusterRadius:50 });
@@ -1783,10 +1783,7 @@
     actualizarContadores();
     renderRadarEstaciones();
     mapa.addLayer(capaRadarEstaciones);
-    cargarGeoJSON().then(()=>{
-      cargarFocos(true);
-      cargarAlertasSMN(true);
-    });
+    cargarGeoJSON().then(()=>{ cargarFocos(true); });
   </script>
 </body>
 </html>
