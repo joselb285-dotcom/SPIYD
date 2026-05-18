@@ -458,7 +458,7 @@
     const capasAlertaSMN = L.layerGroup();
     const capaRiesgo30   = L.layerGroup();
     const capaAgua       = L.markerClusterGroup({ showCoverageOnHover:false, maxClusterRadius:60, chunkedLoading:true });
-    const capaVeg        = L.markerClusterGroup({ showCoverageOnHover:false, maxClusterRadius:60, chunkedLoading:true });
+    const capaVeg        = L.layerGroup();
     const capaINPE       = L.layerGroup();
     const capaFWI        = L.layerGroup();
     const capaRadarEstaciones = L.layerGroup();
@@ -1310,65 +1310,113 @@
       fell:      { color:'#78909c', label:'Páramo',    riesgo:'ALTO',     rc:'#e65100' },
     };
 
+    let vegActivo = false;
+    let vegViewportTimer = null;
+    let ultimoBboxVeg = null;
+
     async function cargarVegetacion() {
-      const btn=document.getElementById('btnVeg');
-      btn.disabled=true; btn.textContent='⏳ Consultando OSM…';
-      const bbox = firesBBox || { s:-55.8, w:-73.5, n:-21.0, e:-53.5 };
+      const btn = document.getElementById('btnVeg');
+      if (vegActivo) {
+        vegActivo = false;
+        capaVeg.clearLayers();
+        mapa.removeLayer(capaVeg);
+        document.getElementById('togVeg').checked = false;
+        btn.textContent = '🌿 Vegetación';
+        btn.disabled = false;
+        return;
+      }
+      const b = mapa.getBounds();
+      const area = (b.getNorth()-b.getSouth()) * (b.getEast()-b.getWest());
+      if (area > 8) {
+        btn.textContent = '🌿 Vegetación';
+        btn.disabled = false;
+        setEstado('Hacé zoom a una región específica para ver la vegetación OSM (polígonos).', 'warn');
+        return;
+      }
+      vegActivo = true;
+      btn.disabled = true; btn.textContent = '⏳ Consultando OSM…';
+      await cargarVegViewport();
+      btn.textContent = '🌿 Veg ON';
+      btn.disabled = false;
+      mapa.on('moveend zoomend', () => {
+        if (!vegActivo) return;
+        clearTimeout(vegViewportTimer);
+        vegViewportTimer = setTimeout(cargarVegViewport, 900);
+      });
+    }
+
+    async function cargarVegViewport() {
+      if (!vegActivo) return;
+      const b = mapa.getBounds();
+      const s=b.getSouth(), w=b.getWest(), n=b.getNorth(), e=b.getEast();
+      const bboxStr = `${s.toFixed(2)}|${w.toFixed(2)}|${n.toFixed(2)}|${e.toFixed(2)}`;
+      if (bboxStr === ultimoBboxVeg) return;
+      ultimoBboxVeg = bboxStr;
+      const area = (n-s)*(e-w);
+      if (area > 8) {
+        capaVeg.clearLayers();
+        setEstado('Zoom más cerca para ver polígonos de vegetación.', 'warn');
+        return;
+      }
       try {
-        datosVeg = await fetch(`${BACKEND}/vegetation?s=${bbox.s}&w=${bbox.w}&n=${bbox.n}&e=${bbox.e}`).then(r=>r.json());
-        if (datosVeg.error) throw new Error(datosVeg.error);
-        renderizarVegetacion(datosVeg);
+        const gj = await fetch(`${BACKEND}/vegetation?s=${s}&w=${w}&n=${n}&e=${e}`).then(r=>r.json());
+        if (gj.error) throw new Error(gj.error);
+        datosVeg = gj.features || [];
+        renderizarVegetacion(gj);
         renderizarPanelVeg(datosVeg);
-        btn.textContent='✅ Vegetación OK';
-        setTimeout(()=>{btn.textContent='🌿 Vegetación';btn.disabled=false;},2000);
       } catch(e) {
-        console.error(e);
-        btn.textContent='❌ Error Overpass';
-        setTimeout(()=>{btn.textContent='🌿 Vegetación';btn.disabled=false;},3000);
+        console.error('Veg:', e.message);
+        setEstado('Error al cargar vegetación desde OSM.', 'err');
       }
     }
 
-    function renderizarVegetacion(datos) {
+    function renderizarVegetacion(geojson) {
       capaVeg.clearLayers();
-      datos.forEach(d => {
-        const cfg = vegCfg[d.tipo] || { color:'#9e9e9e', label:d.tipo, riesgo:'DESCONOCIDO', rc:'#666' };
-        const icon = L.divIcon({
-          html:`<div class="veg-marker" style="background:${cfg.color}cc;border-color:${cfg.color};">${cfg.label.slice(0,3)}</div>`,
-          iconSize:[18,18], iconAnchor:[9,9], className:''
-        });
-        const mk = L.marker([d.lat, d.lon], { icon });
-        mk.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:170px;">
-          <b style="color:${cfg.color};">🌿 ${cfg.label}</b><br>
-          Nombre: ${d.nombre||cfg.label}<br>
-          ${d.especie?`<b>Especie: ${d.especie}</b><br>`:'<span style="color:#666;">Especie: no disponible (OSM)</span><br>'}
-          Riesgo incendio: <b style="color:${cfg.rc};">${d.riesgo_incendio||cfg.riesgo}</b><br>
-          <small style="color:#888;">Lat ${d.lat.toFixed(4)} | Lon ${d.lon.toFixed(4)}</small>
-        </div>`);
-        capaVeg.addLayer(mk);
+      const gjLayer = L.geoJSON(geojson, {
+        style: f => {
+          const cfg = vegCfg[f.properties.tipo] || { color:'#9e9e9e' };
+          return { fillColor: cfg.color, fillOpacity: 0.45, color: cfg.color, weight: 1, opacity: 0.7 };
+        },
+        onEachFeature: (f, layer) => {
+          const p   = f.properties;
+          const cfg = vegCfg[p.tipo] || { color:'#9e9e9e', label: p.tipo, riesgo:'DESCONOCIDO', rc:'#666' };
+          layer.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:170px;">
+            <b style="color:${cfg.color};">🌿 ${cfg.label}</b><br>
+            ${p.nombre && p.nombre !== p.tipo ? `Nombre: <b>${p.nombre}</b><br>` : ''}
+            ${p.especie ? `Especie: <b>${p.especie}</b><br>` : ''}
+            Riesgo incendio: <b style="color:${cfg.rc||'#999'};">${p.riesgo}</b>
+          </div>`);
+          layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.7 }));
+          layer.on('mouseout',  () => layer.setStyle({ fillOpacity: 0.45 }));
+        }
       });
+      capaVeg.addLayer(gjLayer);
       document.getElementById('togVeg').checked = true;
       if (!mapa.hasLayer(capaVeg)) mapa.addLayer(capaVeg);
-      document.getElementById('numVeg').textContent = datos.length;
-      const vc=document.getElementById('vegCount'); vc.textContent=datos.length; vc.style.display='inline-block';
+      const n = geojson.features ? geojson.features.length : 0;
+      document.getElementById('numVeg').textContent = n;
+      const vc = document.getElementById('vegCount'); vc.textContent = n; vc.style.display = 'inline-block';
     }
 
-    function renderizarPanelVeg(datos) {
+    function renderizarPanelVeg(features) {
       const resEl=document.getElementById('vegResumen'), liEl=document.getElementById('vegLista');
-      if (!datos.length) { resEl.innerHTML='Sin datos de vegetación en el área.'; liEl.innerHTML=''; return; }
+      if (!features.length) { resEl.innerHTML='Sin datos de vegetación en el área.'; liEl.innerHTML=''; return; }
       const tipos={}, especies=new Set();
-      datos.forEach(d=>{tipos[d.tipo]=(tipos[d.tipo]||0)+1; if(d.especie)especies.add(d.especie);});
+      features.forEach(f=>{
+        const p=f.properties||f;
+        const t=p.tipo||p.tipo;
+        tipos[t]=(tipos[t]||0)+1;
+        if(p.especie) especies.add(p.especie);
+      });
       const sorted=Object.entries(tipos).sort((a,b)=>b[1]-a[1]);
       resEl.innerHTML=sorted.map(([t,c])=>{ const cfg=vegCfg[t]||{color:'#9e9e9e',label:t}; return `<span class="badge" style="background:${cfg.color}bb;margin:2px;">${cfg.label} (${c})</span>`; }).join('');
-      liEl.innerHTML = `
-        ${sorted.slice(0,6).map(([t,c])=>{
-          const cfg=vegCfg[t]||{color:'#9e9e9e',label:t,riesgo:'?',rc:'#999'};
-          return `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;">
-            <span><span style="color:${cfg.color};font-size:14px;">■</span> ${cfg.label} <span style="color:#666;">(${c})</span></span>
-            <span style="color:${cfg.rc};font-size:10px;">${cfg.riesgo}</span>
-          </div>`;
-        }).join('')}
-        ${especies.size?`<div style="margin-top:6px;color:#888;font-size:10px;">🌱 Especies OSM: ${[...especies].slice(0,6).join(', ')}</div>`:'<div style="margin-top:4px;color:#555;font-size:10px;">Sin datos de especie en OSM para esta área.</div>'}
-      `;
+      liEl.innerHTML = sorted.slice(0,6).map(([t,c])=>{
+        const cfg=vegCfg[t]||{color:'#9e9e9e',label:t,riesgo:'?',rc:'#999'};
+        return `<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;">
+          <span><span style="color:${cfg.color};font-size:14px;">■</span> ${cfg.label} <span style="color:#666;">(${c})</span></span>
+          <span style="color:${cfg.rc};font-size:10px;">${cfg.riesgo}</span>
+        </div>`;
+      }).join('') + (especies.size ? `<div style="margin-top:6px;color:#888;font-size:10px;">🌱 Especies: ${[...especies].slice(0,6).join(', ')}</div>` : '');
     }
 
     // ── INPE BDQueimadas ────────────────────────────────────────────────────────

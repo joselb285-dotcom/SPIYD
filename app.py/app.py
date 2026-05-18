@@ -431,46 +431,58 @@ def vegetation():
 (
   way["landuse"~"^(forest|meadow|grassland|farmland|vineyard|orchard|grass|wood)$"]({s},{w},{n},{e});
   way["natural"~"^(wood|scrub|heath|grassland|wetland|tundra|fell)$"]({s},{w},{n},{e});
-  relation["landuse"~"^(forest|wood|meadow|grassland)$"]({s},{w},{n},{e});
-  relation["natural"~"^(wood|scrub|heath|grassland|wetland)$"]({s},{w},{n},{e});
 );
-out center tags;
+out geom tags;
 """
     try:
         elements = overpass_query(ql, timeout=65)
     except Exception as ex:
         return jsonify({"error": str(ex)}), 502
 
-    vegetacion = []
-    vistos     = set()
+    RIESGO = {
+        "scrub": "MUY ALTO", "heath": "MUY ALTO",
+        "wood": "ALTO",      "forest": "ALTO",
+        "grassland": "ALTO", "fell": "ALTO",
+        "meadow": "MODERADO","tundra": "MODERADO",
+        "wetland": "BAJO",   "farmland": "MODERADO",
+        "vineyard": "MODERADO", "orchard": "MODERADO",
+    }
+
+    features = []
+    vistos   = set()
     for el in elements:
-        lat, lon = elemento_punto(el)
-        if lat is None or lon is None: continue
-        clave = f"{round(lat,3)}|{round(lon,3)}"
-        if clave in vistos: continue
-        vistos.add(clave)
-        tags    = el.get("tags", {})
-        tipo    = tags.get("natural") or tags.get("landuse") or "vegetation"
+        if el.get("type") != "way":
+            continue
+        geom = el.get("geometry", [])
+        if len(geom) < 3:
+            continue
+        tags   = el.get("tags", {})
+        tipo   = tags.get("natural") or tags.get("landuse") or "vegetation"
+        nombre = tags.get("name") or tags.get("name:es") or tipo
         especie = (tags.get("species") or tags.get("species:es") or
                    tags.get("taxon")   or tags.get("genus")      or
                    tags.get("leaf_type"))
-        riesgo_map = {
-            "scrub":      "MUY ALTO",  "heath":      "MUY ALTO",
-            "wood":       "ALTO",      "forest":     "ALTO",
-            "grassland":  "ALTO",      "fell":       "ALTO",
-            "meadow":     "MODERADO",  "tundra":     "MODERADO",
-            "wetland":    "BAJO",      "farmland":   "MODERADO",
-            "vineyard":   "MODERADO",  "orchard":    "MODERADO",
-        }
-        vegetacion.append({
-            "lat":    lat,
-            "lon":    lon,
-            "tipo":   tipo,
-            "nombre": tags.get("name") or tags.get("name:es") or tipo,
-            "especie": especie,
-            "riesgo_incendio": riesgo_map.get(tipo, "DESCONOCIDO")
+        coords = [[g["lon"], g["lat"]] for g in geom]
+        if coords[0] != coords[-1]:
+            coords.append(coords[0])
+        clave = f"{round(coords[0][0],2)}|{round(coords[0][1],2)}"
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Polygon", "coordinates": [coords]},
+            "properties": {
+                "tipo":    tipo,
+                "nombre":  nombre,
+                "especie": especie,
+                "riesgo":  RIESGO.get(tipo, "DESCONOCIDO")
+            }
         })
-    return jsonify(vegetacion)
+        if len(features) >= 300:
+            break
+
+    return jsonify({"type": "FeatureCollection", "features": features})
 
 
 # ── Análisis IA (Claude) ──────────────────────────────────────────────────────
