@@ -1294,6 +1294,21 @@
     }
 
     // ── Vegetación ──────────────────────────────────────────────────────────
+    // Ecorregiones de Argentina (polígonos aproximados, fuente: SIFAP/MAyDS)
+    const VEG_BIOMAS_ARG = { type:"FeatureCollection", features:[
+      { type:"Feature", properties:{tipo:"forest",  nombre:"Selva Misionera",          riesgo:"ALTO"},     geometry:{type:"Polygon",coordinates:[[[-53.6,-25.4],[-56.3,-25.4],[-56.3,-28.2],[-53.6,-28.2],[-53.6,-25.4]]]}},
+      { type:"Feature", properties:{tipo:"wetland", nombre:"Esteros del Iberá",         riesgo:"BAJO"},     geometry:{type:"Polygon",coordinates:[[[-56.8,-27.0],[-60.0,-27.0],[-60.0,-29.8],[-56.8,-29.8],[-56.8,-27.0]]]}},
+      { type:"Feature", properties:{tipo:"scrub",   nombre:"Gran Chaco",                riesgo:"MUY ALTO"}, geometry:{type:"Polygon",coordinates:[[[-60.0,-22.0],[-65.5,-22.0],[-65.5,-31.5],[-60.0,-31.5],[-60.0,-22.0]]]}},
+      { type:"Feature", properties:{tipo:"forest",  nombre:"Yungas (Selva Tucumano-Boliviana)", riesgo:"ALTO"}, geometry:{type:"Polygon",coordinates:[[[-64.0,-22.5],[-66.5,-22.5],[-66.5,-28.5],[-64.0,-28.5],[-64.0,-22.5]]]}},
+      { type:"Feature", properties:{tipo:"tundra",  nombre:"Puna",                      riesgo:"MODERADO"}, geometry:{type:"Polygon",coordinates:[[[-65.5,-21.5],[-69.2,-21.5],[-69.2,-27.5],[-65.5,-27.5],[-65.5,-21.5]]]}},
+      { type:"Feature", properties:{tipo:"scrub",   nombre:"Monte",                     riesgo:"MUY ALTO"}, geometry:{type:"Polygon",coordinates:[[[-63.5,-27.5],[-71.0,-27.5],[-71.0,-44.0],[-63.5,-44.0],[-63.5,-27.5]]]}},
+      { type:"Feature", properties:{tipo:"grassland",nombre:"Pampa Húmeda",             riesgo:"ALTO"},     geometry:{type:"Polygon",coordinates:[[[-56.5,-32.0],[-65.0,-32.0],[-65.0,-40.5],[-56.5,-40.5],[-56.5,-32.0]]]}},
+      { type:"Feature", properties:{tipo:"scrub",   nombre:"Espinal",                   riesgo:"ALTO"},     geometry:{type:"Polygon",coordinates:[[[-59.0,-29.0],[-66.0,-29.0],[-66.0,-38.5],[-59.0,-38.5],[-59.0,-29.0]]]}},
+      { type:"Feature", properties:{tipo:"forest",  nombre:"Bosques Andino-Patagónicos",riesgo:"ALTO"},     geometry:{type:"Polygon",coordinates:[[[-70.5,-36.0],[-73.6,-36.0],[-73.6,-55.5],[-70.5,-55.5],[-70.5,-36.0]]]}},
+      { type:"Feature", properties:{tipo:"grassland",nombre:"Estepa Patagónica",        riesgo:"ALTO"},     geometry:{type:"Polygon",coordinates:[[[-63.0,-40.0],[-70.5,-40.0],[-70.5,-55.5],[-63.0,-55.5],[-63.0,-40.0]]]}},
+      { type:"Feature", properties:{tipo:"wetland", nombre:"Delta del Paraná",           riesgo:"BAJO"},     geometry:{type:"Polygon",coordinates:[[[-58.0,-32.5],[-60.5,-32.5],[-60.5,-34.5],[-58.0,-34.5],[-58.0,-32.5]]]}},
+    ]};
+
     const vegCfg = {
       wood:      { color:'#1b5e20', label:'Bosque',    riesgo:'ALTO',     rc:'#e65100' },
       forest:    { color:'#2e7d32', label:'Bosque',    riesgo:'ALTO',     rc:'#e65100' },
@@ -1325,16 +1340,11 @@
         btn.disabled = false;
         return;
       }
-      const b = mapa.getBounds();
-      const area = (b.getNorth()-b.getSouth()) * (b.getEast()-b.getWest());
-      if (area > 8) {
-        btn.textContent = '🌿 Vegetación';
-        btn.disabled = false;
-        setEstado('Hacé zoom a una región específica para ver la vegetación OSM (polígonos).', 'warn');
-        return;
-      }
       vegActivo = true;
-      btn.disabled = true; btn.textContent = '⏳ Consultando OSM…';
+      btn.disabled = true; btn.textContent = '⏳ Cargando…';
+      // Muestra biomas base siempre
+      renderizarVegetacion(VEG_BIOMAS_ARG, true);
+      // Luego intenta OSM si hay zoom suficiente
       await cargarVegViewport();
       btn.textContent = '🌿 Veg ON';
       btn.disabled = false;
@@ -1353,48 +1363,47 @@
       if (bboxStr === ultimoBboxVeg) return;
       ultimoBboxVeg = bboxStr;
       const area = (n-s)*(e-w);
-      if (area > 8) {
-        capaVeg.clearLayers();
-        setEstado('Zoom más cerca para ver polígonos de vegetación.', 'warn');
-        return;
-      }
+      // Solo consulta OSM cuando hay zoom razonable (< 20°²)
+      if (area > 20) return;
       try {
         const gj = await fetch(`${BACKEND}/vegetation?s=${s}&w=${w}&n=${n}&e=${e}`).then(r=>r.json());
-        if (gj.error) throw new Error(gj.error);
-        datosVeg = gj.features || [];
-        renderizarVegetacion(gj);
+        if (gj.error || !gj.features) return;
+        datosVeg = gj.features;
+        // Superpone datos OSM sobre biomas base
+        renderizarVegetacion(gj, false);
         renderizarPanelVeg(datosVeg);
       } catch(e) {
-        console.error('Veg:', e.message);
-        setEstado('Error al cargar vegetación desde OSM.', 'err');
+        console.error('Veg OSM:', e.message);
       }
     }
 
-    function renderizarVegetacion(geojson) {
-      capaVeg.clearLayers();
+    function renderizarVegetacion(geojson, esBase) {
+      if (esBase) capaVeg.clearLayers();
+      const opacity = esBase ? 0.30 : 0.55;
       const gjLayer = L.geoJSON(geojson, {
         style: f => {
           const cfg = vegCfg[f.properties.tipo] || { color:'#9e9e9e' };
-          return { fillColor: cfg.color, fillOpacity: 0.45, color: cfg.color, weight: 1, opacity: 0.7 };
+          return { fillColor: cfg.color, fillOpacity: opacity, color: cfg.color, weight: esBase ? 1.5 : 1, opacity: 0.8 };
         },
         onEachFeature: (f, layer) => {
           const p   = f.properties;
-          const cfg = vegCfg[p.tipo] || { color:'#9e9e9e', label: p.tipo, riesgo:'DESCONOCIDO', rc:'#666' };
+          const cfg = vegCfg[p.tipo] || { color:'#9e9e9e', label: p.tipo || 'Vegetación', riesgo:'DESCONOCIDO', rc:'#666' };
+          const srcTag = esBase ? '<br><small style="color:#555;">Ecorregión Argentina (MAyDS)</small>' : '<br><small style="color:#555;">Fuente: OpenStreetMap</small>';
           layer.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:170px;">
             <b style="color:${cfg.color};">🌿 ${cfg.label}</b><br>
-            ${p.nombre && p.nombre !== p.tipo ? `Nombre: <b>${p.nombre}</b><br>` : ''}
-            ${p.especie ? `Especie: <b>${p.especie}</b><br>` : ''}
-            Riesgo incendio: <b style="color:${cfg.rc||'#999'};">${p.riesgo}</b>
+            ${p.nombre && p.nombre !== p.tipo ? `<b>${p.nombre}</b><br>` : ''}
+            ${p.especie ? `Especie: ${p.especie}<br>` : ''}
+            Riesgo incendio: <b style="color:${cfg.rc||'#999'};">${p.riesgo}</b>${srcTag}
           </div>`);
-          layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.7 }));
-          layer.on('mouseout',  () => layer.setStyle({ fillOpacity: 0.45 }));
+          layer.on('mouseover', () => layer.setStyle({ fillOpacity: Math.min(opacity + 0.25, 0.85) }));
+          layer.on('mouseout',  () => layer.setStyle({ fillOpacity: opacity }));
         }
       });
       capaVeg.addLayer(gjLayer);
       document.getElementById('togVeg').checked = true;
       if (!mapa.hasLayer(capaVeg)) mapa.addLayer(capaVeg);
       const n = geojson.features ? geojson.features.length : 0;
-      document.getElementById('numVeg').textContent = n;
+      if (esBase) { document.getElementById('numVeg').textContent = n; }
       const vc = document.getElementById('vegCount'); vc.textContent = n; vc.style.display = 'inline-block';
     }
 
