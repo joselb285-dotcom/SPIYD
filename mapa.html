@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monitor de Incendios - Argentina · Regla 30-30-30</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
@@ -865,7 +866,7 @@
           if (isNaN(lat)||isNaN(lng)) return;
           if (!estaEnArg(lat, lng)) return;
           const conf = f.confidence || f.confidence_day || f.confidence_night || '0';
-          if (!isNaN(parseFloat(conf)) && parseFloat(conf) <= 50) return;
+          if (!isNaN(parseFloat(conf)) && parseFloat(conf) < 30) return;
 
           const col    = colorFoco(conf);
           const brillo = f.bright_ti4 || f.brightness || 'N/D';
@@ -1703,7 +1704,12 @@
     actualizarContadores();
     renderRadarEstaciones();
     mapa.addLayer(capaRadarEstaciones);
-    cargarGeoJSON().then(()=>{ cargarFocos(true); cargarAlertasSMN(true); });
+    cargarGeoJSON().then(async ()=>{
+      await cargarFocos(true);
+      cargarAlertasSMN(true);
+      cargarClima();
+      cargarFWI();
+    });
   </script>
 </body>
 </html>
