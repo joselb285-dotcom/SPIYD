@@ -609,6 +609,161 @@ Respondé en español con exactamente estas 6 secciones numeradas (máx 320 pala
     })
 
 
+# ── Análisis IA de foco específico ──────────────────────────────────────────
+
+def _region_argentina(lat, lon):
+    if lat > -23:                        return "NOA — Jujuy / Salta / Tucumán"
+    if lat > -28 and lon < -60:          return "Chaco / Formosa"
+    if lat > -28 and lon >= -60:         return "Misiones / Corrientes"
+    if lat > -32 and lon < -65:          return "Cuyo — Mendoza / San Juan"
+    if lat > -32 and lon >= -65:         return "Litoral — Entre Ríos / Santa Fe"
+    if lat > -38:                        return "Pampas — Buenos Aires / Córdoba / La Pampa"
+    if lat > -42:                        return "Patagonia Norte — Neuquén / Río Negro"
+    if lat > -50:                        return "Patagonia Sur — Chubut / Santa Cruz"
+    return "Tierra del Fuego"
+
+@app.route("/ai-foco-analysis", methods=["POST"])
+@limiter.limit("20 per hour")
+def ai_foco_analysis():
+    try:
+        import anthropic
+    except ImportError:
+        return jsonify({"error": "Instala: pip install anthropic"}), 503
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY no configurada"}), 503
+
+    body      = request.get_json(silent=True) or {}
+    lat       = float(body.get("lat", -34))
+    lon       = float(body.get("lon", -64))
+    conf      = body.get("conf", "N/D")
+    brillo    = float(body.get("brillo", 0) or 0)
+    satellite = body.get("satellite", "N/D")
+    fecha     = body.get("fecha", "N/D")
+    fwi_local = float(body.get("fwi_local", 0) or 0)
+    smn_rojo  = int(body.get("smn_rojo", 0))
+    smn_nar   = int(body.get("smn_naranja", 0))
+    smn_amar  = int(body.get("smn_amarillo", 0))
+
+    # ── Clima real del punto ────────────────────────────────────────────────
+    wx = {}
+    try:
+        url = (f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+               f"&current=temperature_2m,relative_humidity_2m,wind_speed_10m,"
+               f"wind_direction_10m,precipitation,weather_code"
+               f"&wind_speed_unit=kmh&timezone=America%2FArgentina%2FBuenos_Aires")
+        wx = requests.get(url, timeout=8).json().get("current", {})
+    except Exception:
+        pass
+
+    temp     = wx.get("temperature_2m", "N/D")
+    humid    = wx.get("relative_humidity_2m", "N/D")
+    wind_spd = wx.get("wind_speed_10m", "N/D")
+    wind_dir = wx.get("wind_direction_10m", "N/D")
+    precip   = wx.get("precipitation", 0)
+
+    dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO"]
+    try:
+        wind_dir_str = dirs[round(float(wind_dir) / 22.5) % 16]
+    except Exception:
+        wind_dir_str = "?"
+
+    regla_30 = (
+        isinstance(temp, (int, float)) and temp >= 30 and
+        isinstance(humid, (int, float)) and humid <= 30 and
+        isinstance(wind_spd, (int, float)) and wind_spd >= 30
+    )
+
+    # ── FWI nivel ─────────────────────────────────────────────────────────
+    if   fwi_local >= 24: fwi_nivel = "EXTREMO"
+    elif fwi_local >= 17: fwi_nivel = "MUY ALTO"
+    elif fwi_local >= 10: fwi_nivel = "ALTO"
+    elif fwi_local >= 5:  fwi_nivel = "MODERADO"
+    else:                 fwi_nivel = "BAJO"
+
+    # ── Agua en radio 50 km (Overpass) ─────────────────────────────────────
+    agua_txt = "no consultada"
+    agua_count = 0
+    bomberos_count = 0
+    try:
+        rad = 50000
+        ql = f"""[out:json][timeout:20];
+(
+  node["natural"~"^(spring|water)$"](around:{rad},{lat},{lon});
+  node["amenity"="fire_station"](around:{rad},{lat},{lon});
+  node["man_made"~"^(water_tower|reservoir)$"](around:{rad},{lat},{lon});
+  way["waterway"~"^(river|stream|canal)$"](around:{rad},{lat},{lon});
+);
+out center tags;"""
+        elems = requests.post(
+            "https://overpass-api.de/api/interpreter", data=ql, timeout=20
+        ).json().get("elements", [])
+        tipos = {}
+        for e in elems[:30]:
+            tags = e.get("tags", {})
+            t = (tags.get("natural") or tags.get("amenity") or
+                 tags.get("waterway") or tags.get("man_made") or "agua")
+            if t == "fire_station":
+                bomberos_count += 1
+            else:
+                tipos[t] = tipos.get(t, 0) + 1
+        agua_count  = sum(tipos.values())
+        agua_txt    = ", ".join(f"{v} {k}" for k, v in tipos.items()) or "sin fuentes detectadas"
+    except Exception:
+        pass
+
+    # ── Prompt ─────────────────────────────────────────────────────────────
+    region = _region_argentina(lat, lon)
+
+    prompt = f"""Sos analista operativo senior de incendios forestales en Argentina. Se detectó un foco activo nuevo. Generá un informe de incidente completo y accionable:
+
+═══ FOCO ACTIVO DETECTADO ═══
+Coordenadas: {lat:.4f}°S, {abs(lon):.4f}°O
+Región: {region}
+Satélite: {satellite} | Confianza: {conf}% | Temperatura radiativa: {brillo:.1f} K
+Fecha/hora detección: {fecha}
+
+═══ METEOROLOGÍA LOCAL (Open-Meteo, tiempo real) ═══
+Temperatura: {temp}°C | Humedad: {humid}% | Precipitación reciente: {precip} mm
+Viento: {wind_spd} km/h rumbo {wind_dir_str} ({wind_dir}°)
+{"⚠️ REGLA 30-30-30 ACTIVA — condiciones de propagación explosiva." if regla_30 else "Regla 30-30-30: no activa."}
+
+═══ ÍNDICE FWI (Fire Weather Index) ═══
+FWI estimado local: {fwi_local:.1f} — Nivel: {fwi_nivel}
+
+═══ RECURSOS HÍDRICOS EN RADIO 50 km ═══
+Fuentes detectadas: {agua_txt}
+Total fuentes: {agua_count} | Cuarteles de bomberos: {bomberos_count}
+
+═══ ALERTAS SMN ═══
+Alertas activas — Roja: {smn_rojo} | Naranja: {smn_nar} | Amarilla: {smn_amar}
+
+Generá exactamente estas 7 secciones numeradas en español técnico-operativo (máx 420 palabras, cada sección 1-3 oraciones directas sin explicaciones innecesarias):
+
+1. 🚨 EVALUACIÓN INICIAL: Nivel [BAJO/MODERADO/ALTO/CRÍTICO] y justificación concisa en base a FWI, viento y confianza del satélite.
+
+2. 🔥 COMPORTAMIENTO DEL FUEGO: Dirección y velocidad de propagación esperada según viento ({wind_dir_str} a {wind_spd} km/h), intensidad estimada y tipo de fuego probable para la región {region}.
+
+3. 🗺️ ZONA DE IMPACTO: Área afectable en las próximas 2-6 horas, dirección de avance prioritaria, infraestructura o poblaciones en riesgo.
+
+4. 💧 RECURSOS HÍDRICOS: Qué fuentes usar primero, distancia estimada al foco, logística de abastecimiento para autobombas.
+
+5. 🚒 ESTRATEGIA DE ATAQUE: Táctica recomendada (ataque directo / indirecto / paralelo), puntos de anclaje, líneas de contención y flancos a priorizar.
+
+6. 🚁 DESPLIEGUE DE RECURSOS: Recursos aéreos (helicópteros, aviones hidrantes) y terrestres (cuadrillas, autobombas) a movilizar, base de operaciones sugerida.
+
+7. ⚡ PRIMERAS ACCIONES (próximos 30 min): Lista de exactamente 5 acciones inmediatas ordenadas por urgencia, con responsable sugerido (bomberos/defensa civil/cuadrilla forestal)."""
+
+    client = anthropic.Anthropic(api_key=api_key)
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1200,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return jsonify({"analysis": msg.content[0].text})
+
+
 # ── Precipitación grid ───────────────────────────────────────────────────────
 
 @app.route("/precipitacion")

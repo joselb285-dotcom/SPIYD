@@ -961,6 +961,7 @@
     async function cargarFocos(msg=true) {
       clusterFocos.clearLayers();
       firePts = [];
+      focoDataMap = {}; focoCounter = 0;
       const dias = document.getElementById('dias').value;
       if (msg) setEstado('Consultando NASA FIRMS…');
       try {
@@ -985,14 +986,27 @@
 
           const col    = colorFoco(conf);
           const brillo = f.bright_ti4 || f.brightness || 'N/D';
-          const mk     = L.marker([lat, lng], { icon: flameIcon(col.outer, col.inner, col.size) });
-          mk.bindPopup(`<div style="font-family:monospace;font-size:11px;">
-            <b style="color:#c62828;">🔥 Foco NASA</b><br>
+          const focoId = focoCounter++;
+          focoDataMap[focoId] = {
+            lat, lon: lng,
+            conf:      String(conf),
+            brillo:    parseFloat(brillo) || 0,
+            satellite: f.satellite || 'N/D',
+            fecha:     `${f.acq_date||''} ${f.acq_time||''}`.trim()
+          };
+          const mk = L.marker([lat, lng], { icon: flameIcon(col.outer, col.inner, col.size) });
+          mk.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:190px;">
+            <b style="color:#c62828;">🔥 Foco NASA FIRMS</b><br>
             Lat ${lat.toFixed(4)} | Lng ${lng.toFixed(4)}<br>
-            Confianza: <b>${conf}%</b><br>
-            Brillo: ${brillo} K<br>
+            Confianza: <b>${conf}%</b> &nbsp;|&nbsp; Brillo: ${brillo} K<br>
             Fecha: ${f.acq_date||'N/D'} ${f.acq_time||''}<br>
             Satélite: ${f.satellite||'N/D'}
+            <div style="margin-top:7px;">
+              <button onclick="analizarFoco(${focoId})"
+                style="width:100%;padding:5px 0;background:linear-gradient(135deg,#6a1b9a,#ad1457);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;">
+                🤖 Analizar este foco con IA
+              </button>
+            </div>
           </div>`);
           clusterFocos.addLayer(mk);
           bnds.push([lat,lng]);
@@ -1706,24 +1720,28 @@
     }
 
     // ── Análisis IA ──────────────────────────────────────────────────────────
-    const IA_SECCIONES = [
-      { emoji:'🚨', color:'#e53935', bg:'rgba(229,57,53,0.13)'  },
-      { emoji:'📍', color:'#ff6f00', bg:'rgba(255,111,0,0.12)'  },
-      { emoji:'💧', color:'#0288d1', bg:'rgba(2,136,209,0.12)'  },
-      { emoji:'🌿', color:'#388e3c', bg:'rgba(56,142,60,0.13)'  },
-      { emoji:'🚗', color:'#8d6e63', bg:'rgba(141,110,99,0.13)' },
-      { emoji:'⚡', color:'#f9a825', bg:'rgba(249,168,37,0.12)' },
-    ];
+    const EMOJI_META = {
+      '🚨': { color:'#e53935', bg:'rgba(229,57,53,0.13)'  },
+      '🔥': { color:'#ff5722', bg:'rgba(255,87,34,0.12)'  },
+      '🗺': { color:'#ff6f00', bg:'rgba(255,111,0,0.12)'  },
+      '📍': { color:'#ff6f00', bg:'rgba(255,111,0,0.12)'  },
+      '💧': { color:'#0288d1', bg:'rgba(2,136,209,0.12)'  },
+      '🌿': { color:'#388e3c', bg:'rgba(56,142,60,0.13)'  },
+      '🚒': { color:'#c62828', bg:'rgba(198,40,40,0.12)'  },
+      '🚗': { color:'#8d6e63', bg:'rgba(141,110,99,0.13)' },
+      '🚁': { color:'#546e7a', bg:'rgba(84,110,122,0.13)' },
+      '⚡': { color:'#f9a825', bg:'rgba(249,168,37,0.12)' },
+    };
 
     function renderIAAnalysis(text) {
       const lines = text.split('\n');
       const sections = [];
       let cur = null;
       for (const line of lines) {
-        const m = line.match(/^\s*\d\.\s*([\u{1F300}-\u{1FAFF}]|\S+)\s*([^:]+):\s*(.*)/u);
+        const m = line.match(/^\s*\d\.\s*(.+?):\s*(.*)/);
         if (m) {
           if (cur) sections.push(cur);
-          cur = { title: m[2].trim(), content: m[3].trim() };
+          cur = { header: m[1].trim(), content: m[2].trim() };
         } else if (cur && line.trim()) {
           cur.content += ' ' + line.trim();
         }
@@ -1733,19 +1751,79 @@
       if (!sections.length) return `<div class="ia-resultado" style="white-space:pre-wrap;font-size:11px;">${text}</div>`;
 
       return sections.map((s, i) => {
-        const meta = IA_SECCIONES[i] || { color:'#aaa', bg:'rgba(255,255,255,0.05)' };
+        const emojiChar = [...s.header].find(c => EMOJI_META[c]);
+        const meta = EMOJI_META[emojiChar] || { color:'#aaa', bg:'rgba(255,255,255,0.05)' };
+        const title = s.header.replace(emojiChar||'', '').trim();
         let contentColor = '#ccc';
         if (i === 0) {
-          if (s.content.includes('CRÍTICO'))  contentColor = '#ef5350';
-          else if (s.content.includes('ALTO'))      contentColor = '#ffa726';
-          else if (s.content.includes('MODERADO'))  contentColor = '#fdd835';
-          else if (s.content.includes('BAJO'))      contentColor = '#66bb6a';
+          if (s.content.includes('CRÍTICO'))       contentColor = '#ef5350';
+          else if (s.content.includes('ALTO'))     contentColor = '#ffa726';
+          else if (s.content.includes('MODERADO')) contentColor = '#fdd835';
+          else if (s.content.includes('BAJO'))     contentColor = '#66bb6a';
         }
         return `<div style="margin-bottom:8px;padding:9px 12px;background:${meta.bg};border-left:3px solid ${meta.color};border-radius:4px;">
-          <div style="font-weight:700;color:${meta.color};font-size:10px;letter-spacing:.6px;margin-bottom:3px;">${meta.emoji} ${s.title.toUpperCase()}</div>
+          <div style="font-weight:700;color:${meta.color};font-size:10px;letter-spacing:.6px;margin-bottom:3px;">${emojiChar||''} ${title.toUpperCase()}</div>
           <div style="color:${contentColor};font-size:11.5px;line-height:1.55;">${s.content}</div>
         </div>`;
       }).join('');
+    }
+
+    // ── Análisis IA de foco específico ──────────────────────────────────────
+    let focoDataMap = {}, focoCounter = 0;
+
+    async function analizarFoco(focoId) {
+      const d   = focoDataMap[focoId];
+      if (!d) return;
+      const div = document.getElementById('iaResultado');
+      const sec = document.getElementById('secIA');
+      if (!sec.classList.contains('abierto')) toggleSeccion('secIA');
+
+      div.innerHTML = `<div style="font-size:10px;color:#9c64c4;font-weight:700;margin-bottom:6px;">
+        🔥 INFORME DE FOCO — ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O
+      </div>
+      <div class="ia-loading"><div class="spinner"></div> Analizando foco con Claude IA…</div>`;
+
+      // FWI local: punto más cercano en la grilla
+      let fwi_local = 0;
+      if (datosFWI.length) {
+        const nearest = datosFWI.reduce((best, p) =>
+          haversineKm(d.lat, d.lon, p.lat, p.lon) < haversineKm(d.lat, d.lon, best.lat, best.lon) ? p : best
+        );
+        fwi_local = nearest.fwi || 0;
+      }
+
+      try {
+        const body = {
+          lat:          d.lat,
+          lon:          d.lon,
+          conf:         d.conf,
+          brillo:       d.brillo,
+          satellite:    d.satellite,
+          fecha:        d.fecha,
+          fwi_local:    fwi_local,
+          smn_rojo:     ultimoSMN.rojo    || 0,
+          smn_naranja:  ultimoSMN.naranja  || 0,
+          smn_amarillo: ultimoSMN.amarillo || 0,
+        };
+        const data = await fetch(`${BACKEND}/ai-foco-analysis`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+        }).then(r => r.json());
+
+        if (data.error) {
+          div.innerHTML = `<div style="color:#ff8a80;">❌ ${data.error}</div>`;
+        } else {
+          div.innerHTML =
+            `<div style="font-size:10px;color:#9c64c4;font-weight:700;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid rgba(156,100,196,0.3);">
+              🔥 INFORME DE FOCO · ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O · ${d.satellite}
+            </div>` +
+            renderIAAnalysis(data.analysis) +
+            `<div style="font-size:9px;color:#555;margin-top:6px;text-align:right;border-top:1px solid rgba(255,255,255,0.07);padding-top:4px;">
+              🤖 Claude Haiku · ${new Date().toLocaleTimeString('es-AR')} · Confianza: ${d.conf}% · FWI local: ${fwi_local.toFixed(0)}
+            </div>`;
+        }
+      } catch(e) {
+        div.innerHTML = '<span style="color:#e53935;">Error de conexión al analizar foco.</span>';
+      }
     }
 
     async function ejecutarAnalisisIA() {
