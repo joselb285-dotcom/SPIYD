@@ -1047,7 +1047,8 @@
         </div>`);
         capaRiesgo30.addLayer(r);
       });
-      if (document.getElementById('togRiesgo').checked && !mapa.hasLayer(capaRiesgo30)) mapa.addLayer(capaRiesgo30);
+      if (!mapa.hasLayer(capaRiesgo30)) mapa.addLayer(capaRiesgo30);
+      document.getElementById('togRiesgo').checked = true;
     }
 
     function actualizarIndicadores30(datos) {
