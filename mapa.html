@@ -1023,7 +1023,7 @@
         datosClima = await fetch(`${BACKEND}/weather-grid`).then(r=>r.json());
         renderizarZonasRiesgo(datosClima);
         actualizarIndicadores30(datosClima);
-        if (document.getElementById('togViento').checked) await cargarViento();
+        await cargarViento();
         btn.textContent='✅ Clima OK';
         setTimeout(()=>{btn.textContent='🌡 Clima y viento (Open-Meteo)';btn.disabled=false;},2000);
       } catch(e) {
