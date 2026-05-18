@@ -6,18 +6,19 @@
   <title>Iniciar Sesión — SPIYD</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: hsl(0 0% 4%);
-      --surface: hsl(0 0% 8%);
-      --text: hsl(0 0% 96%);
-      --muted: hsl(0 0% 53%);
-      --stroke: hsl(0 0% 12%);
-      --accent-a: #0EA5E9;
-      --accent-b: #06B6D4;
+      --bg: #0a0b10;
+      --surface: #12141c;
+      --text: #fff;
+      --muted: #7a7468;
+      --stroke: rgba(255,255,255,0.07);
+      --accent-a: #f97316;
+      --accent-b: #ea580c;
+      --gold: #facc15;
     }
     html, body {
       font-family: 'Inter', sans-serif;
@@ -43,7 +44,7 @@
       transition: color 0.2s, border-color 0.2s;
       opacity: 0;
     }
-    #back-link:hover { color: var(--text); border-color: rgba(14,165,233,0.4); }
+    #back-link:hover { color: var(--text); border-color: rgba(249,115,22,0.4); }
 
     /* Wrap */
     #login-wrap {
@@ -56,28 +57,25 @@
     .login-logo {
       text-align: center; margin-bottom: 2.5rem;
     }
-    .logo-ring {
+    .logo-mark {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 3rem; height: 3rem; border-radius: 50%;
-      background: var(--bg);
-      position: relative; margin-bottom: 1rem;
+      width: 3rem; height: 3rem; border-radius: 12px;
+      background: linear-gradient(135deg, #facc15 0%, #f97316 45%, #dc2626 100%);
+      box-shadow: 0 4px 20px rgba(249,115,22,0.55), 0 0 0 1px rgba(255,255,255,0.1) inset;
+      margin-bottom: 1rem; position: relative;
+      font-size: 1.3rem;
     }
-    .logo-ring::before {
-      content: '';
-      position: absolute; inset: 0; border-radius: 50%; padding: 1.5px;
-      background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor; mask-composite: exclude;
+    .logo-mark::after {
+      content: ""; position: absolute; inset: -3px; border-radius: 15px;
+      background: linear-gradient(135deg, #facc15, #dc2626);
+      filter: blur(8px); opacity: 0.45; z-index: -1;
+      animation: logoGlow 2.4s ease-in-out infinite;
     }
-    .logo-letters {
-      font-family: 'Instrument Serif', serif; font-style: italic;
-      font-size: 0.9rem; color: var(--text);
-    }
+    @keyframes logoGlow { 50% { opacity: 0.8; } }
     .login-title-text {
-      font-family: 'Instrument Serif', serif; font-style: italic;
-      font-size: 1.8rem; color: var(--text);
-      margin-bottom: 0.3rem;
+      font-family: 'Syne', system-ui, sans-serif; font-weight: 800;
+      font-size: 1.7rem; color: var(--text);
+      margin-bottom: 0.3rem; letter-spacing: -0.02em;
     }
     .login-sub {
       font-size: 0.75rem; color: var(--muted); letter-spacing: 0.05em;
@@ -115,8 +113,8 @@
       display: flex; align-items: center; gap: 0.5rem;
     }
     .flash-warning {
-      background: rgba(14,165,233,0.1);
-      border: 1px solid rgba(14,165,233,0.2);
+      background: rgba(249,115,22,0.1);
+      border: 1px solid rgba(249,115,22,0.2);
       color: var(--accent-a);
       border-radius: 0.75rem; padding: 0.75rem 1rem;
       font-size: 0.82rem; margin-bottom: 1.25rem;
@@ -146,8 +144,8 @@
       transition: border-color 0.2s, box-shadow 0.2s; outline: none;
     }
     .form-control:focus {
-      border-color: rgba(14,165,233,0.5);
-      box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
+      border-color: rgba(249,115,22,0.5);
+      box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
       background: rgba(255,255,255,0.06);
     }
     .form-control::placeholder { color: var(--muted); }
@@ -161,12 +159,12 @@
     /* Submit button */
     .btn-submit {
       width: 100%; margin-top: 0.5rem;
-      background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+      background: linear-gradient(135deg, var(--accent-a) 0%, var(--accent-b) 100%);
       color: #fff; border: none; border-radius: 0.75rem;
-      padding: 0.875rem; font-size: 0.9rem; font-weight: 500;
+      padding: 0.875rem; font-size: 0.9rem; font-weight: 600;
       font-family: 'Inter', sans-serif;
       cursor: pointer; transition: opacity 0.2s, transform 0.15s;
-      box-shadow: 0 4px 24px rgba(14,165,233,0.25);
+      box-shadow: 0 4px 24px rgba(220,38,38,0.4);
       letter-spacing: 0.01em;
     }
     .btn-submit:hover { opacity: 0.88; transform: translateY(-1px); }
@@ -188,9 +186,9 @@
 <div id="login-wrap">
   <div class="login-logo">
     <div style="display:inline-flex;flex-direction:column;align-items:center;">
-      <div class="logo-ring"><span class="logo-letters">SP</span></div>
-      <div class="login-title-text">Bienvenido</div>
-      <div class="login-sub">Sistema de Prevención de Incendios y Detección</div>
+      <div class="logo-mark">⬡</div>
+      <div class="login-title-text">SPIYD</div>
+      <div class="login-sub">Sistema de Prevención de Incendios y Deforestación</div>
     </div>
   </div>
 
@@ -281,7 +279,7 @@
 
   // Grid
   function drawGrid() {
-    ctx.strokeStyle = 'rgba(14,165,233,0.03)';
+    ctx.strokeStyle = 'rgba(249,115,22,0.03)';
     ctx.lineWidth = 1;
     const s = 80;
     for (let x = 0; x < W; x += s) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }

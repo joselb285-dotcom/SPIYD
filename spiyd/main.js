@@ -260,7 +260,7 @@
      LOGIN BUTTONS — redirect to system (configure URL below)
      ============================================================ */
   function initLoginButtons() {
-    var SYSTEM_URL = "#"; /* ← Replace with actual system URL */
+    var SYSTEM_URL = "/login";
     var ids = ["btn-login", "btn-login-m", "hero-login", "footer-login"];
     ids.forEach(function (id) {
       var el = document.getElementById(id);
