@@ -1432,26 +1432,18 @@
     let capaVegEVI  = null;   // WMS satelital MODIS EVI (alternativa)
 
     function crearCapasVegWMS() {
-      // MODIS Terra NDVI 8-day — muestra densidad de vegetación (NASA GIBS)
+      // MODIS Terra True Color — imagen satelital real, vegetación visible todo el año
       capaVegNDVI = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
-        layers:      'MODIS_Terra_NDVI_8Day',
-        format:      'image/png',
-        transparent: true,
-        version:     '1.1.1',
-        opacity:     0.75,
-        maxZoom:     12,
-        attribution: 'NASA GIBS · MODIS Terra NDVI'
+        layers:          'MODIS_Terra_CorrectedReflectance_TrueColor',
+        format:          'image/jpeg',
+        transparent:     false,
+        version:         '1.1.1',
+        opacity:         0.80,
+        maxNativeZoom:   9,
+        maxZoom:         17,
+        attribution:     'NASA GIBS · MODIS Terra True Color'
       });
-      // MODIS Terra EVI 8-day — alternativa con mejor contraste en zonas densas
-      capaVegEVI = L.tileLayer.wms('https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi', {
-        layers:      'MODIS_Terra_EVI_8Day',
-        format:      'image/png',
-        transparent: true,
-        version:     '1.1.1',
-        opacity:     0.0,
-        maxZoom:     12,
-        attribution: 'NASA GIBS · MODIS Terra EVI'
-      });
+      capaVegEVI = null;
     }
 
     async function cargarVegetacion() {
@@ -1467,7 +1459,7 @@
         return;
       }
       vegActivo = true;
-      btn.disabled = true; btn.textContent = '⏳ Cargando NDVI…';
+      btn.disabled = true; btn.textContent = '⏳ Cargando…';
 
       if (!capaVegNDVI) crearCapasVegWMS();
       mapa.addLayer(capaVegNDVI);
@@ -1493,7 +1485,7 @@
       if (bboxStr === ultimoBboxVeg) return;
       ultimoBboxVeg = bboxStr;
       const area = (n-s)*(e-w);
-      if (area > 15) return; // solo zoom provincia o menor
+      if (area > 30) return; // solo zoom provincia o menor
       try {
         const gj = await fetch(`${BACKEND}/vegetation?s=${s}&w=${w}&n=${n}&e=${e}`).then(r=>r.json());
         if (gj.error || !gj.features?.length) return;
