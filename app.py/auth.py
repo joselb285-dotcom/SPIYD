@@ -13,12 +13,11 @@ def login():
     if request.method == 'POST':
         identifier = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        remember = bool(request.form.get('remember'))
         user = User.query.filter(
             (User.username == identifier) | (User.email == identifier)
         ).first()
         if user and user.check_password(password) and user.active:
-            login_user(user, remember=remember)
+            login_user(user, remember=False)
             user.last_login = datetime.utcnow()
             db.session.add(UsageLog(user_id=user.id, action='login'))
             db.session.commit()

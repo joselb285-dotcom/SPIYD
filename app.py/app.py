@@ -35,6 +35,10 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'spiyd-dev-secret-change
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL', 'sqlite:///' + os.path.join(BASE_DIR, 'spiyd.db'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SESSION_COOKIE_HTTPONLY']  = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['REMEMBER_COOKIE_DURATION'] = 0   # "recordarme" deshabilitado
+app.config['PERMANENT_SESSION_LIFETIME'] = __import__('datetime').timedelta(hours=8)
 
 from models import db, User, UsageLog
 db.init_app(app)
@@ -69,7 +73,9 @@ with app.app_context():
 
 @app.route('/')
 def landing():
-    return send_from_directory(DOCS_DIR, 'index.html')
+    if current_user.is_authenticated:
+        return redirect(url_for('mapa'))
+    return redirect(url_for('auth.login'))
 
 @app.route('/styles.css')
 def docs_styles():
