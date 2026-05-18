@@ -13,8 +13,8 @@
   --bg-2:       #f5f7fb;
   --bg-3:       #ffffff;
   --ink:        #0d1f35;
-  --ink-soft:   rgba(13,31,53,0.90);
-  --ink-mute:   rgba(13,31,53,0.72);
+  --ink-soft:   rgba(13,31,53,0.95);
+  --ink-mute:   rgba(13,31,53,0.80);
   --fire:       #ff6b2b;
   --fire-2:     #e85320;
   --fire-glow:  rgba(255,107,43,0.16);
@@ -81,8 +81,8 @@ ul  { list-style: none; }
 
 .section-body {
   font-size: 1rem;
-  line-height: 1.68;
-  font-weight: 450;
+  line-height: 1.7;
+  font-weight: 500;
   color: var(--ink-soft);
   max-width: 54ch;
   margin-bottom: 1.2rem;
@@ -90,7 +90,7 @@ ul  { list-style: none; }
 
 .section-sub {
   font-size: 1rem;
-  font-weight: 450;
+  font-weight: 500;
   color: var(--ink-soft);
   max-width: 62ch;
   margin: 0 auto 3rem;
@@ -623,9 +623,7 @@ ul  { list-style: none; }
    PROBLEM
    ============================================================ */
 .problem-section {
-  background:
-    linear-gradient(rgba(237,241,247,0.48), rgba(237,241,247,0.54)),
-    url('assets/img/bomberos1.jpeg') center / cover no-repeat;
+  background: var(--bg);
 }
 
 .problem-grid {
@@ -689,9 +687,7 @@ ul  { list-style: none; }
    HOW IT WORKS
    ============================================================ */
 .how-section {
-  background:
-    linear-gradient(rgba(237,241,247,0.50), rgba(237,241,247,0.55)),
-    url('assets/img/earth-satellite.jpeg') center / cover no-repeat;
+  background: var(--bg-2);
 }
 
 .steps-grid {
@@ -845,9 +841,7 @@ ul  { list-style: none; }
    AI SECTION
    ============================================================ */
 .ai-section {
-  background:
-    linear-gradient(135deg, rgba(237,241,247,0.50) 0%, rgba(237,241,247,0.42) 50%, rgba(237,241,247,0.54) 100%),
-    url('assets/img/bomberos2.jpeg') center / cover no-repeat;
+  background: var(--bg);
   overflow: hidden;
 }
 
@@ -944,9 +938,7 @@ ul  { list-style: none; }
    AUDIENCE
    ============================================================ */
 .audience-section {
-  background:
-    linear-gradient(rgba(237,241,247,0.44), rgba(237,241,247,0.50)),
-    url('assets/img/ibera.jpeg') center / cover no-repeat;
+  background: var(--bg-2);
 }
 
 .audience-grid {
@@ -1019,9 +1011,7 @@ ul  { list-style: none; }
    CASES
    ============================================================ */
 .cases-section {
-  background:
-    linear-gradient(rgba(237,241,247,0.46), rgba(237,241,247,0.52)),
-    url('assets/img/bomberos3.jpeg') center / cover no-repeat;
+  background: var(--bg);
 }
 
 .cases-grid {
@@ -1063,33 +1053,28 @@ ul  { list-style: none; }
 }
 
 /* ============================================================
-   SATELLITE BG
+   SATELLITE BG → now a real visible photo section
    ============================================================ */
 .satellite-section {
-  position: relative;
-  padding: 9rem 0;
+  background: var(--bg-2);
+  padding: 0 0 6rem;
 }
 .satellite-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
+  width: 100%;
+  aspect-ratio: 21 / 8;
+  overflow: hidden;
+  margin-bottom: 4rem;
 }
 .satellite-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: saturate(0.85) brightness(0.75);
+  display: block;
+  filter: saturate(1.05) brightness(1.0);
+  transition: transform 0.8s var(--ease-out);
 }
-.satellite-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(237,241,247,0.90) 0%,
-    rgba(237,241,247,0.55) 50%,
-    rgba(237,241,247,0.90) 100%
-  );
-}
+.satellite-bg:hover .satellite-img { transform: scale(1.03); }
+.satellite-overlay { display: none; }
 .satellite-section .container { position: relative; z-index: 1; }
 .satellite-content .section-body { max-width: 58ch; }
 
@@ -1113,9 +1098,7 @@ ul  { list-style: none; }
    TECH STACK
    ============================================================ */
 .stack-section {
-  background:
-    linear-gradient(rgba(237,241,247,0.44), rgba(237,241,247,0.50)),
-    url('assets/img/glaciar.jpeg') center / cover no-repeat;
+  background: var(--bg-2);
 }
 
 .stack-grid {
@@ -1159,9 +1142,7 @@ ul  { list-style: none; }
    CONTACT
    ============================================================ */
 .contact-section {
-  background:
-    linear-gradient(rgba(237,241,247,0.46), rgba(237,241,247,0.52)),
-    url('assets/img/sudamerica.jpeg') center / cover no-repeat;
+  background: var(--bg);
 }
 
 .contact-grid {
@@ -1280,6 +1261,70 @@ ul  { list-style: none; }
 .form-success.is-visible { display: flex; }
 .success-icon { color: #28c840; font-size: 1.1rem; font-weight: 700; }
 .form-success p { font-size: 0.84rem; color: var(--ink-soft); }
+
+/* ============================================================
+   SECTION PHOTO — imagen real visible en secciones
+   ============================================================ */
+.section-photo {
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  overflow: hidden;
+  border-radius: 16px;
+  margin-bottom: 3.5rem;
+  box-shadow: 0 12px 48px rgba(13,31,53,0.13);
+}
+.section-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.7s var(--ease-out);
+}
+.section-photo:hover img { transform: scale(1.025); }
+
+.section-photo--wide { aspect-ratio: 21 / 7; }
+.section-photo--tall { aspect-ratio: 4 / 3; border-radius: 12px; }
+
+/* problem image ya existente */
+.problem-image {
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  overflow: hidden;
+  border-radius: 16px;
+  margin-top: 3rem;
+  box-shadow: 0 12px 48px rgba(13,31,53,0.13);
+}
+.problem-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.7s var(--ease-out);
+}
+.problem-image:hover img { transform: scale(1.025); }
+.problem-image-caption {
+  margin-top: 0.75rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+  text-align: right;
+}
+
+/* Stronger body text across all sections */
+.step-body, .algo-card p, .case-card p, .stack-card p,
+.audience-list li, .ai-features li {
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.step-title, .case-title, .stack-title, .audience-title,
+.algo-tag, .sat-name {
+  font-weight: 700;
+  color: var(--ink);
+}
+.sat-desc, .sat-agency {
+  font-weight: 500;
+}
 
 /* ============================================================
    FOOTER
