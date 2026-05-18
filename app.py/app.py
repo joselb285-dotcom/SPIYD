@@ -106,8 +106,10 @@ def favicon():
 
 @app.route('/provincias-arg.geojson')
 def provincias_geojson():
-    return send_from_directory(BASE_DIR, 'provincias_arg.geojson',
+    resp = send_from_directory(BASE_DIR, 'provincias_arg.geojson',
                                mimetype='application/json')
+    resp.headers['Cache-Control'] = 'public, max-age=86400'
+    return resp
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "")

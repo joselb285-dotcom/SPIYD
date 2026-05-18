@@ -1783,11 +1783,9 @@
     actualizarContadores();
     renderRadarEstaciones();
     mapa.addLayer(capaRadarEstaciones);
-    cargarGeoJSON().then(async ()=>{
-      await cargarFocos(true);
+    cargarGeoJSON().then(()=>{
+      cargarFocos(true);
       cargarAlertasSMN(true);
-      cargarClima();
-      cargarFWI();
     });
   </script>
 </body>
