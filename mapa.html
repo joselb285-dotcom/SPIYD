@@ -463,15 +463,15 @@
     const basemaps = {
       "🛰 Satelital": L.tileLayer(
         `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MT}`,
-        { attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:20, maxNativeZoom:20 }
+        { attribution:'&copy; MapTiler &copy; OpenStreetMap', maxZoom:19, maxNativeZoom:18 }
       ),
       "🗺 Calles": L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
         { attribution:'&copy; CARTO &copy; OSM', subdomains:'abcd', maxZoom:19, maxNativeZoom:19 }
       ),
       "⛰ Terreno": L.tileLayer(
-        `https://api.maptiler.com/maps/topo-v2/{z}/{x}/{y}.png?key=${MT}`,
-        { attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; OpenStreetMap', maxZoom:19, maxNativeZoom:19 }
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        { attribution:'© <a href="https://opentopomap.org">OpenTopoMap</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>', subdomains:'abc', maxZoom:17, maxNativeZoom:17 }
       )
     };
     basemaps["⛰ Terreno"].addTo(mapa);
