@@ -118,6 +118,19 @@
     @keyframes spin { to { transform:rotate(360deg); } }
     .spinner { width:13px; height:13px; border:2px solid rgba(156,100,196,.3); border-top-color:#9c64c4; border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
 
+    /* ── Popup Informe IA ──────────────────────────────────── */
+    .informe-popup .leaflet-popup-content-wrapper {
+      background: #141422; border: 1px solid rgba(255,87,34,0.55);
+      border-radius: 8px; padding: 0; overflow: hidden;
+      box-shadow: 0 14px 48px rgba(0,0,0,0.8);
+    }
+    .informe-popup .leaflet-popup-content { margin: 0; width: 430px !important; }
+    .informe-popup .leaflet-popup-tip     { background: #141422; }
+    .informe-popup .leaflet-popup-close-button {
+      color: #aaa !important; top: 7px !important; right: 8px !important; font-size: 18px !important;
+    }
+    .informe-popup .leaflet-popup-close-button:hover { color: #fff !important; }
+
     /* ── Leyendas ─────────────────────────────────────────── */
     .leyenda { margin-top:10px; font-size:11px; }
     .leyenda strong { color:#888; text-transform:uppercase; font-size:10px; letter-spacing:.5px; }
@@ -1770,127 +1783,113 @@
 
     // ── Análisis IA de foco específico ──────────────────────────────────────
     let focoDataMap = {}, focoCounter = 0;
-    let ultimoInforme = null; // {html, foco, fwi}
-
-    function _panelBtnStyle(bg) {
-      return `padding:5px 10px;background:${bg};color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;`;
-    }
-
-    function makeDraggable(panel, handle) {
-      let ox=0, oy=0;
-      handle.style.cursor = 'move';
-      handle.addEventListener('mousedown', e => {
-        ox = e.clientX - panel.offsetLeft; oy = e.clientY - panel.offsetTop;
-        const onMove = e => { panel.style.left=(e.clientX-ox)+'px'; panel.style.top=(e.clientY-oy)+'px'; panel.style.right='auto'; };
-        const onUp   = () => { document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-      });
-    }
+    let ultimoInforme = null;
+    let informePopup  = null;
 
     function exportarInformePDF() {
       if (!ultimoInforme) return;
       const { sectionsHTML, foco, fwi, timestamp } = ultimoInforme;
-      const pdfSections = sectionsHTML.replace(/rgba\([^)]+\)/g, s => s); // keep as-is
       const w = window.open('', '_blank', 'width=860,height=960');
       w.document.write(`<!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8">
-<title>Informe de Incendio SPIYD — ${foco.lat.toFixed(4)}S ${Math.abs(foco.lon).toFixed(4)}O</title>
+<title>Informe SPIYD — ${foco.lat.toFixed(4)}S ${Math.abs(foco.lon).toFixed(4)}O</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#222;padding:32px 40px;max-width:820px;margin:0 auto}
   h1{font-size:22px;color:#b71c1c;margin-bottom:3px}
-  .sub{font-size:12px;color:#777;margin-bottom:24px;border-bottom:2px solid #e53935;padding-bottom:10px}
-  .sec{margin-bottom:14px;padding:11px 15px;border-left:5px solid;border-radius:0 5px 5px 0;page-break-inside:avoid}
+  .sub{font-size:11px;color:#666;margin-bottom:22px;border-bottom:2px solid #e53935;padding-bottom:10px;line-height:1.8}
+  .sec{margin-bottom:13px;padding:11px 15px;border-left:5px solid #999;border-radius:0 5px 5px 0;page-break-inside:avoid;background:#f9f9f9}
   .sec-title{font-size:11px;font-weight:800;letter-spacing:.7px;margin-bottom:5px;text-transform:uppercase}
   .sec-body{font-size:13px;line-height:1.65;color:#333}
-  .foot{margin-top:24px;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:10px;display:flex;justify-content:space-between}
+  .foot{margin-top:24px;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:10px}
   .btn-print{display:inline-block;margin-bottom:20px;padding:8px 20px;background:#b71c1c;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:700}
-  @media print{
-    .btn-print{display:none}
-    body{padding:16px}
-    .sec{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  }
-</style>
-</head><body>
+  @media print{.btn-print{display:none}body{padding:16px}.sec{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
 <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Exportar PDF</button>
-<h1>🔥 Informe de Incendio Forestal</h1>
+<h1>🔥 Informe de Incendio Forestal — SPIYD</h1>
 <div class="sub">
   <b>Coordenadas:</b> ${foco.lat.toFixed(4)}°S, ${Math.abs(foco.lon).toFixed(4)}°O &nbsp;|&nbsp;
-  <b>Satélite:</b> ${foco.satellite} &nbsp;|&nbsp;
-  <b>Confianza:</b> ${foco.conf}% &nbsp;|&nbsp;
-  <b>FWI local:</b> ${fwi.toFixed(0)} &nbsp;|&nbsp;
-  <b>Detección:</b> ${foco.fecha} &nbsp;|&nbsp;
-  <b>Informe generado:</b> ${timestamp}
+  <b>Satélite:</b> ${foco.satellite} &nbsp;|&nbsp; <b>Confianza:</b> ${foco.conf}% &nbsp;|&nbsp;
+  <b>FWI local:</b> ${fwi.toFixed(0)} &nbsp;|&nbsp; <b>Detección:</b> ${foco.fecha}<br>
+  <b>Informe generado:</b> ${timestamp} &nbsp;|&nbsp; Fuentes: NASA FIRMS · Open-Meteo · OSM Overpass · SMN Argentina
 </div>
-${sectionsHTML}
+${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace(/color:#[0-9a-f]{3,6}/gi, c => {
+  const map={'#ccc':'#333','#ddd':'#333','#aaa':'#444','#555':'#333','#444':'#222','#ef5350':'#c62828','#ffa726':'#e65100','#fdd835':'#827717','#66bb6a':'#2e7d32'};
+  return 'color:'+(map[c.replace('color:','')]||c.replace('color:',''));
+}).replace(/color:\s*#[0-9a-f]{3,6}/gi, c => c)}
 <div class="foot">
-  <span>🤖 Generado por Claude Haiku (Anthropic) · SPIYD — Sistema de Prevención y Incendios de Yacimientos y Desmontes</span>
-  <span>Fuentes: NASA FIRMS · Open-Meteo · OSM Overpass · SMN Argentina</span>
-</div>
-</body></html>`);
+  🤖 Generado por Claude Haiku (Anthropic) · SPIYD — Sistema de Prevención de Incendios · ${timestamp}
+</div></body></html>`);
       w.document.close();
     }
 
-    function abrirPanelInforme(sectionsHTML, foco, fwi, screenX, screenY) {
-      const existing = document.getElementById('informePanel');
-      if (existing) existing.remove();
+    function _popupBtnStyle(bg) {
+      return `padding:5px 11px;background:${bg};color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;`;
+    }
 
+    function abrirPopupInforme(sectionsHTML, foco, fwi) {
       const timestamp = new Date().toLocaleString('es-AR');
-      ultimoInforme = { sectionsHTML, foco, fwi, timestamp };
+      ultimoInforme   = { sectionsHTML, foco, fwi, timestamp };
 
-      const panel = document.createElement('div');
-      panel.id = 'informePanel';
-      const pw = Math.min(430, window.innerWidth - 40);
-      const ph = Math.min(window.innerHeight - 80, 640);
-      let px = Math.min(screenX + 24, window.innerWidth - pw - 10);
-      let py = Math.max(10, Math.min(screenY - 100, window.innerHeight - ph - 10));
-
-      panel.style.cssText = `position:fixed;left:${px}px;top:${py}px;width:${pw}px;height:${ph}px;
-        background:#141422;border:1px solid rgba(255,87,34,0.5);border-radius:8px;z-index:9999;
-        overflow:hidden;display:flex;flex-direction:column;
-        box-shadow:0 12px 40px rgba(0,0,0,0.75);`;
-
-      const seccHTML = sectionsHTML.replace(/font-size:11\.5px/g,'font-size:12px');
-
-      panel.innerHTML = `
-        <div id="informeHandle" style="padding:8px 12px;background:linear-gradient(135deg,#6a1b9a,#b71c1c);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
-          <span style="font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            🔥 Informe · ${foco.lat.toFixed(4)}°S ${Math.abs(foco.lon).toFixed(4)}°O · ${foco.satellite}
-          </span>
-          <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px;">
-            <button onclick="exportarInformePDF()" style="${_panelBtnStyle('#c62828')}">📄 PDF</button>
-            <button onclick="document.getElementById('informePanel').remove()" style="${_panelBtnStyle('#333')}">✕</button>
+      const contenido = `
+        <div style="font-family:monospace;">
+          <div style="padding:9px 36px 9px 12px;background:linear-gradient(135deg,#6a1b9a,#b71c1c);color:#fff;font-size:11.5px;font-weight:700;line-height:1.4;">
+            🔥 Informe de Foco<br>
+            <span style="font-size:10px;font-weight:400;opacity:.85;">${foco.lat.toFixed(4)}°S ${Math.abs(foco.lon).toFixed(4)}°O · ${foco.satellite} · ${foco.conf}% · FWI ${fwi.toFixed(0)}</span>
           </div>
-        </div>
-        <div style="padding:12px;overflow-y:auto;flex:1;">
-          ${seccHTML}
-          <div style="font-size:9px;color:#444;margin-top:8px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);padding-top:5px;">
-            🤖 Claude Haiku · ${timestamp} · Confianza: ${foco.conf}% · FWI: ${fwi.toFixed(0)}
+          <div style="padding:10px;max-height:460px;overflow-y:auto;">
+            ${sectionsHTML}
+            <div style="display:flex;gap:7px;margin-top:10px;justify-content:flex-end;">
+              <button onclick="exportarInformePDF()" style="${_popupBtnStyle('#c62828')}">📄 Exportar PDF</button>
+            </div>
+            <div style="font-size:9px;color:#444;margin-top:6px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);padding-top:4px;">
+              🤖 Claude Haiku · ${timestamp}
+            </div>
           </div>
         </div>`;
 
-      document.body.appendChild(panel);
-      makeDraggable(panel, document.getElementById('informeHandle'));
+      if (informePopup) { mapa.closePopup(informePopup); }
+      informePopup = L.popup({
+        maxWidth:    440,
+        minWidth:    440,
+        className:   'informe-popup',
+        autoPan:     true,
+        autoPanPadding: [60, 60],
+        closeButton: true,
+        offset:      L.point(0, -6),
+      })
+        .setLatLng([foco.lat, foco.lon])
+        .setContent(contenido)
+        .openOn(mapa);
     }
 
     async function analizarFoco(focoId) {
       const d = focoDataMap[focoId];
       if (!d) return;
 
-      // Posición en pantalla del marcador al momento del click
-      const mapRect = mapa.getContainer().getBoundingClientRect();
-      const pt      = mapa.latLngToContainerPoint(L.latLng(d.lat, d.lon));
-      const screenX = mapRect.left + pt.x;
-      const screenY = mapRect.top  + pt.y;
+      // Mostrar popup de carga anclado al marcador
+      if (informePopup) mapa.closePopup(informePopup);
+      informePopup = L.popup({
+        maxWidth: 440, minWidth: 440, className: 'informe-popup',
+        autoPan: true, autoPanPadding: [60,60], closeButton: true, offset: L.point(0,-6)
+      })
+        .setLatLng([d.lat, d.lon])
+        .setContent(`<div style="font-family:monospace;padding:14px 16px;">
+          <div style="padding:8px 0 10px;background:linear-gradient(135deg,#6a1b9a,#b71c1c);color:#fff;font-size:11px;font-weight:700;margin:-14px -16px 12px;padding:9px 12px;">
+            🔥 Analizando foco con IA…
+          </div>
+          <div class="ia-loading"><div class="spinner"></div> Consultando Claude Haiku · Open-Meteo · Overpass…</div>
+          <div style="font-size:10px;color:#666;margin-top:6px;">${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O · ${d.satellite}</div>
+        </div>`)
+        .openOn(mapa);
 
-      // Feedback en sidebar también
+      // Feedback mínimo en sidebar
       const div = document.getElementById('iaResultado');
       const sec = document.getElementById('secIA');
       if (!sec.classList.contains('abierto')) toggleSeccion('secIA');
-      div.innerHTML = '<div class="ia-loading"><div class="spinner"></div> Analizando foco con Claude IA…</div>';
+      div.innerHTML = '<div class="ia-loading"><div class="spinner"></div> Analizando foco…</div>';
 
-      // FWI local: punto más cercano en la grilla
+      // FWI local: punto más cercano
       let fwi_local = 0;
       if (datosFWI.length) {
         const nearest = datosFWI.reduce((best, p) =>
@@ -1912,26 +1911,23 @@ ${sectionsHTML}
         }).then(r => r.json());
 
         if (data.error) {
-          div.innerHTML = `<div style="color:#ff8a80;">❌ ${data.error}</div>`;
+          informePopup.setContent(`<div style="font-family:monospace;padding:14px;color:#ff8a80;">❌ ${data.error}</div>`);
+          div.innerHTML = `<span style="color:#ff8a80;">❌ ${data.error}</span>`;
           return;
         }
 
         const sectionsHTML = renderIAAnalysis(data.analysis);
+        abrirPopupInforme(sectionsHTML, d, fwi_local);
 
-        // Panel flotante en el mapa al lado del foco
-        abrirPanelInforme(sectionsHTML, d, fwi_local, screenX, screenY);
-
-        // Sidebar: resumen compacto con botón para reabrir
         div.innerHTML = `<div style="font-size:10px;color:#9c64c4;font-weight:700;margin-bottom:5px;">
-            🔥 Informe generado para ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O
+            🔥 Informe activo en el mapa · ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O
           </div>
-          <div style="display:flex;gap:6px;margin-top:4px;">
-            <button onclick="abrirPanelInforme(ultimoInforme.sectionsHTML,ultimoInforme.foco,ultimoInforme.fwi,window.innerWidth/2,120)"
-              style="${_panelBtnStyle('linear-gradient(135deg,#6a1b9a,#b71c1c)')}">📊 Ver panel</button>
+          <div style="margin-top:4px;">
             <button onclick="exportarInformePDF()"
-              style="${_panelBtnStyle('#c62828')}">📄 Exportar PDF</button>
+              style="${_popupBtnStyle('#c62828')}">📄 Exportar PDF</button>
           </div>`;
       } catch(e) {
+        informePopup.setContent(`<div style="font-family:monospace;padding:14px;color:#e53935;">Error de conexión.</div>`);
         div.innerHTML = '<span style="color:#e53935;">Error de conexión al analizar foco.</span>';
       }
     }
