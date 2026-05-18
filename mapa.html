@@ -1770,18 +1770,125 @@
 
     // ── Análisis IA de foco específico ──────────────────────────────────────
     let focoDataMap = {}, focoCounter = 0;
+    let ultimoInforme = null; // {html, foco, fwi}
+
+    function _panelBtnStyle(bg) {
+      return `padding:5px 10px;background:${bg};color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;`;
+    }
+
+    function makeDraggable(panel, handle) {
+      let ox=0, oy=0;
+      handle.style.cursor = 'move';
+      handle.addEventListener('mousedown', e => {
+        ox = e.clientX - panel.offsetLeft; oy = e.clientY - panel.offsetTop;
+        const onMove = e => { panel.style.left=(e.clientX-ox)+'px'; panel.style.top=(e.clientY-oy)+'px'; panel.style.right='auto'; };
+        const onUp   = () => { document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+
+    function exportarInformePDF() {
+      if (!ultimoInforme) return;
+      const { sectionsHTML, foco, fwi, timestamp } = ultimoInforme;
+      const pdfSections = sectionsHTML.replace(/rgba\([^)]+\)/g, s => s); // keep as-is
+      const w = window.open('', '_blank', 'width=860,height=960');
+      w.document.write(`<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8">
+<title>Informe de Incendio SPIYD — ${foco.lat.toFixed(4)}S ${Math.abs(foco.lon).toFixed(4)}O</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#222;padding:32px 40px;max-width:820px;margin:0 auto}
+  h1{font-size:22px;color:#b71c1c;margin-bottom:3px}
+  .sub{font-size:12px;color:#777;margin-bottom:24px;border-bottom:2px solid #e53935;padding-bottom:10px}
+  .sec{margin-bottom:14px;padding:11px 15px;border-left:5px solid;border-radius:0 5px 5px 0;page-break-inside:avoid}
+  .sec-title{font-size:11px;font-weight:800;letter-spacing:.7px;margin-bottom:5px;text-transform:uppercase}
+  .sec-body{font-size:13px;line-height:1.65;color:#333}
+  .foot{margin-top:24px;font-size:10px;color:#999;border-top:1px solid #ddd;padding-top:10px;display:flex;justify-content:space-between}
+  .btn-print{display:inline-block;margin-bottom:20px;padding:8px 20px;background:#b71c1c;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;font-weight:700}
+  @media print{
+    .btn-print{display:none}
+    body{padding:16px}
+    .sec{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head><body>
+<button class="btn-print" onclick="window.print()">🖨️ Imprimir / Exportar PDF</button>
+<h1>🔥 Informe de Incendio Forestal</h1>
+<div class="sub">
+  <b>Coordenadas:</b> ${foco.lat.toFixed(4)}°S, ${Math.abs(foco.lon).toFixed(4)}°O &nbsp;|&nbsp;
+  <b>Satélite:</b> ${foco.satellite} &nbsp;|&nbsp;
+  <b>Confianza:</b> ${foco.conf}% &nbsp;|&nbsp;
+  <b>FWI local:</b> ${fwi.toFixed(0)} &nbsp;|&nbsp;
+  <b>Detección:</b> ${foco.fecha} &nbsp;|&nbsp;
+  <b>Informe generado:</b> ${timestamp}
+</div>
+${sectionsHTML}
+<div class="foot">
+  <span>🤖 Generado por Claude Haiku (Anthropic) · SPIYD — Sistema de Prevención y Incendios de Yacimientos y Desmontes</span>
+  <span>Fuentes: NASA FIRMS · Open-Meteo · OSM Overpass · SMN Argentina</span>
+</div>
+</body></html>`);
+      w.document.close();
+    }
+
+    function abrirPanelInforme(sectionsHTML, foco, fwi, screenX, screenY) {
+      const existing = document.getElementById('informePanel');
+      if (existing) existing.remove();
+
+      const timestamp = new Date().toLocaleString('es-AR');
+      ultimoInforme = { sectionsHTML, foco, fwi, timestamp };
+
+      const panel = document.createElement('div');
+      panel.id = 'informePanel';
+      const pw = Math.min(430, window.innerWidth - 40);
+      const ph = Math.min(window.innerHeight - 80, 640);
+      let px = Math.min(screenX + 24, window.innerWidth - pw - 10);
+      let py = Math.max(10, Math.min(screenY - 100, window.innerHeight - ph - 10));
+
+      panel.style.cssText = `position:fixed;left:${px}px;top:${py}px;width:${pw}px;height:${ph}px;
+        background:#141422;border:1px solid rgba(255,87,34,0.5);border-radius:8px;z-index:9999;
+        overflow:hidden;display:flex;flex-direction:column;
+        box-shadow:0 12px 40px rgba(0,0,0,0.75);`;
+
+      const seccHTML = sectionsHTML.replace(/font-size:11\.5px/g,'font-size:12px');
+
+      panel.innerHTML = `
+        <div id="informeHandle" style="padding:8px 12px;background:linear-gradient(135deg,#6a1b9a,#b71c1c);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+          <span style="font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            🔥 Informe · ${foco.lat.toFixed(4)}°S ${Math.abs(foco.lon).toFixed(4)}°O · ${foco.satellite}
+          </span>
+          <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px;">
+            <button onclick="exportarInformePDF()" style="${_panelBtnStyle('#c62828')}">📄 PDF</button>
+            <button onclick="document.getElementById('informePanel').remove()" style="${_panelBtnStyle('#333')}">✕</button>
+          </div>
+        </div>
+        <div style="padding:12px;overflow-y:auto;flex:1;">
+          ${seccHTML}
+          <div style="font-size:9px;color:#444;margin-top:8px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);padding-top:5px;">
+            🤖 Claude Haiku · ${timestamp} · Confianza: ${foco.conf}% · FWI: ${fwi.toFixed(0)}
+          </div>
+        </div>`;
+
+      document.body.appendChild(panel);
+      makeDraggable(panel, document.getElementById('informeHandle'));
+    }
 
     async function analizarFoco(focoId) {
-      const d   = focoDataMap[focoId];
+      const d = focoDataMap[focoId];
       if (!d) return;
+
+      // Posición en pantalla del marcador al momento del click
+      const mapRect = mapa.getContainer().getBoundingClientRect();
+      const pt      = mapa.latLngToContainerPoint(L.latLng(d.lat, d.lon));
+      const screenX = mapRect.left + pt.x;
+      const screenY = mapRect.top  + pt.y;
+
+      // Feedback en sidebar también
       const div = document.getElementById('iaResultado');
       const sec = document.getElementById('secIA');
       if (!sec.classList.contains('abierto')) toggleSeccion('secIA');
-
-      div.innerHTML = `<div style="font-size:10px;color:#9c64c4;font-weight:700;margin-bottom:6px;">
-        🔥 INFORME DE FOCO — ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O
-      </div>
-      <div class="ia-loading"><div class="spinner"></div> Analizando foco con Claude IA…</div>`;
+      div.innerHTML = '<div class="ia-loading"><div class="spinner"></div> Analizando foco con Claude IA…</div>';
 
       // FWI local: punto más cercano en la grilla
       let fwi_local = 0;
@@ -1794,14 +1901,9 @@
 
       try {
         const body = {
-          lat:          d.lat,
-          lon:          d.lon,
-          conf:         d.conf,
-          brillo:       d.brillo,
-          satellite:    d.satellite,
-          fecha:        d.fecha,
-          fwi_local:    fwi_local,
-          smn_rojo:     ultimoSMN.rojo    || 0,
+          lat: d.lat, lon: d.lon, conf: d.conf, brillo: d.brillo,
+          satellite: d.satellite, fecha: d.fecha, fwi_local,
+          smn_rojo:     ultimoSMN.rojo     || 0,
           smn_naranja:  ultimoSMN.naranja  || 0,
           smn_amarillo: ultimoSMN.amarillo || 0,
         };
@@ -1811,16 +1913,24 @@
 
         if (data.error) {
           div.innerHTML = `<div style="color:#ff8a80;">❌ ${data.error}</div>`;
-        } else {
-          div.innerHTML =
-            `<div style="font-size:10px;color:#9c64c4;font-weight:700;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid rgba(156,100,196,0.3);">
-              🔥 INFORME DE FOCO · ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O · ${d.satellite}
-            </div>` +
-            renderIAAnalysis(data.analysis) +
-            `<div style="font-size:9px;color:#555;margin-top:6px;text-align:right;border-top:1px solid rgba(255,255,255,0.07);padding-top:4px;">
-              🤖 Claude Haiku · ${new Date().toLocaleTimeString('es-AR')} · Confianza: ${d.conf}% · FWI local: ${fwi_local.toFixed(0)}
-            </div>`;
+          return;
         }
+
+        const sectionsHTML = renderIAAnalysis(data.analysis);
+
+        // Panel flotante en el mapa al lado del foco
+        abrirPanelInforme(sectionsHTML, d, fwi_local, screenX, screenY);
+
+        // Sidebar: resumen compacto con botón para reabrir
+        div.innerHTML = `<div style="font-size:10px;color:#9c64c4;font-weight:700;margin-bottom:5px;">
+            🔥 Informe generado para ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O
+          </div>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <button onclick="abrirPanelInforme(ultimoInforme.sectionsHTML,ultimoInforme.foco,ultimoInforme.fwi,window.innerWidth/2,120)"
+              style="${_panelBtnStyle('linear-gradient(135deg,#6a1b9a,#b71c1c)')}">📊 Ver panel</button>
+            <button onclick="exportarInformePDF()"
+              style="${_panelBtnStyle('#c62828')}">📄 Exportar PDF</button>
+          </div>`;
       } catch(e) {
         div.innerHTML = '<span style="color:#e53935;">Error de conexión al analizar foco.</span>';
       }
