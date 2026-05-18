@@ -457,8 +457,8 @@
     const clusterFocos  = L.markerClusterGroup({ spiderfyOnMaxZoom:true, showCoverageOnHover:false, zoomToBoundsOnClick:true, chunkedLoading:true, maxClusterRadius:50 });
     const capasAlertaSMN = L.layerGroup();
     const capaRiesgo30   = L.layerGroup();
-    const capaAgua       = L.layerGroup();
-    const capaVeg        = L.layerGroup();
+    const capaAgua       = L.markerClusterGroup({ showCoverageOnHover:false, maxClusterRadius:60, chunkedLoading:true });
+    const capaVeg        = L.markerClusterGroup({ showCoverageOnHover:false, maxClusterRadius:60, chunkedLoading:true });
     const capaINPE       = L.layerGroup();
     const capaFWI        = L.layerGroup();
     const capaRadarEstaciones = L.layerGroup();
@@ -1346,9 +1346,8 @@
         </div>`);
         capaVeg.addLayer(mk);
       });
-      if (document.getElementById('togVeg').checked) {
-        if (!mapa.hasLayer(capaVeg)) mapa.addLayer(capaVeg);
-      }
+      document.getElementById('togVeg').checked = true;
+      if (!mapa.hasLayer(capaVeg)) mapa.addLayer(capaVeg);
       document.getElementById('numVeg').textContent = datos.length;
       const vc=document.getElementById('vegCount'); vc.textContent=datos.length; vc.style.display='inline-block';
     }
