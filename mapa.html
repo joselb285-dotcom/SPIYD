@@ -313,13 +313,36 @@
       </div>
       <div class="seccion-body" id="secRadar">
         <div style="margin-top:5px;">
-          <!-- Botones capas radar -->
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;margin-bottom:6px;">
-            <button id="btnGOES" onclick="toggleCapaRadar('goes')" style="padding:5px 3px;background:#01579b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;">🛰 GOES-16</button>
-            <button id="btnPrecip" onclick="cargarPrecipitacion()" style="padding:5px 3px;background:#1565c0;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;">🌧 Precipit.</button>
-            <button id="btnRadarRV" onclick="toggleRadarRainViewer()" style="padding:5px 3px;background:#1a237e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;">📡 Radar</button>
-            <button onclick="ocultarTodasCapasRadar()" style="padding:5px 3px;background:rgba(255,255,255,0.07);color:#aaa;border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;font-size:10px;">✕ Ocultar</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px;">
+            <button id="btnRadarAnim" onclick="toggleRadarAnimado()" style="padding:6px 4px;background:#1a237e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;">📡 Radar animado</button>
+            <button id="btnGOES" onclick="toggleCapaRadar('goes')" style="padding:6px 4px;background:#01579b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;">🛰 GOES-16</button>
+            <button id="btnPrecip" onclick="cargarPrecipitacion()" style="padding:6px 4px;background:#1565c0;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;">🌧 Precipitación</button>
+            <button onclick="ocultarTodasCapasRadar()" style="padding:6px 4px;background:rgba(255,255,255,0.07);color:#aaa;border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;font-size:11px;">✕ Ocultar todo</button>
           </div>
+
+          <!-- Controles animación radar -->
+          <div id="radarAnimPanel" style="display:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+              <button id="btnRPrev" onclick="radarStepManual(-1)" style="width:28px;height:28px;border-radius:5px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:#fff;cursor:pointer;font-size:13px;">◀</button>
+              <button id="btnRPlay" onclick="togglePlayRadar()" style="flex:1;height:28px;border-radius:5px;border:none;background:#1a237e;color:#fff;cursor:pointer;font-size:13px;font-weight:700;">⏸</button>
+              <button id="btnRNext" onclick="radarStepManual(1)"  style="width:28px;height:28px;border-radius:5px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:#fff;cursor:pointer;font-size:13px;">▶</button>
+            </div>
+            <input type="range" id="radarSlider" min="0" value="0" style="width:100%;accent-color:#29b6f6;cursor:pointer;" oninput="radarIrAFrame(parseInt(this.value))">
+            <div style="display:flex;justify-content:space-between;margin-top:2px;">
+              <span style="font-size:9px;color:#555;" id="radarT0">—</span>
+              <span style="font-size:11px;font-weight:700;color:#29b6f6;" id="radarTimestamp">--:--</span>
+              <span style="font-size:9px;color:#555;" id="radarTN">Ahora</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;">
+              <span style="font-size:10px;color:#666;" id="radarFrameCount">0/0 frames</span>
+              <select id="radarSpeed" onchange="radarCambiarVelocidad(this.value)" style="font-size:10px;background:#222;color:#aaa;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:2px 4px;">
+                <option value="800">Lento</option>
+                <option value="450" selected>Normal</option>
+                <option value="200">Rápido</option>
+              </select>
+            </div>
+          </div>
+
           <div id="radarStatus" style="font-size:11px;color:#666;padding:3px 0;line-height:1.5;">Seleccioná una capa para activar.</div>
           <div id="radarEstInfo" style="margin-top:4px;font-size:11px;color:#888;line-height:1.5;">
             Hacé clic en una estación 📡 para ver el clima en tiempo real.
@@ -706,58 +729,149 @@
       }
     };
 
-    window.toggleRadarRainViewer = async function() {
-      const btn = document.getElementById('btnRadarRV');
-      if (radarTileLayer && mapa.hasLayer(radarTileLayer)) {
-        mapa.removeLayer(radarTileLayer);
-        btn.style.opacity = '0.5';
+    // ── Radar animado (RainViewer) ────────────────────────────────────────────
+    let radarFrames    = [];   // [{time, path, layer}]
+    let radarFrameIdx  = 0;
+    let radarAnimTimer = null;
+    let radarPlaying   = false;
+    let radarActivo    = false;
+    let radarSpeedMs   = 450;
+
+    window.toggleRadarAnimado = async function() {
+      const btn = document.getElementById('btnRadarAnim');
+      if (radarActivo) {
+        radarActivo = false;
+        radarDetener();
+        radarFrames.forEach(f => { if (f.layer && mapa.hasLayer(f.layer)) mapa.removeLayer(f.layer); });
+        radarFrames = [];
+        document.getElementById('radarAnimPanel').style.display = 'none';
         document.getElementById('radarStatus').textContent = 'Radar ocultado.';
+        btn.textContent = '📡 Radar animado';
         return;
       }
-      btn.textContent = '⏳';
-      const ok = await cargarRadarRainViewer();
-      btn.textContent = '📡 Radar';
-      btn.style.opacity = ok ? '1' : '0.5';
-      if (!ok) document.getElementById('radarStatus').textContent = '❌ Sin datos de radar disponibles.';
-      else document.getElementById('radarStatus').innerHTML = '✅ <b style="color:#80deea;">Radar activo</b> · RainViewer';
+      btn.textContent = '⏳ Cargando…';
+      radarActivo = true;
+      const ok = await iniciarRadarAnimado();
+      if (!ok) {
+        radarActivo = false;
+        btn.textContent = '📡 Radar animado';
+        document.getElementById('radarStatus').textContent = '❌ Sin datos de radar.';
+        return;
+      }
+      btn.textContent = '📡 Radar ON';
+      document.getElementById('radarStatus').innerHTML =
+        '✅ <b style="color:#29b6f6;">Radar animado</b> · <span style="color:#555;font-size:10px;">RainViewer · últimas 2h</span>';
+    };
+
+    async function iniciarRadarAnimado() {
+      try {
+        const data = await fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json());
+        const past = data.radar?.past || [];
+        if (!past.length) return false;
+
+        radarFrames = past.map(f => ({
+          time:  f.time,
+          path:  f.path,
+          layer: L.tileLayer(
+            `https://tilecache.rainviewer.com${f.path}/256/{z}/{x}/{y}/2/1_1.png`,
+            { opacity:0.65, maxZoom:19, maxNativeZoom:12, zIndex:480,
+              attribution:'RainViewer' }
+          )
+        }));
+
+        // Slider
+        const sl = document.getElementById('radarSlider');
+        sl.max = radarFrames.length - 1;
+
+        // Label inicio
+        const t0 = new Date(radarFrames[0].time * 1000);
+        document.getElementById('radarT0').textContent =
+          t0.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+
+        document.getElementById('radarAnimPanel').style.display = 'block';
+
+        // Mostrar último frame y arrancar animación
+        radarFrameIdx = 0;
+        radarMostrarFrame(0);
+        radarArrancar();
+        return true;
+      } catch(e) { console.error(e); return false; }
+    }
+
+    function radarMostrarFrame(idx) {
+      radarFrames.forEach((f, i) => {
+        if (i === idx) { if (!mapa.hasLayer(f.layer)) mapa.addLayer(f.layer); }
+        else           { if (f.layer && mapa.hasLayer(f.layer)) mapa.removeLayer(f.layer); }
+      });
+      radarFrameIdx = idx;
+      const ts = new Date(radarFrames[idx].time * 1000);
+      document.getElementById('radarTimestamp').textContent =
+        ts.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('radarFrameCount').textContent =
+        `${idx+1}/${radarFrames.length} frames`;
+      document.getElementById('radarSlider').value = idx;
+    }
+
+    function radarArrancar() {
+      radarDetener();
+      radarPlaying = true;
+      document.getElementById('btnRPlay').textContent = '⏸';
+      function paso() {
+        if (!radarPlaying) return;
+        const next = (radarFrameIdx + 1) % radarFrames.length;
+        radarMostrarFrame(next);
+        // Pausa 2s en el último frame (más reciente) antes de volver al inicio
+        const delay = (next === radarFrames.length - 1) ? 2000 : radarSpeedMs;
+        radarAnimTimer = setTimeout(paso, delay);
+      }
+      radarAnimTimer = setTimeout(paso, radarSpeedMs);
+    }
+
+    function radarDetener() {
+      radarPlaying = false;
+      if (radarAnimTimer) { clearTimeout(radarAnimTimer); radarAnimTimer = null; }
+      const btn = document.getElementById('btnRPlay');
+      if (btn) btn.textContent = '▶';
+    }
+
+    window.togglePlayRadar = function() {
+      if (radarPlaying) radarDetener();
+      else radarArrancar();
+    };
+
+    window.radarStepManual = function(dir) {
+      radarDetener();
+      const next = (radarFrameIdx + dir + radarFrames.length) % radarFrames.length;
+      radarMostrarFrame(next);
+    };
+
+    window.radarIrAFrame = function(idx) {
+      radarDetener();
+      radarMostrarFrame(idx);
+    };
+
+    window.radarCambiarVelocidad = function(ms) {
+      radarSpeedMs = parseInt(ms);
+      if (radarPlaying) radarArrancar(); // reinicia con nueva velocidad
     };
 
     window.ocultarTodasCapasRadar = function() {
       if (capaGOES) mapa.removeLayer(capaGOES);
       if (mapa.hasLayer(capaPrecipMap)) mapa.removeLayer(capaPrecipMap);
-      if (radarTileLayer && mapa.hasLayer(radarTileLayer)) mapa.removeLayer(radarTileLayer);
-      if (radarRefreshTimer) { clearInterval(radarRefreshTimer); radarRefreshTimer = null; }
-      document.getElementById('btnGOES').style.opacity    = '0.5';
-      document.getElementById('btnPrecip').style.opacity  = '0.5';
-      document.getElementById('btnRadarRV').style.opacity = '0.5';
-      document.getElementById('radarStatus').textContent  = 'Capas ocultadas.';
+      if (radarActivo) {
+        radarDetener();
+        radarFrames.forEach(f => { if (f.layer && mapa.hasLayer(f.layer)) mapa.removeLayer(f.layer); });
+        radarActivo = false;
+        document.getElementById('radarAnimPanel').style.display = 'none';
+        document.getElementById('btnRadarAnim').textContent = '📡 Radar animado';
+      }
+      document.getElementById('btnGOES').style.opacity   = '0.5';
+      document.getElementById('btnPrecip').style.opacity = '0.5';
+      document.getElementById('radarStatus').textContent = 'Capas ocultadas.';
     };
 
-    // ── RainViewer radar tiles ────────────────────────────────────────────────
-    let radarTileLayer = null;
-    let radarTimestamp = null;
-
-    async function cargarRadarRainViewer() {
-      try {
-        const data = await fetch('https://api.rainviewer.com/public/weather-maps.json').then(r=>r.json());
-        const frames = data.radar?.past || [];
-        if (!frames.length) return false;
-        const last = frames[frames.length - 1];
-        radarTimestamp = last.time;
-        if (radarTileLayer) mapa.removeLayer(radarTileLayer);
-        radarTileLayer = L.tileLayer(
-          `https://tilecache.rainviewer.com${last.path}/256/{z}/{x}/{y}/2/1_1.png`,
-          { opacity: 0.6, maxZoom: 19, maxNativeZoom: 12, zIndex: 480,
-            attribution: 'RainViewer' }
-        );
-        mapa.addLayer(radarTileLayer);
-        const fecha = new Date(radarTimestamp * 1000).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
-        document.getElementById('radarEstInfo').innerHTML =
-          `🌧 <b style="color:#29b6f6;">Radar activo</b> — dato de las ${fecha}<br>
-           <span style="font-size:10px;color:#666;">Verde=leve · Amarillo=mod · Rojo=intenso</span>`;
-        return true;
-      } catch(e) { return false; }
-    }
+    // legacy stub (no longer used as button but may be called internally)
+    async function cargarRadarRainViewer() { return iniciarRadarAnimado(); }
 
     async function fetchClimaEstacion(lat, lon) {
       try {
