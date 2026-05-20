@@ -34,22 +34,13 @@
                  placeholder="••••••••" autocomplete="new-password">
         </div>
 
-        <div class="row g-3 mb-3">
-          <div class="col-6">
-            <label class="form-label">Rol *</label>
-            <select class="form-select" name="role">
-              <option value="user" {% if not user or user.role == 'user' %}selected{% endif %}>Usuario</option>
-              <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Administrador</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label">Plan *</label>
-            <select class="form-select" name="plan">
-              <option value="basic" {% if not user or user.plan == 'basic' %}selected{% endif %}>Básico (Gratis)</option>
-              <option value="pro" {% if user and user.plan == 'pro' %}selected{% endif %}>Pro ($29/mes)</option>
-              <option value="enterprise" {% if user and user.plan == 'enterprise' %}selected{% endif %}>Enterprise ($99/mes)</option>
-            </select>
-          </div>
+        <div class="mb-3">
+          <label class="form-label">Rol *</label>
+          <select class="form-select" name="role" disabled>
+            <option value="user" selected>Usuario</option>
+          </select>
+          <input type="hidden" name="role" value="user">
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Los administradores solo pueden crear usuarios estándar.</div>
         </div>
 
         {% if action == 'edit' %}
@@ -84,17 +75,9 @@
           <span>Registrado</span>
           <span style="color:var(--text)">{{ user.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
         </div>
-        <div class="d-flex justify-content-between mb-2">
+        <div class="d-flex justify-content-between">
           <span>Último acceso</span>
           <span style="color:var(--text)">{% if user.last_login %}{{ user.last_login.strftime('%d/%m/%Y %H:%M') }}{% else %}Nunca{% endif %}</span>
-        </div>
-        <div class="d-flex justify-content-between mb-2">
-          <span>Facturas totales</span>
-          <span style="color:var(--text)">{{ user.invoices|length }}</span>
-        </div>
-        <div class="d-flex justify-content-between">
-          <span>Monto mensual</span>
-          <span style="color:var(--orange);font-weight:700">${{ "%.2f"|format(user.monthly_amount) }}</span>
         </div>
       </div>
     </div>

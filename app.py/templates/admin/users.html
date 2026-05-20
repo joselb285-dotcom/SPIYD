@@ -30,7 +30,6 @@
           <th>#</th>
           <th>Usuario</th>
           <th>Rol</th>
-          <th>Plan</th>
           <th>Estado</th>
           <th>Registrado</th>
           <th>Último acceso</th>
@@ -47,12 +46,6 @@
           </td>
           <td>
             <span class="badge-role badge-{{ user.role }}">{{ user.role_label }}</span>
-          </td>
-          <td>
-            <span class="badge-plan badge-{{ user.plan }}">{{ user.plan_label }}</span>
-            {% if user.monthly_amount > 0 %}
-            <div style="font-size:0.72rem;color:var(--muted)">${{ "%.0f"|format(user.monthly_amount) }}/mes</div>
-            {% endif %}
           </td>
           <td>
             {% if user.active %}
@@ -89,7 +82,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="8" style="text-align:center;color:var(--muted);padding:40px">
+          <td colspan="7" style="text-align:center;color:var(--muted);padding:40px">
             {% if search %}
               No se encontraron usuarios para "{{ search }}"
             {% else %}

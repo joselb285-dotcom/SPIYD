@@ -40,7 +40,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['REMEMBER_COOKIE_DURATION'] = 0   # "recordarme" deshabilitado
 app.config['PERMANENT_SESSION_LIFETIME'] = __import__('datetime').timedelta(hours=8)
 
-from models import db, User, UsageLog
+from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog
 db.init_app(app)
 
 login_manager = LoginManager()
@@ -73,7 +73,7 @@ with app.app_context():
 
 @app.route('/')
 def landing():
-    return send_from_directory(DOCS_DIR, 'index.html')
+    return render_template('landing.html')
 
 @app.route('/styles.css')
 def docs_styles():
@@ -98,6 +98,19 @@ def docs_demo():
 @app.route('/contacto.html')
 def docs_contacto():
     return send_from_directory(DOCS_DIR, 'contacto.html')
+
+@app.route('/contacto', methods=['POST'])
+def contacto_form():
+    nombre = request.form.get('nombre', '').strip()
+    email = request.form.get('email', '').strip()
+    organizacion = request.form.get('organizacion', '').strip()
+    mensaje = request.form.get('mensaje', '').strip()
+    if not nombre or not email:
+        flash('Por favor completá nombre y correo.', 'warning')
+        return redirect(url_for('landing') + '#demo')
+    app.logger.info(f"[CONTACTO] {nombre} <{email}> — {organizacion}: {mensaje[:100]}")
+    flash(f'Gracias {nombre}, recibimos tu solicitud. Te contactaremos a {email}.', 'success')
+    return redirect(url_for('landing') + '#demo')
 
 @app.route('/reunion.html')
 def docs_reunion():

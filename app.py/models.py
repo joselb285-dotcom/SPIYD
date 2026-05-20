@@ -5,8 +5,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
-PLAN_PRICES = {'basic': 0.0, 'pro': 29.0, 'enterprise': 99.0}
-
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -15,11 +13,9 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default='user')
     active = db.Column(db.Boolean, default=True)
-    plan = db.Column(db.String(20), default='basic')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     usage_logs = db.relationship('UsageLog', backref='user', lazy=True, cascade='all, delete-orphan')
-    invoices = db.relationship('Invoice', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -35,17 +31,9 @@ class User(UserMixin, db.Model):
         return self.active
 
     @property
-    def monthly_amount(self):
-        return PLAN_PRICES.get(self.plan, 0.0)
-
-    @property
-    def plan_label(self):
-        labels = {'basic': 'Básico', 'pro': 'Pro', 'enterprise': 'Enterprise'}
-        return labels.get(self.plan, self.plan)
-
-    @property
     def role_label(self):
-        return 'Administrador' if self.role == 'admin' else 'Usuario'
+        labels = {'superadmin': 'SuperAdmin', 'admin': 'Administrador', 'user': 'Usuario'}
+        return labels.get(self.role, self.role)
 
 
 class UsageLog(db.Model):
@@ -53,24 +41,35 @@ class UsageLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     action = db.Column(db.String(100))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    cost = db.Column(db.Float, default=0.0)
+    detail = db.Column(db.String(256))
 
 
-class Invoice(db.Model):
+class SmnAlerta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    period = db.Column(db.String(7))
-    amount = db.Column(db.Float, default=0.0)
-    status = db.Column(db.String(20), default='pending')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    paid_at = db.Column(db.DateTime)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    region = db.Column(db.String(100))
+    severidad = db.Column(db.String(20))
+    descripcion = db.Column(db.Text)
+    fuente = db.Column(db.String(50), default='SMN')
 
-    @property
-    def status_label(self):
-        labels = {'pending': 'Pendiente', 'paid': 'Pagado', 'overdue': 'Vencido'}
-        return labels.get(self.status, self.status)
 
-    @property
-    def status_class(self):
-        classes = {'pending': 'warning', 'paid': 'success', 'overdue': 'danger'}
-        return classes.get(self.status, 'secondary')
+class AiInforme(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    region = db.Column(db.String(100))
+    severidad = db.Column(db.String(20))
+    ha = db.Column(db.Float)
+    pdf_path = db.Column(db.String(256))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+
+class FocoLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    region = db.Column(db.String(100))
+    severidad = db.Column(db.String(20))
+    fuente = db.Column(db.String(50))
+    ha = db.Column(db.Float)
+    lat = db.Column(db.Float)
+    lon = db.Column(db.Float)
+    ai_analizado = db.Column(db.Boolean, default=False)

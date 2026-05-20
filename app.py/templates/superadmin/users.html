@@ -37,7 +37,6 @@
         <th>#</th>
         <th>Usuario</th>
         <th>Rol</th>
-        <th>Plan</th>
         <th>Estado</th>
         <th>Último acceso</th>
         <th>Registrado</th>
@@ -53,7 +52,6 @@
           <div style="font-size:0.78rem;color:var(--muted)">{{ u.email }}</div>
         </td>
         <td><span class="badge-role badge-{{ u.role }}">{{ u.role_label }}</span></td>
-        <td><span class="badge-plan badge-{{ u.plan }}">{{ u.plan_label }}</span></td>
         <td>
           {% if u.active %}
             <span class="badge-active">Activo</span>
@@ -88,7 +86,7 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="8" style="text-align:center;color:var(--muted);padding:32px">
+        <td colspan="7" style="text-align:center;color:var(--muted);padding:32px">
           No se encontraron usuarios
         </td>
       </tr>

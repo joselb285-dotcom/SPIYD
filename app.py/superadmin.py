@@ -2,13 +2,12 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy import func
-from models import db, User, UsageLog, Invoice
+from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog
 from datetime import datetime
 
 superadmin_bp = Blueprint('superadmin', __name__)
 
 ROLES = ['user', 'admin', 'superadmin']
-PLANS = ['basic', 'pro', 'enterprise']
 
 
 def superadmin_required(f):
@@ -32,18 +31,22 @@ def dashboard():
     role_counts = dict(
         db.session.query(User.role, func.count(User.id)).group_by(User.role).all()
     )
-    plan_counts = dict(
-        db.session.query(User.plan, func.count(User.id)).group_by(User.plan).all()
-    )
     recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
+    admin_list = User.query.filter_by(role='admin').order_by(User.created_at.desc()).all()
+    smn_total = SmnAlerta.query.count()
+    ai_total = AiInforme.query.count()
+    focos_total = FocoLog.query.count()
     return render_template('superadmin/dashboard.html',
         total_users=total_users,
         active_users=active_users,
         admins=admins,
         superadmins=superadmins,
         role_counts=role_counts,
-        plan_counts=plan_counts,
         recent_users=recent_users,
+        admin_list=admin_list,
+        smn_total=smn_total,
+        ai_total=ai_total,
+        focos_total=focos_total,
     )
 
 
@@ -81,13 +84,13 @@ def user_new():
         elif User.query.filter_by(email=email).first():
             flash('El email ya está registrado', 'error')
         else:
-            user = User(username=username, email=email, role=role, plan=plan)
+            user = User(username=username, email=email, role=role or 'user')
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
             flash(f'Usuario {username} creado exitosamente', 'success')
             return redirect(url_for('superadmin.users'))
-    return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES, plans=PLANS)
+    return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES)
 
 
 @superadmin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -98,7 +101,6 @@ def user_edit(user_id):
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         role = request.form.get('role', user.role)
-        plan = request.form.get('plan', user.plan)
         active = 'active' in request.form
         new_password = request.form.get('password', '').strip()
         existing = User.query.filter(User.email == email, User.id != user_id).first()
@@ -107,14 +109,13 @@ def user_edit(user_id):
         else:
             user.email = email
             user.role = role
-            user.plan = plan
             user.active = active
             if new_password:
                 user.set_password(new_password)
             db.session.commit()
             flash(f'Usuario {user.username} actualizado', 'success')
             return redirect(url_for('superadmin.users'))
-    return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES, plans=PLANS)
+    return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES)
 
 
 @superadmin_bp.route('/users/<int:user_id>/delete', methods=['POST'])

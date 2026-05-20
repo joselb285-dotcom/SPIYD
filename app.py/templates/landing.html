@@ -1,569 +1,365 @@
-<!DOCTYPE html>
-<html lang="es" id="html-root">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SPIYD — Sistema de Prevención de Incendios y Deforestaciones</title>
-  <meta name="description" content="Plataforma satelital de monitoreo de incendios y deforestación en tiempo real para América del Sur.">
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-
-  <style>
-    :root{
-      --fire-50:#fff1f0;--fire-500:#ef4444;--fire-600:#dc2626;--fire-700:#b91c1c;
-      --ember-400:#fb923c;--ember-500:#f97316;--ember-600:#ea580c;--ember-700:#c2410c;
-      --gold-300:#fde047;--gold-400:#facc15;--gold-500:#eab308;--gold-600:#ca8a04;
-      --amber-400:#fbbf24;--amber-500:#f59e0b;
-      --forest-400:#4ade80;--forest-500:#22c55e;--forest-600:#16a34a;--forest-700:#15803d;
-      --carbon-950:#050608;--carbon-900:#0a0b10;--carbon-800:#12141c;
-      --carbon-700:#1a1d28;--carbon-600:#252934;
-      --ash-100:#f5f3f0;--ash-200:#e7e3dc;--ash-300:#cfc9bf;
-      --ash-500:#7a7468;--ash-700:#3d3a33;
-      --white:#fff;
-      --radius:12px;--radius-lg:16px;--radius-xl:22px;
+<!DOCTYPE html><html class="dark" lang="es"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SPIY - Sistema de Prevención de Incendios y Deforestación</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@300..700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "on-primary-fixed": "#0d1c32","on-error-container": "#ffdad6","error-container": "#93000a",
+                    "primary-fixed-dim": "#b9c7e4","on-background": "#e4e2e4","on-error": "#690005",
+                    "secondary": "#a1d494","surface-bright": "#39393b","primary": "#b9c7e4",
+                    "tertiary": "#e7bf99","surface-container-low": "#1b1b1d","surface-variant": "#343536",
+                    "primary-fixed": "#d6e3ff","error": "#ffb4ab","inverse-on-surface": "#303032",
+                    "on-surface": "#e4e2e4","outline-variant": "#44474d","inverse-surface": "#e4e2e4",
+                    "on-primary-container": "#74829d","secondary-fixed": "#bcf0ae","surface": "#131315",
+                    "primary-container": "#0a192f","surface-container-lowest": "#0e0e10",
+                    "surface-container": "#1f1f21","tertiary-container": "#281400","on-secondary-fixed": "#002201",
+                    "secondary-container": "#23501e","on-primary": "#233148","on-tertiary-container": "#9d7b5a",
+                    "surface-tint": "#b9c7e4","tertiary-fixed": "#ffdcbd","surface-container-highest": "#343536",
+                    "secondary-fixed-dim": "#a1d494","on-secondary": "#0a3909","tertiary-fixed-dim": "#e7bf99",
+                    "on-tertiary-fixed-variant": "#5d4124","background": "#131315","on-tertiary": "#432b10",
+                    "surface-container-high": "#2a2a2c","outline": "#8f9097","on-secondary-fixed-variant": "#23501e",
+                    "on-tertiary-fixed": "#2b1701","on-secondary-container": "#90c283","inverse-primary": "#515f78",
+                    "surface-dim": "#131315","on-surface-variant": "#c5c6cd","on-primary-fixed-variant": "#39475f"
+                },
+                "borderRadius": {"DEFAULT": "0.25rem","lg": "0.5rem","xl": "0.75rem","full": "9999px"},
+                "spacing": {"unit": "8px","container-padding": "24px","section-gap": "48px","gutter": "16px","glass-padding": "20px"},
+                "fontFamily": {
+                    "headline-lg": ["Space Grotesk"],"display-lg": ["Space Grotesk"],"display-md": ["Space Grotesk"],
+                    "headline-lg-mobile": ["Space Grotesk"],"label-technical": ["JetBrains Mono"],
+                    "body-md": ["Inter"],"body-lg": ["Inter"],"body-sm": ["Inter"]
+                },
+                "fontSize": {
+                    "headline-lg": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "display-md": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "label-technical": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                }
+            },
+        },
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
-    body{font-family:'Inter',system-ui,sans-serif;background:var(--carbon-950);color:#fff;overflow-x:hidden;font-size:15px;line-height:1.5}
-    .container{max-width:1200px}
-    a{text-decoration:none}
-    code,.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
-
-    /* NAV */
-    .nav{
-      position:fixed;top:0;left:0;right:0;z-index:1000;padding:12px 0;
-      background:linear-gradient(180deg,rgba(10,11,16,.85),rgba(10,11,16,.55));
-      backdrop-filter:saturate(180%) blur(20px);
-      border-bottom:1px solid rgba(255,255,255,.05);transition:all .3s ease;
-    }
-    .nav.scrolled{background:rgba(10,11,16,.92);border-bottom-color:rgba(251,191,36,.15);box-shadow:0 8px 32px -16px rgba(220,38,38,.25)}
-    .nav-row{display:flex;align-items:center;justify-content:space-between;gap:24px}
-    .brand{display:flex;align-items:center;gap:11px;font-weight:800;font-size:1.1rem;color:#fff;letter-spacing:-.02em;position:relative}
-    .brand-logo{
-      width:34px;height:34px;border-radius:10px;
-      background:linear-gradient(135deg,var(--gold-400) 0%,var(--ember-500) 45%,var(--fire-600) 100%);
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 4px 20px rgba(249,115,22,.55), 0 0 0 1px rgba(255,255,255,.1) inset;
-      position:relative;
-    }
-    .brand-logo::after{
-      content:"";position:absolute;inset:-3px;border-radius:13px;
-      background:linear-gradient(135deg,var(--gold-400),var(--fire-600));
-      filter:blur(8px);opacity:.5;z-index:-1;animation:logoGlow 2.4s ease-in-out infinite;
-    }
-    @keyframes logoGlow{50%{opacity:.85}}
-    .brand-logo svg{width:18px;height:18px;color:#fff;position:relative;z-index:1}
-    .brand-name{background:linear-gradient(90deg,#fff 0%,var(--gold-300) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
-    .nav-links{display:flex;align-items:center;gap:2px}
-    .nav-link{color:rgba(255,255,255,.72);font-weight:500;font-size:.92rem;padding:8px 14px;border-radius:8px;transition:all .2s;position:relative}
-    .nav-link:hover{color:var(--gold-300);background:rgba(251,191,36,.08)}
-    .nav-link::after{content:"";position:absolute;left:14px;right:14px;bottom:4px;height:1.5px;background:linear-gradient(90deg,var(--gold-400),var(--fire-500));transform:scaleX(0);transition:transform .25s}
-    .nav-link:hover::after{transform:scaleX(1)}
-    .nav-actions{display:flex;align-items:center;gap:10px}
-    .lang-group{display:inline-flex;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:3px}
-    .lang-btn{background:transparent;border:none;color:rgba(255,255,255,.6);border-radius:6px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.04em}
-    .lang-btn.active{background:linear-gradient(135deg,var(--gold-400),var(--ember-500));color:var(--carbon-900);box-shadow:0 2px 8px rgba(251,191,36,.4)}
-    .lang-btn:hover:not(.active){color:#fff;background:rgba(255,255,255,.06)}
-
-    /* Buttons */
-    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:.93rem;border-radius:10px;padding:11px 20px;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:all .2s ease;white-space:nowrap;position:relative;overflow:hidden}
-    .btn:active{transform:scale(.97)}
-    .btn-fire{background:linear-gradient(135deg,var(--ember-500) 0%,var(--fire-600) 50%,var(--fire-700) 100%);color:#fff;box-shadow:0 4px 18px rgba(220,38,38,.5), inset 0 1px 0 rgba(255,255,255,.2)}
-    .btn-fire:hover{color:#fff;transform:translateY(-2px);box-shadow:0 10px 28px rgba(220,38,38,.65), inset 0 1px 0 rgba(255,255,255,.25)}
-    .btn-gold{background:linear-gradient(135deg,var(--gold-400) 0%,var(--amber-500) 100%);color:var(--carbon-900);box-shadow:0 4px 18px rgba(251,191,36,.45), inset 0 1px 0 rgba(255,255,255,.3);font-weight:700}
-    .btn-gold:hover{color:var(--carbon-900);transform:translateY(-2px);box-shadow:0 10px 28px rgba(251,191,36,.6)}
-    .btn-glass{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(10px)}
-    .btn-glass:hover{background:rgba(255,255,255,.13);color:#fff;border-color:rgba(251,191,36,.5)}
-    .btn-ghost-dark{background:#fff;color:var(--carbon-900);border:1px solid var(--ash-200);box-shadow:0 1px 2px rgba(0,0,0,.05)}
-    .btn-ghost-dark:hover{color:var(--carbon-900);border-color:var(--fire-500);background:var(--fire-50)}
-    .btn-dark{background:var(--carbon-900);color:#fff;border-color:var(--carbon-700)}
-    .btn-dark:hover{background:var(--carbon-800);color:#fff}
-    .btn-lg{padding:14px 24px;font-size:.98rem;border-radius:11px}
-
-    /* HERO con foto de bomberos */
-    #hero{
-      position:relative;padding:130px 0 110px;min-height:100vh;display:flex;align-items:center;overflow:hidden;
-      background:
-        linear-gradient(135deg,rgba(5,6,8,.78) 0%,rgba(153,27,27,.62) 40%,rgba(10,11,16,.85) 100%),
-        url('https://images.unsplash.com/photo-1602528369715-71d361168ebe?w=1920&q=85&auto=format&fit=crop');
-      background-size:cover;background-position:center 30%;background-attachment:fixed;
-    }
-    #hero::before{
-      content:"";position:absolute;inset:0;
-      background:
-        radial-gradient(700px 400px at 90% 50%, rgba(251,191,36,.18), transparent 60%),
-        radial-gradient(800px 500px at 10% 90%, rgba(220,38,38,.25), transparent 60%);
-      pointer-events:none;z-index:0;
-    }
-    #hero::after{
-      content:"";position:absolute;inset:0;
-      background:linear-gradient(180deg,transparent 70%,var(--carbon-950) 100%);
-      pointer-events:none;
-    }
-    .hero-inner{position:relative;z-index:2}
-    .eyebrow{
-      display:inline-flex;align-items:center;gap:9px;
-      background:rgba(220,38,38,.15);border:1px solid rgba(251,191,36,.35);
-      backdrop-filter:blur(10px);border-radius:999px;padding:6px 6px 6px 14px;
-      font-size:.78rem;font-weight:600;color:var(--gold-300);margin-bottom:26px;
-      box-shadow:0 4px 20px rgba(220,38,38,.25);
-    }
-    .eyebrow-pill{background:linear-gradient(135deg,var(--gold-400),var(--ember-500));color:var(--carbon-900);font-size:.68rem;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.08em;text-transform:uppercase}
-    .live-dot{width:7px;height:7px;border-radius:50%;background:var(--forest-500);box-shadow:0 0 0 0 rgba(34,197,94,.6);animation:livePulse 1.6s infinite}
-    @keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 9px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
-    .hero-title{font-size:clamp(2.5rem,5.6vw,4.4rem);font-weight:900;letter-spacing:-.035em;line-height:1.04;color:#fff;margin-bottom:20px;text-shadow:0 4px 30px rgba(0,0,0,.4)}
-    .hero-title .accent-fire{background:linear-gradient(135deg,var(--gold-300) 0%,var(--ember-500) 50%,var(--fire-600) 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 30px rgba(251,191,36,.4))}
-    .hero-typed{font-size:1.1rem;color:rgba(255,255,255,.8);min-height:1.7rem;margin-bottom:14px;font-weight:500}
-    #typed-text{color:var(--gold-400);font-weight:700;text-shadow:0 0 20px rgba(251,191,36,.5)}
-    #typed-cursor{color:var(--ember-500);animation:blink .9s infinite}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-    .hero-sub{font-size:1.08rem;color:rgba(255,255,255,.78);max-width:560px;line-height:1.65;margin-bottom:34px}
-    .hero-ctas{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:30px}
-    .hero-meta{display:flex;flex-wrap:wrap;gap:18px;align-items:center;font-size:.85rem;color:rgba(255,255,255,.6)}
-    .hero-meta i{color:var(--forest-400)}
-
-    /* Status card */
-    .status-card{
-      background:linear-gradient(180deg,rgba(20,15,15,.9),rgba(10,11,16,.95));
-      border:1px solid rgba(251,191,36,.2);border-radius:var(--radius-lg);
-      padding:24px;color:#fff;
-      box-shadow:0 30px 80px -20px rgba(220,38,38,.4), 0 0 0 1px rgba(255,255,255,.04) inset;
-      position:relative;overflow:hidden;backdrop-filter:blur(16px);
-    }
-    .status-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--fire-600),var(--gold-400),var(--ember-500))}
-    .status-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-    .status-title{font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)}
-    .status-live{display:inline-flex;align-items:center;gap:6px;color:var(--forest-400);font-size:.7rem;font-weight:700;letter-spacing:.06em}
-    .status-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.87rem}
-    .status-row:last-of-type{border-bottom:none}
-    .status-row .lbl{color:rgba(255,255,255,.7);display:flex;align-items:center;gap:8px}
-    .status-row .val{color:#fff;font-weight:700;font-variant-numeric:tabular-nums}
-    .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-    .status-foot{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.45);font-size:.72rem;display:flex;justify-content:space-between;align-items:center}
-
-    /* TRUST */
-    #trust{padding:48px 0 36px;background:var(--carbon-900);border-bottom:1px solid rgba(251,191,36,.08)}
-    .trust-label{text-align:center;font-size:.74rem;font-weight:700;color:var(--gold-400);letter-spacing:.18em;text-transform:uppercase;margin-bottom:24px}
-    .trust-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:32px;align-items:center;opacity:.55;transition:opacity .3s}
-    .trust-grid:hover{opacity:.9}
-    .trust-item{display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);font-weight:700;font-size:.95rem;height:34px}
-    .trust-item svg{height:22px;width:auto;color:#fff}
-    @media(max-width:768px){.trust-grid{grid-template-columns:repeat(3,1fr);gap:24px 16px}}
-
-    /* STATS (clara con borde fuego arriba) */
-    #stats{background:linear-gradient(180deg,var(--ash-100) 0%,#fff 100%);padding:80px 0;color:var(--carbon-900);position:relative}
-    #stats::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--fire-600),var(--ember-500),var(--gold-400),var(--ember-500),var(--fire-600))}
-    .stat{text-align:left;padding:18px 4px}
-    .stat-num{font-size:clamp(2.2rem,4vw,3rem);font-weight:900;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums;background:linear-gradient(135deg,var(--fire-700),var(--ember-600));-webkit-background-clip:text;background-clip:text;color:transparent}
-    .stat-num .unit{color:var(--gold-500);-webkit-text-fill-color:var(--gold-500)}
-    .stat-lbl{color:var(--ash-700);font-size:.88rem;margin-top:6px;font-weight:600}
-
-    /* SECTION shared */
-    .section{padding:104px 0}
-    .chip{display:inline-block;background:rgba(220,38,38,.12);color:var(--fire-600);border:1px solid rgba(220,38,38,.25);border-radius:999px;padding:5px 14px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
-    .chip-gold{background:rgba(251,191,36,.12);color:var(--gold-600);border-color:rgba(251,191,36,.3)}
-    .chip-dark{background:rgba(251,191,36,.15);color:var(--gold-400);border-color:rgba(251,191,36,.35)}
-    .section-title{font-size:clamp(1.9rem,3.4vw,2.6rem);font-weight:800;letter-spacing:-.03em;line-height:1.12;margin-bottom:14px}
-    .section-title.dark{color:#fff}
-    .section-title.light{color:var(--carbon-900)}
-    .section-sub{font-size:1.02rem;line-height:1.6;max-width:580px}
-    .section-sub.dark{color:rgba(255,255,255,.65)}
-    .section-sub.light{color:var(--ash-700)}
-
-    /* FEATURES (oscuro con tarjetas vivas) */
-    #features{background:var(--carbon-900);position:relative;overflow:hidden}
-    #features::before{content:"";position:absolute;inset:0;background:radial-gradient(800px 400px at 0% 0%, rgba(220,38,38,.12), transparent 60%),radial-gradient(700px 400px at 100% 100%, rgba(251,191,36,.08), transparent 60%);pointer-events:none}
-    #features .container{position:relative;z-index:1}
-    .feat-card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border:1px solid rgba(255,255,255,.07);border-radius:var(--radius-lg);padding:28px;height:100%;transition:all .3s ease;position:relative;overflow:hidden}
-    .feat-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--card-accent,linear-gradient(90deg,var(--fire-600),var(--ember-500)));opacity:0;transition:opacity .3s}
-    .feat-card:hover{transform:translateY(-4px);border-color:rgba(251,191,36,.25);box-shadow:0 20px 60px -20px rgba(220,38,38,.35)}
-    .feat-card:hover::before{opacity:1}
-    .feat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:18px;color:#fff;box-shadow:0 8px 24px -8px var(--icon-shadow,rgba(220,38,38,.4))}
-    .feat-card h5{font-size:1.05rem;font-weight:700;color:#fff;margin-bottom:8px;letter-spacing:-.01em}
-    .feat-card p{color:rgba(255,255,255,.6);font-size:.9rem;line-height:1.6;margin:0}
-
-    /* DEMO */
-    #demo{background:linear-gradient(180deg,#fff 0%,var(--ash-100) 100%);padding:104px 0;color:var(--carbon-900)}
-    .demo-frame{background:var(--carbon-950);border-radius:var(--radius-xl);padding:14px;box-shadow:0 40px 100px -30px rgba(0,0,0,.4), 0 0 0 1px rgba(251,191,36,.1);border:1px solid var(--carbon-700);position:relative}
-    .demo-frame::before{content:"";position:absolute;inset:-2px;border-radius:inherit;background:linear-gradient(135deg,var(--fire-600),var(--gold-400),var(--ember-500));z-index:-1;opacity:.5;filter:blur(20px)}
-    .demo-tabs{display:flex;align-items:center;gap:10px;padding:6px 4px 12px;border-bottom:1px solid rgba(255,255,255,.05);margin-bottom:10px}
-    .demo-dots{display:flex;gap:6px}
-    .demo-dots span{width:11px;height:11px;border-radius:50%}
-    .demo-dots .d1{background:var(--fire-500)}.demo-dots .d2{background:var(--gold-400)}.demo-dots .d3{background:var(--forest-500)}
-    .demo-url{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.6);font-size:.78rem;padding:4px 14px;border-radius:8px;flex:1;margin-left:6px;max-width:420px;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:8px}
-    .demo-url i{color:var(--forest-500);font-size:.7rem}
-    #demo-map{height:580px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.05);position:relative}
-    .map-panel-overlay{position:absolute;top:14px;left:14px;z-index:1000;background:rgba(10,11,16,.94);backdrop-filter:blur(14px);border:1px solid rgba(251,191,36,.18);border-radius:var(--radius);padding:14px 14px 12px;width:220px;color:#e2e8f0;font-size:11px;box-shadow:0 8px 30px rgba(220,38,38,.25)}
-    .mpo-title{font-size:11px;font-weight:800;color:#fff;margin-bottom:12px;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
-    .mpo-title::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--forest-500);box-shadow:0 0 8px var(--forest-500)}
-    .mpo-layer{display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;color:rgba(255,255,255,.65);transition:color .15s}
-    .mpo-layer:hover{color:#fff}
-    .mpo-layer input{accent-color:var(--ember-500);width:12px;height:12px;margin:0;cursor:pointer}
-    .mpo-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-    .mpo-divider{border:none;border-top:1px solid rgba(255,255,255,.07);margin:10px 0}
-    .mpo-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px}
-    .mpo-stat{background:rgba(255,255,255,.04);border-radius:6px;padding:6px 7px;text-align:center}
-    .mpo-num{font-size:13px;font-weight:800;display:block;color:#fff;font-variant-numeric:tabular-nums}
-    .mpo-lbl{font-size:9px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em}
-    .mpo-risk{margin-top:10px;text-align:center;padding:6px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.12em}
-    .map-legend{display:flex;flex-wrap:wrap;gap:14px 22px;margin-top:22px;padding:18px 22px;background:#fff;border:1px solid var(--ash-200);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.04)}
-    .leg-item{display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--ash-700)}
-    .leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-    .leg-line{width:18px;height:3px;border-radius:2px;flex-shrink:0}
-
-    /* PRICING */
-    #pricing{background:var(--ash-100);padding:104px 0;color:var(--carbon-900)}
-    .plan-card{background:#fff;border:1px solid var(--ash-200);border-radius:var(--radius-xl);padding:34px 28px;height:100%;position:relative;transition:all .3s ease;display:flex;flex-direction:column}
-    .plan-card:hover{transform:translateY(-4px);box-shadow:0 20px 60px -20px rgba(0,0,0,.12);border-color:var(--ash-300)}
-    .plan-card.featured{border-color:var(--fire-500);box-shadow:0 0 0 5px rgba(251,191,36,.1), 0 20px 60px -20px rgba(220,38,38,.3);background:linear-gradient(180deg,#fff,var(--fire-50))}
-    .plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--gold-400),var(--ember-500),var(--fire-600));color:#fff;font-size:.66rem;font-weight:800;padding:6px 16px;border-radius:999px;letter-spacing:.1em;text-transform:uppercase;box-shadow:0 6px 20px rgba(220,38,38,.5)}
-    .plan-name{font-size:.72rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px}
-    .plan-card .plan-name{color:var(--ember-600)}
-    .plan-card.featured .plan-name{color:var(--fire-600)}
-    .plan-desc{color:var(--ash-700);font-size:.85rem;margin-bottom:16px;min-height:38px}
-    .plan-price{font-size:2.8rem;font-weight:900;color:var(--carbon-900);line-height:1;letter-spacing:-.03em}
-    .plan-price small{font-size:.88rem;font-weight:500;color:var(--ash-500);margin-left:4px}
-    .plan-features{list-style:none;padding:0;margin:22px 0 28px;flex:1}
-    .plan-features li{padding:9px 0;font-size:.88rem;color:var(--ash-700);display:flex;align-items:flex-start;gap:10px}
-    .plan-features li i.fa-check{color:#fff;background:linear-gradient(135deg,var(--forest-500),var(--forest-600));border-radius:50%;padding:4px;font-size:.55rem;margin-top:3px;flex-shrink:0;box-shadow:0 2px 8px rgba(34,197,94,.3)}
-    .plan-features li.off{color:var(--ash-300)}
-    .plan-features li.off i{color:var(--ash-300);background:#f5f3f0;box-shadow:none}
-    .plan-cta{display:block;width:100%;text-align:center}
-
-    /* CTA con foto bomberos */
-    #cta{
-      position:relative;padding:120px 0;overflow:hidden;
-      background:
-        linear-gradient(135deg,rgba(5,6,8,.7) 0%,rgba(153,27,27,.55) 50%,rgba(10,11,16,.85) 100%),
-        url('https://images.unsplash.com/photo-1574482620811-1aa16ffe3c82?w=1920&q=85&auto=format&fit=crop');
-      background-size:cover;background-position:center;background-attachment:fixed;
-    }
-    #cta::before{content:"";position:absolute;inset:0;background:radial-gradient(800px 400px at 30% 50%, rgba(251,191,36,.25), transparent 60%),radial-gradient(700px 400px at 80% 50%, rgba(220,38,38,.3), transparent 60%);pointer-events:none}
-    .cta-inner{position:relative;z-index:1;text-align:center}
-    .cta-title{font-size:clamp(2.2rem,4.5vw,3.2rem);font-weight:900;color:#fff;letter-spacing:-.03em;line-height:1.1;margin-bottom:18px;text-shadow:0 4px 30px rgba(0,0,0,.5)}
-    .cta-title .accent{background:linear-gradient(135deg,var(--gold-300),var(--ember-500),var(--fire-500));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 20px rgba(251,191,36,.4))}
-    .cta-sub{color:rgba(255,255,255,.78);font-size:1.08rem;margin-bottom:38px;max-width:560px;margin-left:auto;margin-right:auto}
-
-    /* FOOTER */
-    footer{background:var(--carbon-950);padding:64px 0 28px;border-top:1px solid rgba(251,191,36,.1);color:#fff}
-    .footer-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.1rem;margin-bottom:14px}
-    .footer-desc{color:rgba(255,255,255,.5);font-size:.88rem;line-height:1.6;max-width:300px}
-    .footer-col-title{font-weight:800;color:var(--gold-400);margin-bottom:14px;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase}
-    .footer-link{color:rgba(255,255,255,.55);font-size:.88rem;display:block;margin-bottom:9px;transition:color .15s}
-    .footer-link:hover{color:var(--gold-300)}
-    .footer-divider{border:0;border-top:1px solid rgba(255,255,255,.08);margin:36px 0 18px}
-    .footer-bottom{color:rgba(255,255,255,.4);font-size:.82rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
-
-    /* REVEAL */
-    .reveal{opacity:0;transform:translateY(20px);transition:opacity .7s ease,transform .7s ease}
-    .reveal.visible{opacity:1;transform:none}
-    .reveal-d1{transition-delay:.06s}.reveal-d2{transition-delay:.12s}.reveal-d3{transition-delay:.18s}.reveal-d4{transition-delay:.24s}
-
-    /* Leaflet */
-    #demo-map .leaflet-control-zoom a{background:#161b22!important;color:#e2e8f0!important;border-color:#334155!important}
-    .leaflet-popup-content-wrapper{border-radius:10px!important}
-
-    @media(max-width:991px){
-      .nav-links{display:none}
-      #hero{padding-top:110px;background-attachment:scroll}
-      #cta{background-attachment:scroll}
-    }
-    @media(max-width:576px){
-      .section,#pricing,#demo,#cta{padding:72px 0}
-      .demo-url{display:none}
-      .map-panel-overlay{width:180px;font-size:10px}
-    }
-  </style>
+</script>
+<style>
+    .glass-panel { background: rgba(19,19,21,0.4); backdrop-filter: blur(24px); border: 1px solid rgba(185,199,228,0.1); }
+    .inner-glow { box-shadow: inset 0 1px 1px 0 rgba(255,255,255,0.1); }
+    .hero-gradient { background: radial-gradient(circle at center, transparent 0%, rgba(19,19,21,1) 100%); }
+    .hud-scanline { background: repeating-linear-gradient(0deg, transparent 0px, rgba(185,199,228,0.03) 1px, transparent 2px); background-size: 100% 4px; }
+    .tech-button { background: linear-gradient(135deg, #23501e 0%, #0a192f 100%); transition: all 0.3s ease; position: relative; overflow: hidden; }
+    .tech-button:hover { box-shadow: 0 0 30px rgba(161,212,148,0.4); transform: translateY(-2px); }
+    .cta-pulse { animation: cta-pulse-glow 2.5s infinite; }
+    @keyframes cta-pulse-glow { 0% { box-shadow: 0 0 0px 0px rgba(185,199,228,0); } 50% { box-shadow: 0 0 20px 2px rgba(185,199,228,0.2); } 100% { box-shadow: 0 0 0px 0px rgba(185,199,228,0); } }
+    .alert-glow { box-shadow: 0 0 15px rgba(255,180,171,0.2); }
+    @keyframes pulse-alert { 0% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.6; transform: scale(1); } }
+    .animate-pulse-alert { animation: pulse-alert 2s infinite; }
+    .hud-floating { position: absolute; pointer-events: none; opacity: 0.15; color: #b9c7e4; font-family: 'JetBrains Mono', monospace; font-size: 10px; white-space: nowrap; }
+    @keyframes float-slow { 0% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-20px) translateX(10px); } 100% { transform: translateY(0) translateX(0); } }
+    .thermal-point { position: absolute; width: 4px; height: 4px; background: #ffb4ab; border-radius: 50%; filter: blur(1px); box-shadow: 0 0 10px 4px rgba(255,180,171,0.6); animation: thermal-flicker 1.5s infinite ease-in-out; }
+    @keyframes thermal-flicker { 0%, 100% { opacity: 0.4; transform: scale(1); filter: blur(1px); } 50% { opacity: 1; transform: scale(1.8); filter: blur(2px); } }
+    .parallax-bg { transition: transform 0.15s ease-out; will-change: transform; }
+    section { opacity: 0; transform: translateY(30px); transition: all 1s cubic-bezier(0.22,1,0.36,1); }
+    section.is-visible { opacity: 1; transform: translateY(0); }
+</style>
 </head>
-<body>
+<body class="bg-background text-on-background font-body-md selection:bg-primary selection:text-on-primary overflow-x-hidden">
 
-<nav class="nav" id="navbar">
-  <div class="container nav-row">
-    <a href="#" class="brand">
-      <span class="brand-logo"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5c1.2 3 3.5 4.5 3.5 7.5a3.5 3.5 0 1 1-7 0c0-1.5.5-2 1-2.5-.5 1.5.5 3 1.5 3 0-2.5 1-5 1-8Zm-1 13a4 4 0 0 0 4 4 4 4 0 0 1-8 0 4 4 0 0 0 4-4Z" fill="currentColor"/></svg></span>
-      <span class="brand-name">SPIYD</span>
-    </a>
-    <div class="nav-links">
-      <a class="nav-link" href="#features" data-i18n="nav_feat">Características</a>
-      <a class="nav-link" href="#demo" data-i18n="nav_demo">Demo</a>
-      <a class="nav-link" href="#pricing" data-i18n="nav_price">Precios</a>
+<!-- Nav -->
+<nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/20 shadow-sm transition-all duration-300 flex justify-between items-center px-container-padding h-20">
+    <div class="flex items-center gap-2">
+        <span class="text-headline-lg font-headline-lg font-bold text-primary tracking-tighter">SPIY</span>
     </div>
-    <div class="nav-actions">
-      <div class="lang-group">
-        <button class="lang-btn active" onclick="setLang('es')">ES</button>
-        <button class="lang-btn" onclick="setLang('en')">EN</button>
-        <button class="lang-btn" onclick="setLang('pt')">PT</button>
-      </div>
-      <a href="/login" class="btn btn-fire" data-i18n="nav_login">Ingresar</a>
+    <div class="hidden md:flex items-center gap-gutter">
+        <a class="font-body-md text-body-md text-primary font-bold border-b-2 border-primary pb-1" href="#">Inicio</a>
+        <a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#tecnologia">Tecnología</a>
+        <a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#mapa">Mapa</a>
+        <a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#demo">Demo</a>
+        <a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors" href="#contacto">Contacto</a>
     </div>
-  </div>
+    <div class="flex items-center gap-4">
+        <a href="/login" class="text-on-surface-variant hover:text-primary transition-colors font-body-md">Ingresar</a>
+        <a href="#demo" class="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-bold hover:bg-primary transition-all active:scale-95 cta-pulse">Solicitar Demo</a>
+    </div>
 </nav>
 
-<section id="hero">
-  <div class="container hero-inner">
-    <div class="row align-items-center g-5">
-      <div class="col-lg-7">
-        <div class="eyebrow">
-          <span class="eyebrow-pill" data-i18n="hero_pill">v3.0</span>
-          <span class="live-dot"></span>
-          <span data-i18n="hero_tag">Monitoreo en tiempo real</span>
-        </div>
-        <h1 class="hero-title">
-          <span data-i18n="hero_h1">Prevención de incendios</span><br>
-          <span data-i18n="hero_h2_pre">y deforestaciones</span>
-          <span class="accent-fire" data-i18n="hero_h2_acc">a escala continental</span>
-        </h1>
-        <div class="hero-typed">
-          <span data-i18n="hero_typed_pre">Para </span><span id="typed-text"></span><span id="typed-cursor">|</span>
-        </div>
-        <p class="hero-sub" data-i18n="hero_sub">Plataforma satelital con datos en vivo de NASA, INPE y GOES-16, índices FWI, alertas Telegram y análisis con IA. Construida para proteger los bosques de América del Sur.</p>
-        <div class="hero-ctas">
-          <a href="/login" class="btn btn-fire btn-lg" data-i18n="hero_cta1"><i class="fas fa-shield-halved"></i> Acceder al sistema</a>
-          <a href="#demo" class="btn btn-glass btn-lg" data-i18n="hero_cta2"><i class="fas fa-play"></i> Ver demo en vivo</a>
-        </div>
-        <div class="hero-meta">
-          <span><i class="fas fa-check-circle"></i> <span data-i18n="meta_free">Gratuito para organismos</span></span>
-          <span><i class="fas fa-check-circle"></i> <span data-i18n="meta_setup">Sin instalación</span></span>
-          <span><i class="fas fa-check-circle"></i> <span data-i18n="meta_lang">3 idiomas</span></span>
-        </div>
-      </div>
-      <div class="col-lg-5 d-none d-lg-block">
-        <div class="status-card">
-          <div class="status-head">
-            <div class="status-title" data-i18n="status_t">Estado del sistema</div>
-            <div class="status-live"><span class="live-dot"></span> LIVE</div>
-          </div>
-          <div class="status-row"><span class="lbl"><span class="status-dot" style="background:var(--fire-500);box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:livePulse 1.5s infinite"></span><span data-i18n="status_nasa">Focos NASA activos</span></span><span class="val">1,243</span></div>
-          <div class="status-row"><span class="lbl"><span class="status-dot" style="background:var(--ember-500)"></span><span data-i18n="status_inpe">Focos INPE / GOES</span></span><span class="val">387</span></div>
-          <div class="status-row"><span class="lbl"><span class="status-dot" style="background:var(--gold-400)"></span><span data-i18n="status_smn">Alertas SMN activas</span></span><span class="val">14</span></div>
-          <div class="status-row"><span class="lbl"><span class="status-dot" style="background:#a78bfa"></span><span data-i18n="status_fwi">FWI máximo</span></span><span class="val" style="color:var(--gold-400)">68 <span style="color:rgba(255,255,255,.5);font-weight:500">— <span data-i18n="status_extreme">extremo</span></span></span></div>
-          <div class="status-row"><span class="lbl"><span class="status-dot" style="background:var(--fire-500);box-shadow:0 0 0 0 rgba(239,68,68,.6);animation:livePulse 1s infinite"></span><span data-i18n="status_zones">Zonas 30-30-30</span></span><span class="val" style="color:var(--fire-500)">3 <span data-i18n="status_active">activas</span></span></div>
-          <div class="status-foot"><span><i class="fas fa-clock"></i> <span data-i18n="hero_updated">Actualizado hace 4 min</span></span><span class="mono">v3.0.4</span></div>
-        </div>
-      </div>
+<!-- Flash messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-md px-4">
+    {% for category, message in messages %}
+    <div class="glass-panel px-5 py-3 rounded-xl border {% if category == 'success' %}border-secondary/40 text-secondary{% else %}border-tertiary/40 text-tertiary{% endif %} text-[14px] flex items-center gap-3 shadow-lg">
+        <span class="material-symbols-outlined text-sm">{% if category == 'success' %}check_circle{% else %}info{% endif %}</span>
+        {{ message }}
     </div>
-  </div>
-</section>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
 
-<section id="trust">
-  <div class="container">
-    <div class="trust-label" data-i18n="trust_label">Confían en SPIYD organismos y agencias de toda Sudamérica</div>
-    <div class="trust-grid">
-      <div class="trust-item"><svg viewBox="0 0 64 24" fill="currentColor"><path d="M5 4h6l4 9V4h4v16h-6l-4-9v9H5V4Zm20 0h12v3.5h-8v3h7v3.4h-7V16.5h8V20H25V4Zm14 0h4l3 6 3-6h4v16h-3.6V9.5L46.5 16h-1l-2.9-6.5V20H39V4Z"/></svg></div>
-      <div class="trust-item"><svg viewBox="0 0 80 24" fill="currentColor"><path d="M8 4v16h4v-5h4.5c4 0 6-2.2 6-5.5S20.5 4 16.5 4H8Zm4 3.3h4c1.6 0 2.5.8 2.5 2.2s-.9 2.2-2.5 2.2h-4V7.3Zm14 12.7V4h4v6.4l5-6.4h4.7l-5.4 6.7L40.5 20H35l-4.5-7.2-.5.6V20h-4Zm22-16c-4.8 0-8 3.4-8 8s3.2 8 8 8 8-3.4 8-8-3.2-8-8-8Zm0 3.3c2.4 0 4 2 4 4.7s-1.6 4.7-4 4.7-4-2-4-4.7 1.6-4.7 4-4.7ZM67 4h-4l-5 16h4l1-3.4h5l1 3.4h4L67 4Zm-3 9.4 1.5-5.2 1.5 5.2H64Z"/></svg></div>
-      <div class="trust-item"><svg viewBox="0 0 60 24" fill="currentColor"><path d="M4 4h6c4 0 7 3 7 8s-3 8-7 8H4V4Zm4 3.3v9.4h2c2 0 3.4-1.8 3.4-4.7S12 7.3 10 7.3H8ZM19 4h4v16h-4V4Zm6 0h4l5 9V4h4v16h-4l-5-9v9h-4V4Zm17 0h4v12.7h7V20H42V4Z"/></svg></div>
-      <div class="trust-item"><svg viewBox="0 0 70 24" fill="currentColor"><path d="M4 4h12v3.5H8V11h7v3.4H8V20H4V4Zm14 0h4v16h-4V4Zm6 0h4l3 11 3-11h4l-5 16h-4L24 4Zm20 0c-4.8 0-8 3.4-8 8s3.2 8 8 8 8-3.4 8-8-3.2-8-8-8Zm0 3.3c2.4 0 4 2 4 4.7s-1.6 4.7-4 4.7-4-2-4-4.7 1.6-4.7 4-4.7ZM58 4h6c3.2 0 5.5 1.8 5.5 4.7 0 2-1 3.5-2.7 4.2L70 20h-4.4l-2.8-6.4H62V20h-4V4Zm4 3.3v3.3h2c1.2 0 2-.6 2-1.7s-.8-1.6-2-1.6h-2Z"/></svg></div>
-      <div class="trust-item"><svg viewBox="0 0 70 24" fill="currentColor"><path d="M5 4h12c2.8 0 4.8 1.7 4.8 4.3 0 1.7-1 3-2.5 3.6 1.8.5 3 2 3 4 0 2.7-2.2 4.1-5 4.1H5V4Zm4 3v3h6c1.2 0 2-.6 2-1.5S16.2 7 15 7H9Zm0 6v3.4h6.5c1.4 0 2.2-.6 2.2-1.7S16.9 13 15.5 13H9Zm15-9h4v16h-4V4Zm6 0h12v3.5h-8v3h7v3.4h-7V16.5h8V20H30V4Zm15 0h4l5 9V4h4v16h-4l-5-9v9h-4V4Z"/></svg></div>
-      <div class="trust-item"><svg viewBox="0 0 68 24" fill="currentColor"><path d="M4 4h4l4 11 4-11h4l-6 16h-4L4 4Zm17 0h4v16h-4V4Zm6 0h12v3.5h-8v3h7v3.4h-7V16.5h8V20H27V4Zm15 0h4l3 6 3-6h4v16h-4V9.5L51 16h-1l-3-6.5V20h-4V4Z"/></svg></div>
+<!-- Hero -->
+<section class="relative h-screen w-full flex items-center justify-center overflow-hidden is-visible">
+    <div class="absolute inset-0 z-0">
+        <img alt="SPIY Hero Visual" class="parallax-bg w-[110%] h-[110%] -left-[5%] -top-[5%] object-cover scale-105" id="hero-bg" src="/assets/img/earth-satellite.jpeg">
+        <div class="absolute inset-0 hero-gradient"></div>
+        <div class="absolute inset-0 hud-scanline pointer-events-none"></div>
+        <div class="absolute top-[45%] left-[48%] thermal-point" style="animation-delay:0.2s"></div>
+        <div class="absolute top-[52%] left-[51%] thermal-point" style="animation-delay:0.7s"></div>
+        <div class="absolute top-[40%] left-[53%] thermal-point" style="animation-delay:1.1s"></div>
+        <div class="absolute top-[58%] left-[45%] thermal-point" style="animation-delay:0.5s"></div>
     </div>
-  </div>
-</section>
-
-<section id="stats">
-  <div class="container">
-    <div class="row g-4">
-      <div class="col-6 col-md-3 reveal"><div class="stat"><div class="stat-num"><span data-target="24">0</span><span class="unit">/</span><span data-target="7">0</span></div><div class="stat-lbl" data-i18n="stat1">Monitoreo continuo</div></div></div>
-      <div class="col-6 col-md-3 reveal reveal-d1"><div class="stat"><div class="stat-num"><span class="unit">+</span><span data-target="1500">0</span></div><div class="stat-lbl" data-i18n="stat2">Focos procesados / día</div></div></div>
-      <div class="col-6 col-md-3 reveal reveal-d2"><div class="stat"><div class="stat-num"><span data-target="98">0</span><span class="unit">%</span></div><div class="stat-lbl" data-i18n="stat3">Precisión NASA VIIRS</div></div></div>
-      <div class="col-6 col-md-3 reveal reveal-d3"><div class="stat"><div class="stat-num"><span data-target="10">0</span> <span class="unit" style="font-size:1.4rem">min</span></div><div class="stat-lbl" data-i18n="stat4">Latencia de datos</div></div></div>
+    <div class="hud-floating" style="top:20%;left:15%;animation:float-slow 12s infinite alternate">LAT: -15.7801 | LON: -47.9292 | ALT: 785KM<br>[SCANNING_REGION_AMZ_004]</div>
+    <div class="hud-floating" style="bottom:25%;right:10%;animation:float-slow 15s infinite alternate-reverse">STATUS: NOMINAL | FREQ: 14.5GHZ<br>SENTINEL-2B SYNC: ACTIVE</div>
+    <div class="hud-floating border-l border-t border-primary/30 w-32 h-16" style="top:30%;right:20%;animation:float-slow 10s infinite alternate">
+        <div class="p-2 opacity-50">GRID_SECTOR_V4</div>
     </div>
-  </div>
-</section>
-
-<section id="features" class="section">
-  <div class="container">
-    <div class="text-center mb-5 reveal">
-      <div class="chip chip-dark" data-i18n="feat_chip">Capacidades</div>
-      <h2 class="section-title dark" data-i18n="feat_title">Toda la inteligencia satelital,<br>en una sola plataforma</h2>
-      <p class="section-sub dark mx-auto text-center" data-i18n="feat_sub">Datos meteorológicos, hidrográficos y de teledetección integrados para detectar, analizar y alertar en minutos.</p>
-    </div>
-    <div class="row g-4">
-      <div class="col-md-6 col-lg-4 reveal reveal-d1"><div class="feat-card" style="--card-accent:linear-gradient(90deg,var(--fire-600),var(--ember-500));--icon-shadow:rgba(220,38,38,.5)"><div class="feat-icon" style="background:linear-gradient(135deg,var(--fire-600),var(--ember-600))"><i class="fas fa-satellite"></i></div><h5 data-i18n="f1t">NASA FIRMS — VIIRS / MODIS</h5><p data-i18n="f1d">Focos de calor de los satélites VIIRS (NOAA-20/21, Suomi NPP) y MODIS con actualización cada 10 minutos. Cobertura completa de Argentina y América del Sur.</p></div></div>
-      <div class="col-md-6 col-lg-4 reveal reveal-d2"><div class="feat-card" style="--card-accent:linear-gradient(90deg,var(--ember-500),var(--gold-400));--icon-shadow:rgba(249,115,22,.5)"><div class="feat-icon" style="background:linear-gradient(135deg,var(--ember-600),var(--gold-500))"><i class="fas fa-satellite-dish"></i></div><h5 data-i18n="f2t">GOES-16 + INPE en tiempo real</h5><p data-i18n="f2d">Detección continua GOES-16 con badge LIVE y datos INPE/METOP para Brasil y países limítrofes.</p></div></div>
-      <div class="col-md-6 col-lg-4 reveal reveal-d3"><div class="feat-card" style="--card-accent:linear-gradient(90deg,#a855f7,#ec4899);--icon-shadow:rgba(168,85,247,.4)"><div class="feat-icon" style="background:linear-gradient(135deg,#9333ea,#a855f7)"><i class="fas fa-fire"></i></div><h5 data-i18n="f3t">Índice FWI + regla 30-30-30</h5><p data-i18n="f3d">Fire Weather Index canadiense adaptado al hemisferio sur y detección automática de zonas con condición 30-30-30 de riesgo extremo.</p></div></div>
-      <div class="col-md-6 col-lg-4 reveal reveal-d1"><div class="feat-card" style="--card-accent:linear-gradient(90deg,#3b82f6,#06b6d4);--icon-shadow:rgba(59,130,246,.4)"><div class="feat-icon" style="background:linear-gradient(135deg,#2563eb,#06b6d4)"><i class="fas fa-wind"></i></div><h5 data-i18n="f4t">Viento, clima y alertas CAP</h5><p data-i18n="f4d">Animación de viento Open-Meteo, grilla climática completa (temperatura, humedad, precipitación) y alertas CAP del Servicio Meteorológico Nacional.</p></div></div>
-      <div class="col-md-6 col-lg-4 reveal reveal-d2"><div class="feat-card" style="--card-accent:linear-gradient(90deg,var(--forest-500),var(--forest-700));--icon-shadow:rgba(34,197,94,.4)"><div class="feat-icon" style="background:linear-gradient(135deg,var(--forest-600),var(--forest-700))"><i class="fas fa-water"></i></div><h5 data-i18n="f5t">Agua, vegetación y topografía</h5><p data-i18n="f5d">Embalses, ríos y lagunas vía OpenStreetMap, índice NDVI, relieve topográfico y caminos de acceso para logística de emergencia.</p></div></div>
-      <div class="col-md-6 col-lg-4 reveal reveal-d3"><div class="feat-card" style="--card-accent:linear-gradient(90deg,var(--gold-400),var(--fire-600));--icon-shadow:rgba(251,191,36,.5)"><div class="feat-icon" style="background:linear-gradient(135deg,var(--gold-500),var(--fire-600))"><i class="fas fa-robot"></i></div><h5 data-i18n="f6t">Análisis IA + alertas Telegram</h5><p data-i18n="f6d">Análisis de situación con Claude AI de Anthropic y alertas automáticas por Telegram cuando se detectan focos con nivel de riesgo elevado.</p></div></div>
-    </div>
-  </div>
-</section>
-
-<section id="demo">
-  <div class="container">
-    <div class="text-center mb-5 reveal">
-      <div class="chip" data-i18n="demo_chip">Demo interactivo</div>
-      <h2 class="section-title light" data-i18n="demo_title">Probá el mapa antes de ingresar</h2>
-      <p class="section-sub light mx-auto text-center" data-i18n="demo_sub">Todas las capas del sistema con datos simulados. El mapa real usa fuentes en vivo de NASA, INPE, GOES-16, SMN y Open-Meteo.</p>
-    </div>
-    <div class="reveal">
-      <div class="demo-frame">
-        <div class="demo-tabs">
-          <div class="demo-dots"><span class="d1"></span><span class="d2"></span><span class="d3"></span></div>
-          <div class="demo-url"><i class="fas fa-lock"></i> spiyd.com/mapa <span style="color:rgba(255,255,255,.35)">· LIVE</span></div>
-        </div>
-        <div id="demo-map">
-          <div class="map-panel-overlay" id="map-panel">
-            <div class="mpo-title" data-i18n="panel_t">Panel de control</div>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-nasa" checked onchange="toggleLayer('nasa',this.checked)"><span class="mpo-dot" style="background:#ef4444"></span>Focos NASA</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-inpe" checked onchange="toggleLayer('inpe',this.checked)"><span class="mpo-dot" style="background:#f97316"></span>Focos INPE</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-goes" checked onchange="toggleLayer('goes',this.checked)"><span class="mpo-dot" style="background:#ff1744;animation:livePulse 1s infinite"></span>GOES-16 RT</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-smn" checked onchange="toggleLayer('smn',this.checked)"><span class="mpo-dot" style="background:#fbbf24"></span>Alertas SMN</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-wind" checked onchange="toggleLayer('wind',this.checked)"><span class="mpo-dot" style="background:#60a5fa"></span>Viento</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-agua" checked onchange="toggleLayer('agua',this.checked)"><span class="mpo-dot" style="background:#22d3ee"></span>Fuentes de agua</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-veg" checked onchange="toggleLayer('veg',this.checked)"><span class="mpo-dot" style="background:#4ade80"></span>Vegetación NDVI</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-fwi" checked onchange="toggleLayer('fwi',this.checked)"><span class="mpo-dot" style="background:#c084fc"></span>FWI — Peligro</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-radar" checked onchange="toggleLayer('radar',this.checked)"><span class="mpo-dot" style="background:#38bdf8;border:1px solid #60a5fa"></span>Radar SMN/INVAP</label>
-            <label class="mpo-layer"><input type="checkbox" id="lyr-zonas" checked onchange="toggleLayer('zonas',this.checked)"><span class="mpo-dot" style="background:#ff5722"></span>Zonas 30-30-30</label>
-            <hr class="mpo-divider">
-            <div class="mpo-stats">
-              <div class="mpo-stat"><span class="mpo-num" style="color:#ef4444">15</span><span class="mpo-lbl">NASA</span></div>
-              <div class="mpo-stat"><span class="mpo-num" style="color:#f97316">8</span><span class="mpo-lbl">INPE</span></div>
-              <div class="mpo-stat"><span class="mpo-num" style="color:#ff1744">3</span><span class="mpo-lbl">GOES</span></div>
-              <div class="mpo-stat"><span class="mpo-num" style="color:#c084fc">68</span><span class="mpo-lbl">FWI máx.</span></div>
-              <div class="mpo-stat"><span class="mpo-num" style="color:#fbbf24">4</span><span class="mpo-lbl">Alertas</span></div>
-              <div class="mpo-stat"><span class="mpo-num" style="color:#ff5722">3</span><span class="mpo-lbl">30-30-30</span></div>
+    <div class="absolute top-24 left-8 z-10 hidden lg:block">
+        <div class="glass-panel p-4 rounded-xl border-l-4 border-secondary/50">
+            <p class="font-label-technical text-label-technical text-secondary uppercase tracking-widest mb-1">Satellite Link: Established</p>
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full bg-secondary animate-pulse"></div>
+                <span class="text-body-sm font-label-technical">Sentinel-2B Alpha Transmitting...</span>
             </div>
-            <div class="mpo-risk" style="background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)">⚡ <span data-i18n="panel_risk">RIESGO: EXTREMO</span></div>
-            <div style="margin-top:8px;font-size:9px;color:rgba(255,255,255,.35);display:flex;align-items:center;gap:5px"><span style="color:var(--forest-500)">●</span> <span data-i18n="panel_demo">Demo — Datos simulados</span></div>
-          </div>
         </div>
-      </div>
-      <div class="map-legend">
-        <div class="leg-item"><span class="leg-dot" style="background:#ef4444"></span> <span data-i18n="leg_nasa_h">NASA (alta conf.)</span></div>
-        <div class="leg-item"><span class="leg-dot" style="background:#fca5a5"></span> <span data-i18n="leg_nasa_m">NASA (media conf.)</span></div>
-        <div class="leg-item"><span class="leg-dot" style="background:#f97316"></span> INPE / METOP</div>
-        <div class="leg-item"><span class="leg-dot" style="background:#ff1744;animation:livePulse 1.5s infinite"></span> GOES-16 RT</div>
-        <div class="leg-item"><span class="leg-dot" style="background:#7c3aed"></span> FWI &gt; 50</div>
-        <div class="leg-item"><span class="leg-dot" style="background:#22d3ee"></span> <span data-i18n="leg_water">Fuente de agua</span></div>
-        <div class="leg-item"><span class="leg-dot" style="background:#4ade80"></span> <span data-i18n="leg_veg">Vegetación NDVI</span></div>
-        <div class="leg-item"><span class="leg-dot" style="background:#38bdf8;border:2px solid #60a5fa"></span> <span data-i18n="leg_radar">Estación radar</span></div>
-        <div class="leg-item"><span class="leg-line" style="background:#ff5722;opacity:.5"></span> <span data-i18n="leg_zone">Zona 30-30-30</span></div>
-        <div class="leg-item"><span class="leg-line" style="background:#fbbf24;opacity:.5"></span> <span data-i18n="leg_smn">Alerta SMN</span></div>
-      </div>
     </div>
-  </div>
-</section>
-
-<section id="pricing">
-  <div class="container">
-    <div class="text-center mb-5 reveal">
-      <div class="chip chip-gold" data-i18n="price_chip">Planes</div>
-      <h2 class="section-title light" data-i18n="price_title">Precios transparentes,<br>sin sorpresas</h2>
-      <p class="section-sub light mx-auto text-center" data-i18n="price_sub">Elegí el plan que mejor se adapta a tu organización.</p>
-    </div>
-    <div class="row g-4 justify-content-center">
-      <div class="col-md-6 col-lg-4 reveal reveal-d1"><div class="plan-card"><div class="plan-name" data-i18n="p1n">Básico</div><div class="plan-desc" data-i18n="p1desc">Ideal para evaluar la plataforma y casos de uso individuales.</div><div class="plan-price">$0<small data-i18n="p_mo">/mes</small></div><ul class="plan-features"><li><i class="fas fa-check"></i><span data-i18n="p1f1">Mapa de incendios activos</span></li><li><i class="fas fa-check"></i><span data-i18n="p1f2">Datos NASA FIRMS</span></li><li><i class="fas fa-check"></i><span data-i18n="p1f3">Alertas SMN básicas</span></li><li class="off"><i class="fas fa-times"></i><span data-i18n="p1f4">GOES-16 + INPE en vivo</span></li><li class="off"><i class="fas fa-times"></i><span data-i18n="p1f5">Análisis IA</span></li></ul><a href="/login" class="btn btn-ghost-dark plan-cta" data-i18n="p1cta">Empezar gratis</a></div></div>
-      <div class="col-md-6 col-lg-4 reveal reveal-d2"><div class="plan-card featured"><div class="plan-badge" data-i18n="p_pop">Más popular</div><div class="plan-name" data-i18n="p2n">Pro</div><div class="plan-desc" data-i18n="p2desc">Para equipos de emergencias y conservación que necesitan datos en vivo.</div><div class="plan-price">$29<small data-i18n="p_mo">/mes</small></div><ul class="plan-features"><li><i class="fas fa-check"></i><span data-i18n="p2f1">Todo del plan Básico</span></li><li><i class="fas fa-check"></i><span data-i18n="p2f2">GOES-16 + INPE tiempo real</span></li><li><i class="fas fa-check"></i><span data-i18n="p2f3">Alertas Telegram automáticas</span></li><li><i class="fas fa-check"></i><span data-i18n="p2f4">FWI avanzado + 30-30-30</span></li><li><i class="fas fa-check"></i><span data-i18n="p2f5">Análisis IA completo</span></li></ul><a href="/login" class="btn btn-fire plan-cta" data-i18n="p2cta">Contratar Pro</a></div></div>
-      <div class="col-md-6 col-lg-4 reveal reveal-d3"><div class="plan-card"><div class="plan-name" data-i18n="p3n">Enterprise</div><div class="plan-desc" data-i18n="p3desc">Gobiernos, organismos multilaterales y operaciones a gran escala.</div><div class="plan-price">$99<small data-i18n="p_mo">/mes</small></div><ul class="plan-features"><li><i class="fas fa-check"></i><span data-i18n="p3f1">Todo del plan Pro</span></li><li><i class="fas fa-check"></i><span data-i18n="p3f2">Multi-región personalizado</span></li><li><i class="fas fa-check"></i><span data-i18n="p3f3">API de datos abierta</span></li><li><i class="fas fa-check"></i><span data-i18n="p3f4">Alertas 100% personalizadas</span></li><li><i class="fas fa-check"></i><span data-i18n="p3f5">SLA 99.9% uptime</span></li></ul><a href="/login" class="btn btn-dark plan-cta" data-i18n="p3cta">Contactar ventas</a></div></div>
-    </div>
-  </div>
-</section>
-
-<section id="cta">
-  <div class="container cta-inner">
-    <div class="reveal">
-      <div class="chip chip-dark" data-i18n="cta_chip">Acceso gratuito</div>
-      <h2 class="cta-title"><span data-i18n="cta_t1">Protegé los ecosistemas</span><br><span class="accent" data-i18n="cta_t2">de América del Sur</span></h2>
-      <p class="cta-sub" data-i18n="cta_sub">Gobiernos, bomberos, guardaparques y organismos de conservación acceden sin costo a la plataforma completa.</p>
-      <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a href="/login" class="btn btn-gold btn-lg" data-i18n="cta_btn"><i class="fas fa-right-to-bracket"></i> Ingresar al sistema</a>
-        <a href="#demo" class="btn btn-glass btn-lg" data-i18n="cta_btn2"><i class="fas fa-map"></i> Volver al demo</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div class="container">
-    <div class="row g-5">
-      <div class="col-md-4">
-        <div class="footer-brand">
-          <span class="brand-logo"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5c1.2 3 3.5 4.5 3.5 7.5a3.5 3.5 0 1 1-7 0c0-1.5.5-2 1-2.5-.5 1.5.5 3 1.5 3 0-2.5 1-5 1-8Zm-1 13a4 4 0 0 0 4 4 4 4 0 0 1-8 0 4 4 0 0 0 4-4Z" fill="currentColor"/></svg></span>
-          <span class="brand-name">SPIYD</span>
+    <div class="relative z-20 text-center max-w-4xl px-container-padding">
+        <div class="inline-block px-4 py-1 mb-6 glass-panel rounded-full border border-primary/20">
+            <span class="font-label-technical text-label-technical text-primary tracking-widest uppercase">Tecnología Orbital de Vanguardia</span>
         </div>
-        <p class="footer-desc" data-i18n="foot_desc">Sistema de Prevención de Incendios y Deforestaciones. Tecnología satelital al servicio de la conservación en América del Sur.</p>
-      </div>
-      <div class="col-6 col-md-2">
-        <div class="footer-col-title" data-i18n="foot_nav">Producto</div>
-        <a href="#features" class="footer-link" data-i18n="nav_feat">Características</a>
-        <a href="#demo" class="footer-link" data-i18n="nav_demo">Demo</a>
-        <a href="#pricing" class="footer-link" data-i18n="nav_price">Precios</a>
-        <a href="/login" class="footer-link" data-i18n="nav_login">Ingresar</a>
-      </div>
-      <div class="col-6 col-md-3">
-        <div class="footer-col-title" data-i18n="foot_tech">Fuentes de datos</div>
-        <span class="footer-link">NASA FIRMS — VIIRS / MODIS</span>
-        <span class="footer-link">INPE · METOP · GOES-16</span>
-        <span class="footer-link">SMN Argentina (CAP)</span>
-        <span class="footer-link">Open-Meteo · OpenStreetMap</span>
-        <span class="footer-link">Anthropic Claude AI</span>
-      </div>
-      <div class="col-md-3">
-        <div class="footer-col-title">SPIYD.com</div>
-        <p class="footer-desc" data-i18n="foot_contact">Para consultas institucionales y comerciales, ingresá al sistema o contactanos a través del portal.</p>
-      </div>
+        <h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-6 leading-tight">
+            SPIY: <span class="text-primary">Sistema de Prevención</span> de Incendios y Deforestación
+        </h1>
+        <p class="font-body-lg text-body-lg text-on-surface-variant mb-10 max-w-2xl mx-auto">
+            Monitoreo satelital, inteligencia artificial y análisis ambiental en tiempo real para detectar, prevenir y actuar con precisión quirúrgica frente a emergencias ecológicas.
+        </p>
+        <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
+            <a href="/mapa" class="tech-button cta-pulse w-full md:w-auto px-8 py-4 rounded-xl flex items-center justify-center gap-3 group">
+                <span class="material-symbols-outlined text-secondary">explore</span>
+                <span class="font-bold text-on-secondary-container">Ver mapa en vivo</span>
+            </a>
+            <a href="#demo" class="glass-panel w-full md:w-auto px-8 py-4 rounded-xl border border-outline-variant hover:bg-surface-variant/30 transition-all text-center">
+                <span class="font-bold text-on-surface">Agendar Demostración</span>
+            </a>
+        </div>
     </div>
-    <hr class="footer-divider">
-    <div class="footer-bottom">
-      <span>© 2026 SPIYD.com — <span data-i18n="foot_rights">Todos los derechos reservados</span></span>
-      <span class="mono">NASA · INPE · GOES-16 · SMN · Claude AI</span>
+    <div class="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce flex flex-col items-center gap-2 text-on-surface-variant opacity-50">
+        <span class="font-label-technical text-[10px] uppercase">Scroll</span>
+        <span class="material-symbols-outlined">expand_more</span>
     </div>
-  </div>
+</section>
+
+<!-- Detección -->
+<section class="py-section-gap relative overflow-hidden bg-surface-container-lowest" id="tecnologia">
+    <div class="absolute inset-0 opacity-20 pointer-events-none">
+        <img alt="Thermal Detection Background" class="w-full h-full object-cover grayscale" src="/assets/img/smoke.jpg">
+    </div>
+    <div class="relative z-10 max-w-7xl mx-auto px-container-padding">
+        <div class="mb-16 text-center">
+            <h2 class="font-display-md text-display-md text-on-surface mb-4">Detección Inteligente &amp; IA</h2>
+            <div class="w-24 h-1 bg-primary mx-auto rounded-full"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+            <div class="glass-panel p-glass-padding rounded-2xl inner-glow group hover:border-secondary/30 transition-all">
+                <div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-6">
+                    <span class="material-symbols-outlined text-secondary" style="font-variation-settings:'FILL' 1">local_fire_department</span>
+                </div>
+                <h3 class="font-headline-lg text-headline-lg mb-3">Focos Activos</h3>
+                <p class="font-body-md text-on-surface-variant">Identificación instantánea de anomalías térmicas mediante espectrometría infrarroja de alta resolución.</p>
+            </div>
+            <div class="glass-panel p-glass-padding rounded-2xl inner-glow group hover:border-primary/30 transition-all">
+                <div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-6">
+                    <span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1">cloud</span>
+                </div>
+                <h3 class="font-headline-lg text-headline-lg mb-3">Análisis Meteorológico</h3>
+                <p class="font-body-md text-on-surface-variant">Variables críticas: humedad, dirección del viento y presión atmosférica integradas en tiempo real.</p>
+            </div>
+            <div class="glass-panel p-glass-padding rounded-2xl inner-glow group hover:border-tertiary/30 transition-all">
+                <div class="w-12 h-12 rounded-lg bg-tertiary/10 flex items-center justify-center mb-6">
+                    <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1">timeline</span>
+                </div>
+                <h3 class="font-headline-lg text-headline-lg mb-3">Predicción</h3>
+                <p class="font-body-md text-on-surface-variant">Algoritmos predictivos que proyectan la trayectoria del fuego en las próximas 12, 24 y 48 horas.</p>
+            </div>
+            <div class="glass-panel p-glass-padding rounded-2xl inner-glow border-error/20 bg-error-container/10 group">
+                <div class="w-12 h-12 rounded-lg bg-error/10 flex items-center justify-center mb-6 animate-pulse-alert">
+                    <span class="material-symbols-outlined text-error" style="font-variation-settings:'FILL' 1">notifications_active</span>
+                </div>
+                <h3 class="font-headline-lg text-headline-lg mb-3">Alertas Automáticas</h3>
+                <p class="font-body-md text-on-surface-variant">Notificación inmediata a centros de control y brigadas locales con geolocalización exacta.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Mapa -->
+<section class="py-section-gap bg-background" id="mapa">
+    <div class="max-w-7xl mx-auto px-container-padding">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter h-auto md:h-[600px]">
+            <div class="md:col-span-8 glass-panel rounded-3xl overflow-hidden relative border border-outline-variant/30">
+                <img alt="Interactive Map Dashboard" class="w-full h-full object-cover" src="/assets/img/bosque.jpg">
+                <div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent"></div>
+                <div class="absolute bottom-8 left-8 right-8 flex justify-between items-end">
+                    <div class="space-y-2">
+                        <span class="font-label-technical text-secondary uppercase tracking-widest text-[10px]">Vista Táctica de Campo</span>
+                        <h4 class="font-headline-lg text-headline-lg text-on-surface">Región Amazonas Sector Delta</h4>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="/mapa" class="bg-surface/60 backdrop-blur-md p-2 rounded-lg border border-outline-variant"><span class="material-symbols-outlined">open_in_new</span></a>
+                    </div>
+                </div>
+            </div>
+            <div class="md:col-span-4 flex flex-col gap-gutter">
+                <div class="glass-panel p-glass-padding rounded-3xl flex-1 border border-outline-variant/30 overflow-hidden relative">
+                    <div class="absolute top-0 right-0 p-4 opacity-10"><span class="material-symbols-outlined text-[64px]">monitoring</span></div>
+                    <h4 class="font-label-technical text-on-surface-variant uppercase mb-4 tracking-widest">Análisis de Riesgo</h4>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center border-b border-outline-variant/20 pb-2">
+                            <span class="text-body-sm">Índice de Ignición</span>
+                            <span class="font-label-technical text-error">CRÍTICO (89%)</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-outline-variant/20 pb-2">
+                            <span class="text-body-sm">Velocidad Viento</span>
+                            <span class="font-label-technical text-primary">22 km/h NE</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-outline-variant/20 pb-2">
+                            <span class="text-body-sm">Carga Combustible</span>
+                            <span class="font-label-technical text-tertiary">ALTA</span>
+                        </div>
+                    </div>
+                    <div class="mt-8">
+                        <div class="w-full h-24 bg-surface-container rounded-lg overflow-hidden flex items-end gap-1 px-2 pb-1">
+                            <div class="w-full bg-primary/20 h-1/4 rounded-sm"></div>
+                            <div class="w-full bg-primary/30 h-2/4 rounded-sm"></div>
+                            <div class="w-full bg-primary/40 h-3/4 rounded-sm"></div>
+                            <div class="w-full bg-primary/60 h-full rounded-sm"></div>
+                            <div class="w-full bg-error h-4/5 rounded-sm alert-glow"></div>
+                            <div class="w-full bg-primary/40 h-2/4 rounded-sm"></div>
+                        </div>
+                        <p class="font-label-technical text-[10px] text-center mt-2 opacity-50 uppercase">Proyección de Intensidad Térmica</p>
+                    </div>
+                </div>
+                <div class="glass-panel p-glass-padding rounded-3xl border border-secondary/20 flex items-center gap-4 group cursor-pointer hover:bg-secondary/5 transition-all">
+                    <div class="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-secondary">verified</span>
+                    </div>
+                    <div>
+                        <p class="font-body-md font-bold text-secondary">IA Operativa</p>
+                        <p class="text-[12px] text-on-surface-variant">Monitoreo autónomo activo en 14 cuadrantes.</p>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant ml-auto group-hover:translate-x-1 transition-transform">chevron_right</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Demo -->
+<section class="py-section-gap relative" id="demo">
+    <div class="max-w-7xl mx-auto px-container-padding">
+        <div class="flex flex-col lg:flex-row gap-section-gap items-center">
+            <div class="flex-1 space-y-6">
+                <span class="text-secondary font-label-technical uppercase tracking-widest">Transformación Digital</span>
+                <h2 class="font-display-md text-display-md">Observe el Futuro de la Conservación Ambiental</h2>
+                <p class="font-body-lg text-on-surface-variant">Solicite un acceso controlado a nuestra plataforma SPIY Enterprise. Descubra cómo los gobiernos y organizaciones globales están utilizando nuestros datos para reducir el tiempo de respuesta en un 60%.</p>
+                <ul class="space-y-4">
+                    <li class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary">check_circle</span>
+                        <span class="font-body-md">Integración de drones para verificación local.</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary">check_circle</span>
+                        <span class="font-body-md">Panel de comando táctico para brigadas.</span>
+                    </li>
+                    <li class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary">check_circle</span>
+                        <span class="font-body-md">Informes automáticos de impacto ambiental.</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="flex-1 w-full">
+                <div class="glass-panel p-8 rounded-3xl inner-glow border border-outline-variant/30">
+                    <form class="space-y-6" method="POST" action="/contacto">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="font-label-technical text-[10px] uppercase text-on-surface-variant px-1">Nombre Completo</label>
+                                <input class="w-full bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-all" placeholder="Ej. Carlos Mendoza" type="text" name="nombre">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="font-label-technical text-[10px] uppercase text-on-surface-variant px-1">Correo Institucional</label>
+                                <input class="w-full bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-all" placeholder="carlos@entidad.gov" type="email" name="email">
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="font-label-technical text-[10px] uppercase text-on-surface-variant px-1">Organización / Entidad</label>
+                            <input class="w-full bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-all" placeholder="Ministerio de Ambiente, ONG, Empresa" type="text" name="organizacion">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="font-label-technical text-[10px] uppercase text-on-surface-variant px-1">Mensaje de interés</label>
+                            <textarea class="w-full bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-all" placeholder="Describa brevemente su requerimiento..." rows="3" name="mensaje"></textarea>
+                        </div>
+                        <button class="w-full tech-button py-4 rounded-xl font-bold text-on-secondary-container" type="submit">Solicitar Acceso Demo</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="w-full mt-section-gap border-t border-outline-variant/20 bg-surface-container-lowest flex flex-col md:flex-row justify-between items-center p-container-padding gap-gutter" id="contacto">
+    <div class="flex flex-col gap-2">
+        <span class="font-headline-lg text-primary">SPIY</span>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">© 2025 SPIY Orbital Sentinel. Advanced Fire Prevention Systems.</p>
+    </div>
+    <div class="flex flex-wrap justify-center gap-gutter">
+        <a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+        <a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+        <a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/login">Acceder al Sistema</a>
+    </div>
+    <div class="flex gap-4">
+        <div class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center hover:text-primary cursor-pointer transition-all"><span class="material-symbols-outlined text-[18px]">share</span></div>
+        <div class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center hover:text-primary cursor-pointer transition-all"><span class="material-symbols-outlined text-[18px]">public</span></div>
+    </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<div class="fixed w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] pointer-events-none -translate-x-1/2 -translate-y-1/2 z-[-1]" id="cursor-glow"></div>
 <script>
-const D={nasa:[{lat:-31.4,lng:-64.2,frp:85,conf:'high',sat:'VIIRS',r:'Córdoba N'},{lat:-32.0,lng:-63.5,frp:62,conf:'nominal',sat:'MODIS',r:'Córdoba S'},{lat:-26.2,lng:-53.4,frp:120,conf:'high',sat:'VIIRS',r:'Misiones'},{lat:-29.7,lng:-57.1,frp:95,conf:'high',sat:'VIIRS',r:'Corrientes'},{lat:-38.9,lng:-68.1,frp:45,conf:'nominal',sat:'MODIS',r:'Neuquén'},{lat:-24.8,lng:-65.4,frp:140,conf:'high',sat:'VIIRS',r:'Salta'},{lat:-27.5,lng:-65.6,frp:78,conf:'high',sat:'MODIS',r:'Tucumán'},{lat:-33.0,lng:-66.3,frp:55,conf:'nominal',sat:'VIIRS',r:'San Luis'},{lat:-30.5,lng:-59.8,frp:88,conf:'high',sat:'VIIRS',r:'Entre Ríos'},{lat:-22.1,lng:-63.7,frp:156,conf:'high',sat:'VIIRS',r:'Jujuy'},{lat:-28.5,lng:-65.8,frp:42,conf:'nominal',sat:'MODIS',r:'La Rioja'},{lat:-35.5,lng:-59.1,frp:30,conf:'nominal',sat:'MODIS',r:'Bs As N'},{lat:-39.1,lng:-65.9,frp:67,conf:'high',sat:'VIIRS',r:'Río Negro'},{lat:-23.5,lng:-64.3,frp:180,conf:'high',sat:'VIIRS',r:'NOA'},{lat:-25.5,lng:-61.5,frp:52,conf:'nominal',sat:'MODIS',r:'Chaco W'}],inpe:[{lat:-25.5,lng:-54.6,frp:95,sat:'GOES-16',r:'Misiones NE'},{lat:-27.1,lng:-56.3,frp:72,sat:'METOP',r:'Corrientes NE'},{lat:-22.8,lng:-62.5,frp:110,sat:'GOES-16',r:'Chaco'},{lat:-20.5,lng:-60.8,frp:85,sat:'GOES-16',r:'Santiago'},{lat:-29.3,lng:-58.5,frp:45,sat:'METOP',r:'Entre Ríos N'},{lat:-31.8,lng:-61.5,frp:60,sat:'GOES-16',r:'Santa Fe'},{lat:-26.8,lng:-54.2,frp:130,sat:'GOES-16',r:'Misiones S'},{lat:-24.1,lng:-66.0,frp:78,sat:'METOP',r:'Puna'}],goes:[{lat:-24.5,lng:-65.1,r:'Salta RT',conf:95},{lat:-26.5,lng:-53.2,r:'Misiones RT',conf:88},{lat:-31.2,lng:-64.0,r:'Córdoba RT',conf:91}],smn:[{lat:-31.5,lng:-63.0,radius:160000,level:'naranja',title:'Alerta calor extremo',temp:42,wind:25},{lat:-24.5,lng:-65.0,radius:120000,level:'rojo',title:'Alerta roja — ola de calor',temp:46,wind:35},{lat:-34.8,lng:-59.5,radius:200000,level:'amarillo',title:'Tormentas severas',temp:32,wind:55},{lat:-38.0,lng:-68.0,radius:140000,level:'naranja',title:'Vientos fuertes',temp:35,wind:65}],agua:[{lat:-31.5,lng:-64.5,type:'Embalse',name:'Los Molinos',vol:'300 hm³'},{lat:-33.7,lng:-69.0,type:'Laguna',name:'Potrerillos',vol:'90 hm³'},{lat:-38.7,lng:-69.7,type:'Lago',name:'Lago Lolog',vol:'450 hm³'},{lat:-41.5,lng:-71.5,type:'Lago',name:'Nahuel Huapi',vol:'2100 hm³'},{lat:-29.1,lng:-59.2,type:'Río',name:'Paraná'},{lat:-26.8,lng:-58.7,type:'Río',name:'Paraguay'}],veg:[{lat:-26.2,lng:-53.4,ndvi:.82,type:'Selva Misionera'},{lat:-27.5,lng:-56.5,ndvi:.68,type:'Bosque Chaqueño'},{lat:-37.5,lng:-71.0,ndvi:.71,type:'Bosque Andino'},{lat:-31.5,lng:-64.0,ndvi:.45,type:'Monte Serrano'},{lat:-23.0,lng:-63.5,ndvi:.55,type:'Yungas'}],fwi:[{lat:-24.8,lng:-65.4,fwi:68,level:'extremo'},{lat:-26.2,lng:-53.4,fwi:52,level:'muy_alto'},{lat:-31.4,lng:-64.2,fwi:44,level:'alto'},{lat:-27.5,lng:-65.6,fwi:38,level:'alto'},{lat:-38.9,lng:-68.1,fwi:31,level:'moderado'},{lat:-34.6,lng:-58.4,fwi:22,level:'moderado'},{lat:-30.5,lng:-59.8,fwi:35,level:'alto'},{lat:-22.1,lng:-63.7,fwi:58,level:'extremo'}],radar:[{lat:-34.56,lng:-58.49,name:'Buenos Aires',range:240},{lat:-31.4,lng:-64.18,name:'Córdoba',range:240},{lat:-32.88,lng:-68.84,name:'Mendoza',range:240},{lat:-24.79,lng:-65.41,name:'Salta',range:200},{lat:-27.47,lng:-58.83,name:'Resistencia',range:200}],wind:[{lat:-22,lng:-65,dir:130,spd:25},{lat:-22,lng:-60,dir:145,spd:30},{lat:-22,lng:-55,dir:140,spd:22},{lat:-26,lng:-68,dir:105,spd:20},{lat:-26,lng:-65,dir:125,spd:32},{lat:-26,lng:-60,dir:135,spd:38},{lat:-26,lng:-55,dir:150,spd:28},{lat:-30,lng:-70,dir:92,spd:35},{lat:-30,lng:-67,dir:108,spd:40},{lat:-30,lng:-65,dir:128,spd:42},{lat:-30,lng:-60,dir:142,spd:38},{lat:-34,lng:-70,dir:88,spd:45},{lat:-34,lng:-66,dir:102,spd:52},{lat:-34,lng:-62,dir:118,spd:40},{lat:-34,lng:-58,dir:132,spd:35},{lat:-38,lng:-71,dir:78,spd:60},{lat:-38,lng:-67,dir:92,spd:55},{lat:-38,lng:-63,dir:108,spd:48},{lat:-42,lng:-71,dir:72,spd:65},{lat:-42,lng:-67,dir:85,spd:58},{lat:-42,lng:-63,dir:98,spd:50}],zonas:[{lat:-24.8,lng:-65.4,radius:80000,temp:44,viento:38,humedad:18},{lat:-31.4,lng:-64.2,radius:60000,temp:41,viento:35,humedad:22},{lat:-26.2,lng:-53.4,radius:50000,temp:40,viento:32,humedad:25}]};
-
-const map=L.map('demo-map',{scrollWheelZoom:false,zoomControl:true,attributionControl:false}).setView([-34,-64],5);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(map);
-L.control.attribution({position:'bottomright',prefix:''}).addTo(map).setPrefix('© SPIYD Demo · CartoDB · Datos simulados');
-
-const fwiColor=l=>({extremo:'#7c3aed',muy_alto:'#ef4444',alto:'#f97316',moderado:'#f59e0b',bajo:'#22c55e'}[l]||'#94a3b8');
-const smnColor=l=>({rojo:'#ef4444',naranja:'#f97316',amarillo:'#f59e0b',verde:'#22c55e'}[l]||'#94a3b8');
-const popStyle='font-size:12px;min-width:160px;font-family:Inter,sans-serif';
-function popHdr(t,c){return `<div style="${popStyle}"><b style="color:${c}">${t}</b>`}
-const layers={};
-const nasaCluster=L.markerClusterGroup({maxClusterRadius:40,disableClusteringAtZoom:8});
-D.nasa.forEach(f=>{const c=f.conf==='high'?'#ef4444':'#fca5a5';const r=f.frp>100?11:f.frp>60?9:7;nasaCluster.addLayer(L.circleMarker([f.lat,f.lng],{radius:r,color:c,fillColor:c,fillOpacity:.8,weight:2}).bindPopup(`${popHdr('🛰 NASA FIRMS',c)}<br>Región: ${f.r}<br>Satélite: ${f.sat}<br>FRP: ${f.frp} MW<br>Confianza: ${f.conf}</div>`))});
-layers.nasa=nasaCluster;map.addLayer(nasaCluster);
-const inpeGrp=L.layerGroup();D.inpe.forEach(f=>{inpeGrp.addLayer(L.circleMarker([f.lat,f.lng],{radius:8,color:'#f97316',fillColor:'#f97316',fillOpacity:.7,weight:2,dashArray:'4 2'}).bindPopup(`${popHdr('🛰 INPE/METOP','#f97316')}<br>Región: ${f.r}<br>Satélite: ${f.sat}<br>FRP: ${f.frp} MW</div>`))});layers.inpe=inpeGrp;map.addLayer(inpeGrp);
-const goesGrp=L.layerGroup();D.goes.forEach(f=>{const iconHtml=`<div style="width:20px;height:20px;border-radius:50%;background:#ff1744;opacity:.85;box-shadow:0 0 0 4px rgba(255,23,68,.35);animation:livePulse 1s infinite"></div>`;goesGrp.addLayer(L.marker([f.lat,f.lng],{icon:L.divIcon({html:iconHtml,iconSize:[20,20],iconAnchor:[10,10],className:''})}).bindPopup(`${popHdr('🔴 GOES-16 LIVE','#ff1744')}<br>Región: ${f.r}<br>Confianza: ${f.conf}%<br><b style="color:#ff1744">● TIEMPO REAL</b></div>`))});layers.goes=goesGrp;map.addLayer(goesGrp);
-const smnGrp=L.layerGroup();D.smn.forEach(a=>{const c=smnColor(a.level);smnGrp.addLayer(L.circle([a.lat,a.lng],{radius:a.radius,color:c,fillColor:c,fillOpacity:.12,weight:2,dashArray:'6 4'}).bindPopup(`${popHdr('📡 Alerta SMN — '+a.level.toUpperCase(),c)}<br>${a.title}<br>Temp máx: ${a.temp}°C · Viento: ${a.wind} km/h</div>`))});layers.smn=smnGrp;map.addLayer(smnGrp);
-const windGrp=L.layerGroup();D.wind.forEach(w=>{const c=w.spd>50?'#ef4444':w.spd>35?'#f97316':w.spd>20?'#60a5fa':'#94a3b8';const sz=w.spd>50?22:w.spd>35?19:16;const icon=L.divIcon({html:`<div style="transform:rotate(${w.dir}deg);color:${c};font-size:${sz}px;line-height:1;filter:drop-shadow(0 0 3px rgba(0,0,0,.8))">↑</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],className:''});windGrp.addLayer(L.marker([w.lat,w.lng],{icon}).bindPopup(`${popHdr('💨 Viento','#60a5fa')}<br>Velocidad: ${w.spd} km/h<br>Dirección: ${w.dir}°</div>`))});layers.wind=windGrp;map.addLayer(windGrp);
-const aguaGrp=L.layerGroup();D.agua.forEach(a=>{const icon=L.divIcon({html:`<div style="background:#0891b2;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #22d3ee;box-shadow:0 2px 8px rgba(0,0,0,.5);font-size:11px">💧</div>`,iconSize:[22,22],iconAnchor:[11,11],className:''});aguaGrp.addLayer(L.marker([a.lat,a.lng],{icon}).bindPopup(`${popHdr('💧 '+a.type,'#22d3ee')}<br>${a.name}${a.vol?'<br>Volumen: '+a.vol:''}</div>`))});layers.agua=aguaGrp;map.addLayer(aguaGrp);
-const vegGrp=L.layerGroup();D.veg.forEach(v=>{const g=Math.floor(v.ndvi*200+55);const c=`rgb(0,${g},40)`;vegGrp.addLayer(L.circleMarker([v.lat,v.lng],{radius:10,color:'#4ade80',fillColor:c,fillOpacity:.75,weight:2}).bindPopup(`${popHdr('🌿 Vegetación','#4ade80')}<br>${v.type}<br>NDVI: ${v.ndvi} (${v.ndvi>.7?'Alta':'Media'} densidad)</div>`))});layers.veg=vegGrp;map.addLayer(vegGrp);
-const fwiGrp=L.layerGroup();D.fwi.forEach(f=>{const c=fwiColor(f.level);const labels={extremo:'EXTREMO',muy_alto:'MUY ALTO',alto:'ALTO',moderado:'MODERADO',bajo:'BAJO'};const icon=L.divIcon({html:`<div style="background:${c};border-radius:6px;padding:2px 5px;font-size:9px;font-weight:800;color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:0 2px 6px rgba(0,0,0,.4);white-space:nowrap;font-family:Inter,sans-serif">FWI ${f.fwi}</div>`,iconSize:[52,18],iconAnchor:[26,9],className:''});fwiGrp.addLayer(L.marker([f.lat,f.lng],{icon}).bindPopup(`${popHdr('🔥 FWI — '+labels[f.level],c)}<br>Índice: ${f.fwi}<br>Nivel: ${labels[f.level]}</div>`))});layers.fwi=fwiGrp;map.addLayer(fwiGrp);
-const radarGrp=L.layerGroup();D.radar.forEach(r=>{radarGrp.addLayer(L.circle([r.lat,r.lng],{radius:r.range*1000,color:'#38bdf8',fillColor:'#0ea5e9',fillOpacity:.04,weight:1,dashArray:'5 5'}));const icon=L.divIcon({html:`<div style="background:#0c4a6e;width:16px;height:16px;border-radius:3px;border:2px solid #38bdf8;box-shadow:0 0 8px rgba(56,189,248,.5)"></div>`,iconSize:[16,16],iconAnchor:[8,8],className:''});radarGrp.addLayer(L.marker([r.lat,r.lng],{icon}).bindPopup(`${popHdr('📡 Radar '+r.name,'#38bdf8')}<br>Alcance: ${r.range} km<br>SMN/INVAP</div>`))});layers.radar=radarGrp;map.addLayer(radarGrp);
-const zonasGrp=L.layerGroup();D.zonas.forEach(z=>{zonasGrp.addLayer(L.circle([z.lat,z.lng],{radius:z.radius,color:'#ff5722',fillColor:'#ff5722',fillOpacity:.1,weight:3,dashArray:'8 4'}).bindPopup(`${popHdr('⚡ ZONA 30-30-30','#ff5722')}<br>Temp: ${z.temp}°C (&gt;30°C ✓)<br>Viento: ${z.viento} km/h (&gt;30 ✓)<br>Humedad: ${z.humedad}% (&lt;30% ✓)<br><b style="color:#ff5722">RIESGO EXTREMO</b></div>`))});layers.zonas=zonasGrp;map.addLayer(zonasGrp);
-function toggleLayer(name,on){on?map.addLayer(layers[name]):map.removeLayer(layers[name])}
-
-const phrases={es:['proteger los bosques','prevenir incendios forestales','detectar deforestación en tiempo real','monitorear con satélites NASA y GOES-16'],en:['protect forests','prevent wildfires','detect deforestation in real time','monitor with NASA and GOES-16 satellites'],pt:['proteger as florestas','prevenir incêndios florestais','detectar desmatamento em tempo real','monitorar com satélites NASA e GOES-16']};
-let tLang='es',tIdx=0,tChar=0,tDel=false;
-const tEl=document.getElementById('typed-text');
-function typeStep(){const ph=phrases[tLang][tIdx];tDel?(tEl.textContent=ph.substring(0,--tChar)):(tEl.textContent=ph.substring(0,++tChar));if(!tDel&&tChar===ph.length){tDel=true;setTimeout(typeStep,2200);return}if(tDel&&tChar===0){tDel=false;tIdx=(tIdx+1)%phrases[tLang].length}setTimeout(typeStep,tDel?42:72)}
-typeStep();
-
-window.addEventListener('scroll',()=>document.getElementById('navbar').classList.toggle('scrolled',scrollY>40),{passive:true});
-
-(()=>{const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}}),{threshold:.1,rootMargin:'0px 0px -40px 0px'});document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));})();
-function animNum(el,target,dur=1600){const s=performance.now();(function t(now){const p=Math.min((now-s)/dur,1),e=1-Math.pow(1-p,3);el.textContent=Math.round(e*target).toLocaleString('es');if(p<1)requestAnimationFrame(t);})(s)}
-(()=>{const o=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.querySelectorAll('[data-target]').forEach(el=>animNum(el,+el.dataset.target));o.unobserve(e.target);}}),{threshold:.3});document.querySelectorAll('#stats .col-6').forEach(el=>o.observe(el));})();
-
-const T={es:{nav_feat:'Características',nav_demo:'Demo',nav_price:'Precios',nav_login:'Ingresar',hero_pill:'v3.0',hero_tag:'Monitoreo en tiempo real',hero_h1:'Prevención de incendios',hero_h2_pre:'y deforestaciones',hero_h2_acc:'a escala continental',hero_typed_pre:'Para ',hero_sub:'Plataforma satelital con datos en vivo de NASA, INPE y GOES-16, índices FWI, alertas Telegram y análisis con IA. Construida para proteger los bosques de América del Sur.',hero_cta1:'Acceder al sistema',hero_cta2:'Ver demo en vivo',meta_free:'Gratuito para organismos',meta_setup:'Sin instalación',meta_lang:'3 idiomas',status_t:'Estado del sistema',status_nasa:'Focos NASA activos',status_inpe:'Focos INPE / GOES',status_smn:'Alertas SMN activas',status_fwi:'FWI máximo',status_extreme:'extremo',status_zones:'Zonas 30-30-30',status_active:'activas',hero_updated:'Actualizado hace 4 min',trust_label:'Confían en SPIYD organismos y agencias de toda Sudamérica',stat1:'Monitoreo continuo',stat2:'Focos procesados / día',stat3:'Precisión NASA VIIRS',stat4:'Latencia de datos',feat_chip:'Capacidades',feat_title:'Toda la inteligencia satelital,<br>en una sola plataforma',feat_sub:'Datos meteorológicos, hidrográficos y de teledetección integrados para detectar, analizar y alertar en minutos.',f1t:'NASA FIRMS — VIIRS / MODIS',f1d:'Focos de calor de los satélites VIIRS y MODIS con actualización cada 10 minutos.',f2t:'GOES-16 + INPE en tiempo real',f2d:'Detección continua GOES-16 con badge LIVE y datos INPE/METOP.',f3t:'Índice FWI + regla 30-30-30',f3d:'Fire Weather Index canadiense adaptado al hemisferio sur.',f4t:'Viento, clima y alertas CAP',f4d:'Animación de viento Open-Meteo, grilla climática y alertas CAP del SMN.',f5t:'Agua, vegetación y topografía',f5d:'Embalses, ríos y lagunas vía OSM, índice NDVI, relieve topográfico.',f6t:'Análisis IA + alertas Telegram',f6d:'Análisis con Claude AI y alertas automáticas por Telegram.',demo_chip:'Demo interactivo',demo_title:'Probá el mapa antes de ingresar',demo_sub:'Todas las capas del sistema con datos simulados.',panel_t:'Panel de control',panel_risk:'RIESGO: EXTREMO',panel_demo:'Demo — Datos simulados',leg_nasa_h:'NASA (alta conf.)',leg_nasa_m:'NASA (media conf.)',leg_water:'Fuente de agua',leg_veg:'Vegetación NDVI',leg_radar:'Estación radar',leg_zone:'Zona 30-30-30',leg_smn:'Alerta SMN',price_chip:'Planes',price_title:'Precios transparentes,<br>sin sorpresas',price_sub:'Elegí el plan que mejor se adapta a tu organización.',p_mo:'/mes',p_pop:'Más popular',p1n:'Básico',p1desc:'Ideal para evaluar la plataforma.',p1f1:'Mapa de incendios activos',p1f2:'Datos NASA FIRMS',p1f3:'Alertas SMN básicas',p1f4:'GOES-16 + INPE en vivo',p1f5:'Análisis IA',p1cta:'Empezar gratis',p2n:'Pro',p2desc:'Para equipos de emergencias y conservación.',p2f1:'Todo del plan Básico',p2f2:'GOES-16 + INPE tiempo real',p2f3:'Alertas Telegram automáticas',p2f4:'FWI avanzado + 30-30-30',p2f5:'Análisis IA completo',p2cta:'Contratar Pro',p3n:'Enterprise',p3desc:'Gobiernos, organismos multilaterales.',p3f1:'Todo del plan Pro',p3f2:'Multi-región personalizado',p3f3:'API de datos abierta',p3f4:'Alertas 100% personalizadas',p3f5:'SLA 99.9% uptime',p3cta:'Contactar ventas',cta_chip:'Acceso gratuito',cta_t1:'Protegé los ecosistemas',cta_t2:'de América del Sur',cta_sub:'Gobiernos, bomberos, guardaparques y organismos de conservación acceden sin costo.',cta_btn:'Ingresar al sistema',cta_btn2:'Volver al demo',foot_desc:'Sistema de Prevención de Incendios y Deforestaciones.',foot_nav:'Producto',foot_tech:'Fuentes de datos',foot_contact:'Para consultas institucionales y comerciales.',foot_rights:'Todos los derechos reservados'},en:{nav_feat:'Features',nav_demo:'Demo',nav_price:'Pricing',nav_login:'Sign In',hero_pill:'v3.0',hero_tag:'Real-time monitoring',hero_h1:'Fire & deforestation',hero_h2_pre:'prevention',hero_h2_acc:'at continental scale',hero_typed_pre:'To ',hero_sub:'Satellite platform with live NASA, INPE and GOES-16 data.',hero_cta1:'Access system',hero_cta2:'View live demo',meta_free:'Free for public agencies',meta_setup:'No installation',meta_lang:'3 languages',status_t:'System status',status_nasa:'Active NASA hotspots',status_inpe:'INPE / GOES hotspots',status_smn:'Active SMN alerts',status_fwi:'Max FWI',status_extreme:'extreme',status_zones:'30-30-30 zones',status_active:'active',hero_updated:'Updated 4 min ago',trust_label:'Trusted by agencies across South America',stat1:'Continuous monitoring',stat2:'Hotspots / day',stat3:'NASA VIIRS accuracy',stat4:'Data latency',feat_chip:'Capabilities',feat_title:'All satellite intelligence,<br>in one platform',feat_sub:'Integrated data for detect, analyze and alert.',f1t:'NASA FIRMS — VIIRS / MODIS',f1d:'Fire hotspots from VIIRS and MODIS satellites every 10 minutes.',f2t:'GOES-16 + INPE real time',f2d:'Continuous GOES-16 fire detection with LIVE badge.',f3t:'FWI Index + 30-30-30 rule',f3d:'Canadian Fire Weather Index adapted to the southern hemisphere.',f4t:'Wind, climate & CAP alerts',f4d:'Real-time Open-Meteo wind, climate grid and CAP alerts.',f5t:'Water, vegetation & topography',f5d:'Reservoirs, rivers and lagoons via OSM, NDVI vegetation index.',f6t:'AI analysis + Telegram alerts',f6d:'Situation analysis with Anthropic\'s Claude AI.',demo_chip:'Interactive demo',demo_title:'Try the map before signing in',demo_sub:'All system layers with simulated data.',panel_t:'Control panel',panel_risk:'RISK: EXTREME',panel_demo:'Demo — Simulated data',leg_nasa_h:'NASA (high conf.)',leg_nasa_m:'NASA (medium conf.)',leg_water:'Water source',leg_veg:'NDVI vegetation',leg_radar:'Radar station',leg_zone:'30-30-30 zone',leg_smn:'SMN alert',price_chip:'Plans',price_title:'Transparent pricing,<br>no surprises',price_sub:'Choose the plan that fits your organization.',p_mo:'/month',p_pop:'Most popular',p1n:'Basic',p1desc:'Ideal for evaluating the platform.',p1f1:'Active fire map',p1f2:'NASA FIRMS data',p1f3:'Basic SMN alerts',p1f4:'GOES-16 + INPE live',p1f5:'AI analysis',p1cta:'Start free',p2n:'Pro',p2desc:'For emergency and conservation teams.',p2f1:'Everything in Basic',p2f2:'GOES-16 + INPE real time',p2f3:'Automatic Telegram alerts',p2f4:'Advanced FWI + 30-30-30',p2f5:'Full AI analysis',p2cta:'Get Pro',p3n:'Enterprise',p3desc:'Governments and multilateral agencies.',p3f1:'Everything in Pro',p3f2:'Custom multi-region',p3f3:'Open data API',p3f4:'100% custom alerts',p3f5:'99.9% SLA uptime',p3cta:'Contact sales',cta_chip:'Free access',cta_t1:'Protect ecosystems',cta_t2:'across South America',cta_sub:'Free access for governments, firefighters, park rangers and conservation agencies.',cta_btn:'Access system',cta_btn2:'Back to demo',foot_desc:'Fire and Deforestation Prevention System.',foot_nav:'Product',foot_tech:'Data sources',foot_contact:'For institutional and commercial inquiries.',foot_rights:'All rights reserved'},pt:{nav_feat:'Características',nav_demo:'Demo',nav_price:'Preços',nav_login:'Entrar',hero_pill:'v3.0',hero_tag:'Monitoramento em tempo real',hero_h1:'Prevenção de incêndios',hero_h2_pre:'e desmatamentos',hero_h2_acc:'em escala continental',hero_typed_pre:'Para ',hero_sub:'Plataforma satelital com dados ao vivo da NASA, INPE e GOES-16.',hero_cta1:'Acessar sistema',hero_cta2:'Ver demo ao vivo',meta_free:'Gratuito para órgãos públicos',meta_setup:'Sem instalação',meta_lang:'3 idiomas',status_t:'Status do sistema',status_nasa:'Focos NASA ativos',status_inpe:'Focos INPE / GOES',status_smn:'Alertas SMN ativos',status_fwi:'FWI máximo',status_extreme:'extremo',status_zones:'Zonas 30-30-30',status_active:'ativas',hero_updated:'Atualizado há 4 min',trust_label:'Órgãos da América do Sul confiam no SPIYD',stat1:'Monitoramento contínuo',stat2:'Focos / dia',stat3:'Precisão NASA VIIRS',stat4:'Latência de dados',feat_chip:'Capacidades',feat_title:'Toda a inteligência satelital,<br>em uma única plataforma',feat_sub:'Dados integrados para detectar, analisar e alertar.',f1t:'NASA FIRMS — VIIRS / MODIS',f1d:'Focos de calor a cada 10 minutos.',f2t:'GOES-16 + INPE em tempo real',f2d:'Detecção contínua GOES-16 com badge AO VIVO.',f3t:'Índice FWI + regra 30-30-30',f3d:'Fire Weather Index canadense adaptado.',f4t:'Vento, clima e alertas CAP',f4d:'Animação de vento Open-Meteo e alertas CAP.',f5t:'Água, vegetação e topografia',f5d:'Represas, rios e lagoas via OSM, índice NDVI.',f6t:'Análise IA + alertas Telegram',f6d:'Análise com Claude AI da Anthropic.',demo_chip:'Demo interativo',demo_title:'Teste o mapa antes de entrar',demo_sub:'Todas as camadas com dados simulados.',panel_t:'Painel de controle',panel_risk:'RISCO: EXTREMO',panel_demo:'Demo — Dados simulados',leg_nasa_h:'NASA (alta conf.)',leg_nasa_m:'NASA (média conf.)',leg_water:'Fonte de água',leg_veg:'Vegetação NDVI',leg_radar:'Estação radar',leg_zone:'Zona 30-30-30',leg_smn:'Alerta SMN',price_chip:'Planos',price_title:'Preços transparentes,<br>sem surpresas',price_sub:'Escolha o plano que melhor se adapta.',p_mo:'/mês',p_pop:'Mais popular',p1n:'Básico',p1desc:'Ideal para avaliar.',p1f1:'Mapa de incêndios ativos',p1f2:'Dados NASA FIRMS',p1f3:'Alertas SMN básicos',p1f4:'GOES-16 + INPE ao vivo',p1f5:'Análise IA',p1cta:'Começar grátis',p2n:'Pro',p2desc:'Para equipes de emergência.',p2f1:'Tudo do plano Básico',p2f2:'GOES-16 + INPE tempo real',p2f3:'Alertas Telegram automáticos',p2f4:'FWI avançado + 30-30-30',p2f5:'Análise IA completa',p2cta:'Contratar Pro',p3n:'Enterprise',p3desc:'Governos e organismos multilaterais.',p3f1:'Tudo do plano Pro',p3f2:'Multi-região personalizado',p3f3:'API de dados aberta',p3f4:'Alertas 100% personalizados',p3f5:'SLA 99.9% uptime',p3cta:'Falar com vendas',cta_chip:'Acesso gratuito',cta_t1:'Proteja os ecossistemas',cta_t2:'da América do Sul',cta_sub:'Acesso gratuito à plataforma completa.',cta_btn:'Acessar sistema',cta_btn2:'Voltar ao demo',foot_desc:'Sistema de Prevenção de Incêndios.',foot_nav:'Produto',foot_tech:'Fontes de dados',foot_contact:'Para consultas institucionais.',foot_rights:'Todos os direitos reservados'}};
-
-let currentLang='es';
-function setLang(l){currentLang=l;tLang=l;tIdx=0;tChar=0;tDel=false;document.getElementById('html-root').lang=l;document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim().toLowerCase()===l));const t=T[l];document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(t[k]!==undefined){if(t[k].includes('<br>'))el.innerHTML=t[k];else el.textContent=t[k]}})}
+    const glow = document.getElementById('cursor-glow');
+    const heroBg = document.getElementById('hero-bg');
+    document.addEventListener('mousemove', (e) => {
+        glow.style.left = e.clientX + 'px';
+        glow.style.top = e.clientY + 'px';
+        if (heroBg) {
+            const moveX = (e.clientX - window.innerWidth / 2) / 50;
+            const moveY = (e.clientY - window.innerHeight / 2) / 50;
+            heroBg.style.transform = `translate3d(${moveX}px, ${moveY}px, 0) scale(1.05)`;
+        }
+    });
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('is-visible'); });
+    }, { threshold: 0.15, rootMargin: "0px 0px -50px 0px" });
+    document.querySelectorAll('section').forEach(s => { if (!s.classList.contains('is-visible')) observer.observe(s); });
+    const hudElements = document.querySelectorAll('.hud-floating');
+    document.addEventListener('mousemove', (e) => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 20;
+        const y = (e.clientY / window.innerHeight - 0.5) * 20;
+        hudElements.forEach((el, i) => {
+            el.style.transform = `translate(${x * (i + 1) * 0.5}px, ${y * (i + 1) * 0.5}px)`;
+        });
+    });
 </script>
-</body>
-</html>
+</body></html>

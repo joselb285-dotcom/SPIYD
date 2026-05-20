@@ -1,132 +1,372 @@
-{% extends "base_admin.html" %}
-{% block title %}Dashboard — SPIYD Admin{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
-{% block breadcrumb %}Inicio{% endblock %}
+<!DOCTYPE html><html class="dark" lang="es"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SPIY - Command Center Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@300..700&family=JetBrains+Mono:wght@300..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<style>
+    :root { --glass-bg: rgba(19,19,21,0.6); --glass-border: rgba(143,144,151,0.2); }
+    body { background-color: #020617; background-image: radial-gradient(circle at 50% 50%, #0a192f 0%, #020617 100%); color: #e4e2e4; overflow: hidden; font-family: 'Inter', sans-serif; }
+    .glass-panel { background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 1px rgba(255,255,255,0.05); }
+    .glow-orange { box-shadow: 0 0 25px rgba(249,115,22,0.4); }
+    .glow-red { box-shadow: 0 0 30px rgba(239,68,68,0.5); }
+    .map-grid {
+        background-image: linear-gradient(rgba(143,144,151,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(143,144,151,0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
+    }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(143,144,151,0.3); border-radius: 2px; }
+</style>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: { extend: {
+            "colors": {
+                "secondary": "#a1d494","primary": "#b9c7e4","tertiary": "#e7bf99",
+                "error": "#ffb4ab","surface": "#131315","surface-container": "#1f1f21",
+                "surface-container-high": "#2a2a2c","surface-container-highest": "#343536",
+                "surface-container-lowest": "#0e0e10","surface-variant": "#343536",
+                "on-surface": "#e4e2e4","on-surface-variant": "#c5c6cd",
+                "outline-variant": "#44474d","primary-container": "#0a192f",
+                "on-primary-fixed": "#0d1c32","secondary-container": "#23501e",
+                "on-secondary-container": "#90c283","error-container": "#93000a",
+                "on-tertiary-container": "#9d7b5a","on-error-container": "#ffdad6"
+            },
+            "fontFamily": { "label-technical": ["JetBrains Mono"], "headline-lg": ["Space Grotesk"] },
+            "spacing": { "glass-padding": "20px", "gutter": "16px" }
+        }}
+    }
+</script>
+</head>
+<body class="flex h-screen w-full overflow-hidden">
 
-{% block content %}
-<div class="row g-4 mb-4">
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="label"><i class="fas fa-users me-1"></i>Total Usuarios</div>
-      <div class="value" style="color:#e2e8f0">{{ total_users }}</div>
-      <div class="sub">{{ active_users }} activos</div>
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl">
+    <div class="px-6 mb-4">
+        <h1 class="font-headline-lg text-2xl text-primary tracking-tighter">SPIY</h1>
+        <p class="font-label-technical text-[10px] text-on-surface-variant opacity-60 tracking-widest">Command Center v2.4</p>
     </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="label"><i class="fas fa-circle-check me-1"></i>Usuarios Activos</div>
-      <div class="value" style="color:#22c55e">{{ active_users }}</div>
-      <div class="sub">{{ total_users - active_users }} inactivos</div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="label"><i class="fas fa-dollar-sign me-1"></i>Cobrado</div>
-      <div class="value" style="color:#f97316">${{ "%.2f"|format(monthly_revenue) }}</div>
-      <div class="sub">total pagado</div>
-    </div>
-  </div>
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="label"><i class="fas fa-clock me-1"></i>Pendiente</div>
-      <div class="value" style="color:#f59e0b">${{ "%.2f"|format(pending_revenue) }}</div>
-      <div class="sub">${{ "%.2f"|format(overdue_revenue) }} vencido</div>
-    </div>
-  </div>
-</div>
-
-<div class="row g-4">
-  <!-- Planes -->
-  <div class="col-lg-4">
-    <div class="data-card">
-      <div class="data-card-header">
-        <h6><i class="fas fa-chart-pie me-2" style="color:var(--orange)"></i>Distribución de Planes</h6>
-      </div>
-      <div class="p-4">
-        {% set total = plan_counts.values()|sum or 1 %}
-        {% for plan, count in plan_counts.items() %}
-        <div class="mb-3">
-          <div class="d-flex justify-content-between mb-1">
-            <span class="badge-plan badge-{{ plan }}" style="font-size:0.82rem;padding:4px 10px;border-radius:6px">
-              {{ plan|capitalize }}
-            </span>
-            <span style="font-size:0.85rem;color:var(--muted)">{{ count }} usuarios</span>
-          </div>
-          <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;overflow:hidden">
-            <div style="height:100%;border-radius:4px;width:{{ (count / total * 100)|int }}%;
-              background:{% if plan == 'basic' %}#8b949e{% elif plan == 'pro' %}#60a5fa{% else %}#c084fc{% endif %}">
+    <nav class="flex flex-col gap-1 flex-1">
+        <div class="px-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest">Principal</div>
+        <a class="flex items-center gap-3 py-3 px-4 bg-secondary-container text-on-secondary-container rounded-lg mx-2 transition-all" href="/admin/">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span class="font-label-technical text-[12px]">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/users">
+            <span class="material-symbols-outlined">group</span>
+            <span class="font-label-technical text-[12px]">Usuarios</span>
+        </a>
+        <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest">Aplicación</div>
+        <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/mapa" target="_blank">
+            <span class="material-symbols-outlined">satellite_alt</span>
+            <span class="font-label-technical text-[12px]">Mapa Satelital</span>
+        </a>
+        <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/dashboard" target="_blank">
+            <span class="material-symbols-outlined">monitoring</span>
+            <span class="font-label-technical text-[12px]">Dashboard Alertas</span>
+        </a>
+        <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/">
+            <span class="material-symbols-outlined">public</span>
+            <span class="font-label-technical text-[12px]">Sitio Web</span>
+        </a>
+    </nav>
+    <div class="mt-auto px-2 flex flex-col gap-1">
+        <div class="p-3 mx-2 rounded-lg bg-surface-container-high flex items-center gap-3 mb-2">
+            <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center border border-primary/20">
+                <span class="material-symbols-outlined text-primary">person</span>
             </div>
-          </div>
+            <div class="flex flex-col">
+                <span class="text-[13px] font-bold">{{ current_user.username }}</span>
+                <span class="text-[10px] text-secondary font-label-technical">{{ current_user.role_label }}</span>
+            </div>
         </div>
-        {% endfor %}
-        {% if not plan_counts %}
-        <p style="color:var(--muted);font-size:0.88rem;text-align:center;margin:20px 0">Sin usuarios registrados</p>
+        <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all" href="/logout">
+            <span class="material-symbols-outlined">logout</span>
+            <span class="font-label-technical text-[12px]">Cerrar Sesión</span>
+        </a>
+    </div>
+</aside>
+
+<!-- Main Content -->
+<main class="ml-64 flex-1 h-full relative overflow-hidden flex flex-col">
+    <!-- Map Background -->
+    <div class="absolute inset-0 z-0 map-grid">
+        <img alt="Sentinel View" class="w-full h-full object-cover opacity-40 saturate-[0.1] contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUhI6B-TpVmHVenDgunMBwKa1OzOppG_q2hodpw9enzHAGB69uhllgKsv9dAmrYYXXelvAFuYrat_6SiROi52SXm_3hBhU5wIiN6fJQTSrYzkMTYdzwIa-dhNWx4dwmFRvqvyUZoNJImZwSAlvDKJWTcTs8KqmDSQZDSjhaRiBWa-JIgzDfhPTDufVjmiw3g3DtA241IZGEu14nmxfhALsxeBh95YTVnCPiTfqkTTso-ijuXi_4hLZ_ea-mtxvPmq5ZekJqSQax1Ew">
+        <!-- Hotspots dinámicos basados en focos_hoy -->
+        {% if focos_hoy and focos_hoy > 0 %}
+        <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div class="relative w-12 h-12 flex items-center justify-center">
+                <div class="absolute inset-0 bg-error/40 rounded-full animate-ping"></div>
+                <div class="absolute inset-2 bg-error rounded-full glow-red flex items-center justify-center">
+                    <span class="material-symbols-outlined text-white text-xs" style="font-variation-settings:'FILL' 1">local_fire_department</span>
+                </div>
+                <div class="absolute left-14 top-0 glass-panel px-3 py-1 rounded-lg border-l-4 border-error min-w-[160px]">
+                    <p class="font-label-technical text-[10px] text-error uppercase font-bold">FOCOS ACTIVOS HOY</p>
+                    <p class="text-sm text-white font-bold">{{ focos_hoy }} detectados</p>
+                </div>
+            </div>
+        </div>
         {% endif %}
-      </div>
+        {% if focos_criticos and focos_criticos > 0 %}
+        <div class="absolute top-2/3 right-1/4">
+            <div class="relative w-8 h-8 flex items-center justify-center">
+                <div class="absolute inset-0 bg-tertiary/40 rounded-full animate-pulse"></div>
+                <div class="absolute inset-1 bg-tertiary rounded-full glow-orange flex items-center justify-center">
+                    <span class="material-symbols-outlined text-black text-[14px]">warning</span>
+                </div>
+                <div class="absolute left-10 top-0 glass-panel px-3 py-1 rounded-lg border-l-4 border-tertiary min-w-[150px]">
+                    <p class="font-label-technical text-[10px] text-tertiary uppercase font-bold">CRÍTICOS</p>
+                    <p class="text-sm text-white font-bold">{{ focos_criticos }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
-  </div>
 
-  <!-- Últimos accesos -->
-  <div class="col-lg-8">
-    <div class="data-card">
-      <div class="data-card-header">
-        <h6><i class="fas fa-clock-rotate-left me-2" style="color:var(--orange)"></i>Últimos Accesos</h6>
-        <a href="/admin/users" style="color:var(--muted);font-size:0.82rem;text-decoration:none">Ver todos →</a>
-      </div>
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Plan</th>
-              <th>Fecha y Hora</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for log, user in recent_logins %}
-            <tr>
-              <td>
-                <div style="font-weight:600">{{ user.username }}</div>
-                <div style="font-size:0.78rem;color:var(--muted)">{{ user.email }}</div>
-              </td>
-              <td><span class="badge-plan badge-{{ user.plan }}">{{ user.plan_label }}</span></td>
-              <td style="color:var(--muted);font-size:0.82rem">{{ log.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
-              <td><span class="badge-active">Activo</span></td>
-            </tr>
-            {% else %}
-            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Sin accesos registrados</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
+    <!-- HUD Layer -->
+    <div class="relative z-10 flex flex-col h-full p-6 gap-6 pointer-events-none">
+        <!-- Top Bar -->
+        <header class="flex justify-between items-start pointer-events-auto">
+            <div class="glass-panel p-4 rounded-xl flex items-center gap-6">
+                <div class="flex flex-col">
+                    <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Sistema</span>
+                    <span class="text-lg font-bold">SPIY Admin Panel</span>
+                </div>
+                <div class="w-px h-8 bg-outline-variant/30"></div>
+                <div class="flex flex-col">
+                    <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Estado Global</span>
+                    {% if focos_criticos and focos_criticos > 0 %}
+                    <span class="text-lg font-bold text-error">ALERTA NIVEL {{ focos_criticos }}</span>
+                    {% else %}
+                    <span class="text-lg font-bold text-secondary">SISTEMA NOMINAL</span>
+                    {% endif %}
+                </div>
+                <div class="w-px h-8 bg-outline-variant/30"></div>
+                <div class="flex items-center gap-3">
+                    <a href="/admin/users/new" class="bg-primary text-on-primary-fixed font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:opacity-90 transition-all text-sm">
+                        <span class="material-symbols-outlined text-sm">person_add</span>
+                        <span>Nuevo Usuario</span>
+                    </a>
+                    <a href="/mapa" target="_blank" class="bg-secondary/20 border border-secondary/30 text-secondary font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-secondary/30 transition-all text-sm">
+                        <span class="material-symbols-outlined text-sm">satellite_alt</span>
+                        <span>Ver Mapa</span>
+                    </a>
+                </div>
+            </div>
+            <div class="glass-panel p-4 rounded-xl flex items-center gap-4">
+                <div class="flex flex-col text-right">
+                    <span class="font-label-technical text-[10px] text-on-surface-variant" id="clock">Cargando...</span>
+                    <span class="font-label-technical text-[10px] text-secondary">MONITOREO EN VIVO</span>
+                </div>
+                <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+            </div>
+        </header>
 
-<div class="row g-4 mt-0">
-  <div class="col-12">
-    <div class="data-card">
-      <div class="data-card-header">
-        <h6><i class="fas fa-bolt me-2" style="color:var(--orange)"></i>Acciones Rápidas</h6>
-      </div>
-      <div class="p-4 d-flex flex-wrap gap-3">
-        <a href="/admin/users/new" class="btn-spiyd">
-          <i class="fas fa-user-plus"></i> Nuevo Usuario
-        </a>
-        <a href="/admin/billing" class="btn-spiyd-outline">
-          <i class="fas fa-file-invoice-dollar"></i> Ver Facturación
-        </a>
-        <form method="POST" action="/admin/billing/generate" style="display:inline">
-          <button type="submit" class="btn-spiyd-outline" onclick="return confirm('¿Generar facturas del mes actual?')">
-            <i class="fas fa-receipt"></i> Generar Facturas del Mes
-          </button>
-        </form>
-        <a href="/mapa" target="_blank" class="btn-spiyd-outline">
-          <i class="fas fa-map"></i> Abrir Mapa
-        </a>
-      </div>
+        <!-- Main Layout -->
+        <div class="flex-1 flex gap-6 overflow-hidden">
+            <!-- Left: IA Reports + Quick Stats -->
+            <div class="w-80 flex flex-col gap-6 pointer-events-auto overflow-y-auto pr-2 custom-scrollbar">
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="glass-panel p-4 rounded-2xl text-center">
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Usuarios</p>
+                        <p class="text-2xl font-bold">{{ active_users }}</p>
+                        <p class="text-[10px] text-on-surface-variant">de {{ total_users }}</p>
+                    </div>
+                    <div class="glass-panel p-4 rounded-2xl text-center">
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Focos Hoy</p>
+                        <p class="text-2xl font-bold text-error">{{ focos_hoy }}</p>
+                        <p class="text-[10px] text-on-surface-variant">{{ focos_mes }} este mes</p>
+                    </div>
+                    <div class="glass-panel p-4 rounded-2xl text-center">
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Alertas SMN</p>
+                        <p class="text-2xl font-bold text-primary">{{ smn_total }}</p>
+                        <p class="text-[10px] text-on-surface-variant">{{ smn_hoy }} hoy</p>
+                    </div>
+                    <div class="glass-panel p-4 rounded-2xl text-center">
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Informes IA</p>
+                        <p class="text-2xl font-bold" style="color:#a78bfa">{{ ai_total }}</p>
+                        <p class="text-[10px] text-on-surface-variant">{{ ai_mes }} este mes</p>
+                    </div>
+                </div>
+
+                <!-- IA Reports -->
+                <section class="glass-panel p-5 rounded-2xl">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings:'FILL' 1">auto_awesome</span>
+                            Últimos Informes IA
+                        </h3>
+                        <span class="text-[10px] font-label-technical text-on-surface-variant">{{ ai_mes }} ESTE MES</span>
+                    </div>
+                    <div class="space-y-3">
+                        {% for inf in ai_recientes[:3] %}
+                        <div class="p-3 bg-surface-container rounded-xl border border-outline-variant/10 hover:border-primary/40 cursor-pointer transition-all group">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="text-[10px] font-label-technical text-primary">
+                                    {% if inf.severidad == 'critical' %}CRÍTICO{% elif inf.severidad == 'high' %}ALTO{% else %}MEDIO{% endif %}
+                                </span>
+                                <span class="font-label-technical text-[10px] opacity-40">{{ inf.timestamp.strftime('%d/%m %H:%M') }}</span>
+                            </div>
+                            <p class="text-[13px] font-bold">{{ inf.region or 'Sin región' }}</p>
+                            <p class="text-[10px] text-on-surface-variant mt-1">{{ inf.ha|int if inf.ha else '—' }} ha afectadas</p>
+                        </div>
+                        {% else %}
+                        <div class="p-3 text-center text-on-surface-variant text-[12px]">Sin informes generados aún</div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- Últimos Accesos -->
+                <section class="glass-panel p-5 rounded-2xl">
+                    <h3 class="text-sm font-bold mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-secondary text-sm">groups</span>
+                        Últimos Accesos
+                    </h3>
+                    <div class="space-y-3">
+                        {% for log, user in logins_recientes[:4] %}
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center border border-secondary/30 flex-shrink-0">
+                                <span class="material-symbols-outlined text-secondary text-sm">person</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[13px] font-medium truncate">{{ user.username }}</p>
+                                <div class="flex items-center gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                                    <span class="text-[10px] text-on-surface-variant font-label-technical">{{ log.timestamp.strftime('%d/%m %H:%M') }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-on-surface-variant text-[12px]">Sin accesos registrados</div>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+
+            <!-- Center: Map Spacer -->
+            <div class="flex-1"></div>
+
+            <!-- Right: Alerts + Severity -->
+            <div class="w-96 flex flex-col gap-6 pointer-events-auto">
+                <!-- Severity Metrics -->
+                <div class="glass-panel p-glass-padding rounded-2xl">
+                    <h4 class="font-label-technical text-on-surface-variant uppercase mb-4 tracking-widest text-[10px]">Focos por Severidad</h4>
+                    {% set total_focos = (focos_criticos + focos_altos + focos_medios) or 1 %}
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-[12px]">Crítico</span>
+                                <span class="font-label-technical text-[11px] text-error">{{ focos_criticos }}</span>
+                            </div>
+                            <div class="h-1.5 bg-surface-container rounded-full overflow-hidden">
+                                <div class="bg-error h-full rounded-full" style="width: {{ (focos_criticos / total_focos * 100)|int }}%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-[12px]">Alto</span>
+                                <span class="font-label-technical text-[11px] text-tertiary">{{ focos_altos }}</span>
+                            </div>
+                            <div class="h-1.5 bg-surface-container rounded-full overflow-hidden">
+                                <div class="bg-tertiary h-full rounded-full" style="width: {{ (focos_altos / total_focos * 100)|int }}%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span class="text-[12px]">Medio</span>
+                                <span class="font-label-technical text-[11px] text-primary">{{ focos_medios }}</span>
+                            </div>
+                            <div class="h-1.5 bg-surface-container rounded-full overflow-hidden">
+                                <div class="bg-primary h-full rounded-full" style="width: {{ (focos_medios / total_focos * 100)|int }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts Feed -->
+                <section class="glass-panel flex-1 rounded-2xl flex flex-col overflow-hidden">
+                    <div class="p-5 border-b border-outline-variant/10 flex items-center justify-between bg-surface-variant/10">
+                        <h3 class="text-sm font-bold flex items-center gap-2">
+                            <span class="material-symbols-outlined text-error text-sm">emergency_home</span>
+                            Alertas SMN Recientes
+                        </h3>
+                        <a href="/admin/" class="text-[10px] font-label-technical hover:text-primary transition-colors">VER TODO</a>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
+                        {% for alerta in smn_recientes[:6] %}
+                        <div class="relative pl-4 border-l-2 {% if alerta.severidad == 'critical' %}border-error{% elif alerta.severidad == 'high' %}border-tertiary{% else %}border-secondary{% endif %}">
+                            <div class="flex justify-between mb-1">
+                                <span class="font-label-technical text-[10px] font-bold {% if alerta.severidad == 'critical' %}text-error{% elif alerta.severidad == 'high' %}text-tertiary{% else %}text-secondary{% endif %}">
+                                    {% if alerta.severidad == 'critical' %}CRÍTICO{% elif alerta.severidad == 'high' %}ADVERTENCIA{% else %}INFO{% endif %}
+                                </span>
+                                <span class="font-label-technical text-[10px] opacity-40">{{ alerta.timestamp.strftime('%d/%m %H:%M') }}</span>
+                            </div>
+                            <p class="text-[13px] font-bold">{{ alerta.region or alerta.fuente or 'Sin región' }}</p>
+                            <p class="text-[11px] text-on-surface-variant mt-1 leading-relaxed">{{ alerta.fuente }}</p>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-on-surface-variant text-[12px] py-8">Sin alertas SMN registradas</div>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Bottom Toolbar -->
+        <footer class="flex justify-center mt-auto pointer-events-auto">
+            <div class="glass-panel p-2 rounded-full flex items-center gap-1">
+                <a href="/admin/users" class="px-4 py-2 hover:bg-surface-variant/30 rounded-full transition-colors text-on-surface-variant hover:text-primary font-label-technical text-[11px] flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">group</span> Gestionar Usuarios
+                </a>
+                <div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
+                <a href="/admin/users/new" class="px-4 py-2 hover:bg-surface-variant/30 rounded-full transition-colors text-on-surface-variant hover:text-primary font-label-technical text-[11px] flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">person_add</span> Nuevo Usuario
+                </a>
+                <div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
+                <a href="/logout" class="bg-error/10 text-error px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-error/20 transition-all font-label-technical text-[11px]">
+                    <span class="material-symbols-outlined text-sm">logout</span>
+                    <span>Cerrar Sesión</span>
+                </a>
+            </div>
+        </footer>
     </div>
-  </div>
-</div>
-{% endblock %}
+</main>
+
+<script>
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent =
+            now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ART';
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    setInterval(() => {
+        document.querySelectorAll('.glow-red').forEach(el => {
+            el.style.transform = `scale(${1 + Math.random() * 0.1})`;
+            el.style.transition = 'transform 1s ease-in-out';
+        });
+    }, 1000);
+
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('fixed', 'inset-0', 'pointer-events-none', 'opacity-[0.02]', 'z-[100]');
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    function resizeNoise() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    function noise() {
+        const w = canvas.width, h = canvas.height;
+        const idata = ctx.createImageData(w, h);
+        const buf = new Uint32Array(idata.data.buffer);
+        for (let i = 0; i < buf.length; i++) { if (Math.random() < 0.5) buf[i] = 0xff000000; }
+        ctx.putImageData(idata, 0, 0);
+        requestAnimationFrame(noise);
+    }
+    window.addEventListener('resize', resizeNoise);
+    resizeNoise();
+    noise();
+</script>
+</body></html>
