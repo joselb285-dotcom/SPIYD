@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, UsageLog
 from datetime import datetime
+from urllib.parse import urlparse
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -25,7 +26,11 @@ def login():
                 db.session.commit()
             except Exception:
                 db.session.rollback()
-            next_page = request.args.get('next')
+            next_page = request.args.get('next', '')
+            # Solo aceptar rutas relativas (sin scheme ni host)
+            parsed = urlparse(next_page)
+            if parsed.scheme or parsed.netloc:
+                next_page = ''
             if not next_page:
                 if user.role == 'superadmin':
                     next_page = url_for('superadmin.dashboard')

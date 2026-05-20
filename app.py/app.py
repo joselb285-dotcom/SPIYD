@@ -23,6 +23,10 @@ app = Flask(__name__,
             static_url_path='')
 CORS(app)
 
+# Railway termina SSL en el proxy — necesario para que request.url sea https://
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 def _rate_limit_key():
     from flask_login import current_user
     if current_user and current_user.is_authenticated:
@@ -61,7 +65,7 @@ def unauthorized():
         'application/json' in request.headers.get('Accept', '') or
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'):
         return jsonify({"error": "Sesión no iniciada. Iniciá sesión en /login"}), 401
-    return redirect(url_for('auth.login', next=request.url))
+    return redirect(url_for('auth.login', next=request.path))
 
 from auth import auth_bp
 from admin import admin_bp
