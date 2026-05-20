@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User, UsageLog
 from datetime import datetime
@@ -18,6 +18,7 @@ def login():
         ).first()
         if user and user.check_password(password) and user.active:
             login_user(user, remember=False)
+            session.permanent = True
             user.last_login = datetime.utcnow()
             try:
                 db.session.add(UsageLog(user_id=user.id, action='login'))
