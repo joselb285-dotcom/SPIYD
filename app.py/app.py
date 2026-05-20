@@ -32,8 +32,10 @@ def _rate_limit_key():
 limiter = Limiter(_rate_limit_key, app=app, default_limits=[])
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'spiyd-dev-secret-change-in-prod-2026')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-    'DATABASE_URL', 'sqlite:///' + os.path.join(BASE_DIR, 'spiyd.db'))
+_db_url = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(BASE_DIR, 'spiyd.db'))
+if _db_url.startswith('postgres://'):
+    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_HTTPONLY']  = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
