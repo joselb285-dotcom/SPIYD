@@ -204,7 +204,7 @@
       {% endfor %}
     {% endwith %}
 
-    <form method="POST" action="/login" autocomplete="on">
+    <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next', '')) }}" autocomplete="on">
       <div class="form-group">
         <label class="form-label">Usuario o Email</label>
         <div class="input-wrap">
