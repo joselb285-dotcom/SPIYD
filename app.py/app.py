@@ -123,13 +123,13 @@ def docs_reunion():
     return send_from_directory(DOCS_DIR, 'reunion.html')
 
 @app.route('/mapa')
-@login_required
 def mapa():
-    try:
-        db.session.add(UsageLog(user_id=current_user.id, action='mapa'))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+    if current_user.is_authenticated:
+        try:
+            db.session.add(UsageLog(user_id=current_user.id, action='mapa'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     maptiler_key = os.environ.get('MAPTILER_KEY', '')
     with open(os.path.join(BASE_DIR, 'mapa.html'), 'r', encoding='utf-8') as f:
         html = f.read()
