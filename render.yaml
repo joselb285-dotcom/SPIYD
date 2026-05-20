@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: spiyd
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app -c gunicorn.conf.py
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: NASA_MAP_KEY
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: MAPTILER_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: spiyd-db
+          property: connectionString
+
+databases:
+  - name: spiyd-db
+    plan: free
+    databaseName: spiyd
