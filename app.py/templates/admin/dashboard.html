@@ -236,7 +236,9 @@
                                 <p class="text-[13px] font-medium truncate">{{ user.username }}</p>
                                 <div class="flex items-center gap-2">
                                     <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                                    <span class="text-[10px] text-on-surface-variant font-label-technical">{{ log.timestamp.strftime('%d/%m %H:%M') }}</span>
+                                    <span class="text-[10px] text-on-surface-variant font-label-technical">
+                                        {% if log.action == 'mapa' %}Mapa{% else %}Login{% endif %} · {{ log.timestamp.strftime('%d/%m %H:%M') }}
+                                    </span>
                                 </div>
                             </div>
                         </div>

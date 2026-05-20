@@ -121,11 +121,21 @@ def docs_reunion():
 @app.route('/mapa')
 @login_required
 def mapa():
+    try:
+        db.session.add(UsageLog(user_id=current_user.id, action='mapa'))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     maptiler_key = os.environ.get('MAPTILER_KEY', '')
     with open(os.path.join(BASE_DIR, 'mapa.html'), 'r', encoding='utf-8') as f:
         html = f.read()
     html = html.replace('__MAPTILER_KEY__', maptiler_key)
     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+
+@app.route('/dashboard')
+@login_required
+def dashboard_alertas():
+    return render_template('dashboard_design.html')
 
 @app.route('/favicon.ico')
 def favicon():
@@ -194,6 +204,97 @@ def coincide_provincia(texto, provincia):
 def wind_to_uv(speed, direction):
     rad = math.radians(direction)
     return round(-speed * math.sin(rad), 2), round(-speed * math.cos(rad), 2)
+
+
+# ── Persistencia de datos al DB ───────────────────────────────────────────────
+
+def _conf_to_severidad(conf_str):
+    s = str(conf_str).strip().lower()
+    if s in ('h', 'high'):    return 'critical'
+    if s in ('n', 'nominal'): return 'high'
+    if s in ('l', 'low'):     return 'medium'
+    try:
+        c = int(s)
+        if c >= 80: return 'critical'
+        if c >= 50: return 'high'
+        return 'medium'
+    except (ValueError, TypeError):
+        return 'medium'
+
+def _fwi_to_severidad(fwi):
+    if fwi >= 24: return 'critical'
+    if fwi >= 12: return 'high'
+    if fwi >= 5:  return 'medium'
+    return 'low'
+
+def _guardar_focos(focos_list):
+    """focos_list: [{lat, lon, fuente, conf, frp, region?}]"""
+    if not focos_list:
+        return
+    try:
+        hoy = datetime.utcnow().date()
+        inicio_hoy = datetime.combine(hoy, datetime.min.time())
+        rows = db.session.query(FocoLog.lat, FocoLog.lon).filter(
+            FocoLog.timestamp >= inicio_hoy
+        ).all()
+        existentes = set((round(r[0], 2), round(r[1], 2)) for r in rows)
+        nuevos = []
+        for f in focos_list:
+            try:
+                lat = round(float(f['lat']), 2)
+                lon = round(float(f['lon']), 2)
+                if (lat, lon) in existentes:
+                    continue
+                existentes.add((lat, lon))
+                frp = None
+                try: frp = float(f['frp']) if f.get('frp') else None
+                except (ValueError, TypeError): pass
+                nuevos.append(FocoLog(
+                    lat=lat, lon=lon,
+                    fuente=str(f.get('fuente', ''))[:50],
+                    severidad=_conf_to_severidad(f.get('conf', '50')),
+                    region=f.get('region') or _region_argentina(lat, lon),
+                    ha=frp,
+                ))
+            except Exception:
+                continue
+        if nuevos:
+            db.session.bulk_save_objects(nuevos)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+def _guardar_smn(alertas):
+    """alertas: lista de dicts con keys title, description, nivel, tipoFeed"""
+    if not alertas:
+        return
+    try:
+        from datetime import timedelta
+        desde = datetime.utcnow() - timedelta(hours=24)
+        rows = db.session.query(SmnAlerta.descripcion).filter(
+            SmnAlerta.timestamp >= desde
+        ).all()
+        existentes = set((r[0] or '')[:80] for r in rows)
+        nuevos = []
+        for a in alertas:
+            desc = (a.get('description') or a.get('title') or '')[:256]
+            clave = desc[:80]
+            if clave in existentes:
+                continue
+            existentes.add(clave)
+            nivel = a.get('nivel', 'amarillo')
+            sev = 'critical' if nivel == 'rojo' else 'high' if nivel == 'naranja' else 'medium'
+            nuevos.append(SmnAlerta(
+                region=(a.get('title') or '')[:100],
+                severidad=sev,
+                descripcion=desc,
+                fuente=(a.get('tipoFeed') or 'SMN')[:50],
+            ))
+        if nuevos:
+            db.session.bulk_save_objects(nuevos)
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 # ── FWI — Canadian Forest Fire Weather Index ──────────────────────────────────
@@ -632,6 +733,20 @@ Respondé en español con exactamente estas 6 secciones numeradas (máx 320 pala
         messages=[{"role": "user", "content": prompt}]
     )
 
+    try:
+        sev = ('critical' if (fire_count > 100 or fwi_max >= 24)
+               else 'high' if (fire_count > 30 or fwi_max >= 12)
+               else 'medium')
+        db.session.add(AiInforme(
+            region='Argentina',
+            severidad=sev,
+            ha=None,
+            user_id=current_user.id,
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     return jsonify({
         "analysis": msg.content[0].text,
         "zonas_3":  zonas_3,
@@ -793,6 +908,18 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
         max_tokens=1200,
         messages=[{"role": "user", "content": prompt}]
     )
+
+    try:
+        db.session.add(AiInforme(
+            region=_region_argentina(lat, lon),
+            severidad=_fwi_to_severidad(fwi_local),
+            ha=None,
+            user_id=current_user.id,
+        ))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     return jsonify({"analysis": msg.content[0].text})
 
 
@@ -912,7 +1039,9 @@ def wind_data():
 @app.route("/smn-alertas")
 @login_required
 def smn_alertas():
-    return jsonify(obtener_alertas_smn(request.args.get("provincia","").strip()))
+    alertas = obtener_alertas_smn(request.args.get("provincia","").strip())
+    _guardar_smn(alertas)
+    return jsonify(alertas)
 
 
 # ── Telegram ──────────────────────────────────────────────────────────────────
@@ -1015,6 +1144,13 @@ def inpe_focos():
         except Exception:
             continue   # si un satélite falla, continúa con los demás
 
+    _guardar_focos([{
+        'lat': f['lat'], 'lon': f['lon'],
+        'fuente': f['satelite'],
+        'conf': '70',
+        'frp': f.get('frp'),
+    } for f in todos])
+
     return jsonify({"focos": todos, "total": len(todos), "satelites": INPE_SATELITES})
 
 
@@ -1068,6 +1204,7 @@ BBOX_ARG = "-73.5,-55.8,-53.5,-21.0"
 @app.route("/nasa-focos")
 @login_required
 def nasa_focos():
+    import csv, io
     fuente = request.args.get("fuente", "VIIRS_SNPP_NRT")
     dias   = request.args.get("dias", "1")
     if fuente not in FUENTES_NASA:
@@ -1079,6 +1216,23 @@ def nasa_focos():
     try:
         r = requests.get(url, timeout=30, headers={"User-Agent": "ArgentinaFireMonitor/1.0"})
         r.raise_for_status()
+        try:
+            reader = csv.DictReader(io.StringIO(r.text))
+            focos = []
+            for row in reader:
+                lat = row.get('latitude') or row.get('lat')
+                lon = row.get('longitude') or row.get('lon')
+                if not lat or not lon:
+                    continue
+                focos.append({
+                    'lat': lat, 'lon': lon,
+                    'fuente': fuente,
+                    'conf': row.get('confidence', '50'),
+                    'frp': row.get('frp'),
+                })
+            _guardar_focos(focos)
+        except Exception:
+            pass
         return r.text, 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Exception as ex:
         return jsonify({"error": str(ex)}), 502

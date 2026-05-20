@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy import func
 from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog
-from datetime import datetime
+from datetime import datetime, timedelta
 
 superadmin_bp = Blueprint('superadmin', __name__)
 
@@ -24,6 +24,8 @@ def superadmin_required(f):
 @login_required
 @superadmin_required
 def dashboard():
+    hoy = datetime.utcnow().date()
+    inicio_hoy = datetime.combine(hoy, datetime.min.time())
     total_users = User.query.count()
     active_users = User.query.filter_by(active=True).count()
     admins = User.query.filter_by(role='admin').count()
@@ -36,6 +38,7 @@ def dashboard():
     smn_total = SmnAlerta.query.count()
     ai_total = AiInforme.query.count()
     focos_total = FocoLog.query.count()
+    focos_hoy = FocoLog.query.filter(FocoLog.timestamp >= inicio_hoy).count()
     return render_template('superadmin/dashboard.html',
         total_users=total_users,
         active_users=active_users,
@@ -47,6 +50,7 @@ def dashboard():
         smn_total=smn_total,
         ai_total=ai_total,
         focos_total=focos_total,
+        focos_hoy=focos_hoy,
     )
 
 

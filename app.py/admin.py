@@ -50,7 +50,7 @@ def dashboard():
     logins_recientes = (
         db.session.query(UsageLog, User)
         .join(User, UsageLog.user_id == User.id)
-        .filter(UsageLog.action == 'login')
+        .filter(UsageLog.action.in_(['login', 'mapa']))
         .order_by(UsageLog.timestamp.desc())
         .limit(6)
         .all()
