@@ -123,6 +123,7 @@ def docs_reunion():
     return send_from_directory(DOCS_DIR, 'reunion.html')
 
 @app.route('/mapa')
+@login_required
 def mapa():
     if current_user.is_authenticated:
         try:
