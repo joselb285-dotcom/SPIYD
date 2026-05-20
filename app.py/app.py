@@ -137,7 +137,6 @@ def mapa():
     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 @app.route('/dashboard')
-@login_required
 def dashboard_alertas():
     return render_template('dashboard_design.html')
 
@@ -146,7 +145,6 @@ def favicon():
     return '', 204
 
 @app.route('/provincias-arg.geojson')
-@login_required
 def provincias_geojson():
     resp = send_from_directory(BASE_DIR, 'provincias_arg.geojson',
                                mimetype='application/json')
@@ -488,7 +486,6 @@ def obtener_grilla_clima():
 # ── Fuentes de agua (Overpass / OSM) ─────────────────────────────────────────
 
 @app.route("/water-sources")
-@login_required
 def water_sources():
     s = float(request.args.get("s", -55.8))
     w = float(request.args.get("w", -73.5))
@@ -556,7 +553,6 @@ out center tags;
 # ── Vegetación (Overpass / OSM) ───────────────────────────────────────────────
 
 @app.route("/vegetation")
-@login_required
 def vegetation():
     s = float(request.args.get("s", -55.8))
     w = float(request.args.get("w", -73.5))
@@ -625,7 +621,6 @@ out geom tags;
 # ── Análisis IA (Claude) ──────────────────────────────────────────────────────
 
 @app.route("/ai-risk-analysis", methods=["POST"])
-@login_required
 @limiter.limit("10 per hour")
 def ai_risk_analysis():
     try:
@@ -773,7 +768,6 @@ def _region_argentina(lat, lon):
     return "Tierra del Fuego"
 
 @app.route("/ai-foco-analysis", methods=["POST"])
-@login_required
 @limiter.limit("20 per hour")
 def ai_foco_analysis():
     try:
@@ -930,7 +924,6 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
 # ── Precipitación grid ───────────────────────────────────────────────────────
 
 @app.route("/precipitacion")
-@login_required
 def precipitacion():
     lats = list(range(-22, -56, -2))
     lons = list(range(-74, -52, 2))
@@ -970,7 +963,6 @@ def precipitacion():
 # ── Clima grid / Wind data ────────────────────────────────────────────────────
 
 @app.route("/debug-cache")
-@login_required
 def debug_cache():
     import time as _t
     return jsonify({
@@ -982,7 +974,6 @@ def debug_cache():
     })
 
 @app.route("/weather-grid")
-@login_required
 def weather_grid():
     import time as _t; t0=_t.time()
     datos = obtener_grilla_clima()
@@ -1030,7 +1021,6 @@ def _build_wind_data():
     return result
 
 @app.route("/wind-data")
-@login_required
 def wind_data():
     import time as _t
     if _wind_cache["data"] and (_t.time() - _wind_cache["ts"]) < WIND_CACHE_TTL:
@@ -1041,7 +1031,6 @@ def wind_data():
 # ── SMN alertas ───────────────────────────────────────────────────────────────
 
 @app.route("/smn-alertas")
-@login_required
 def smn_alertas():
     alertas = obtener_alertas_smn(request.args.get("provincia","").strip())
     _guardar_smn(alertas)
@@ -1051,7 +1040,6 @@ def smn_alertas():
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
 @app.route("/telegram-alerta", methods=["POST"])
-@login_required
 def telegram_alerta():
     data          = request.get_json(silent=True) or {}
     provincia     = data.get("provincia","Sin provincia")
@@ -1091,7 +1079,6 @@ def telegram_alerta():
 INPE_SATELITES = ["AQUA_M-T","TERRA_M-T","GOES-16","NPP-375","NOAA-20","METOP-B","METOP-C"]
 
 @app.route("/inpe-focos")
-@login_required
 def inpe_focos():
     """
     Proxy para INPE BDQueimadas — focos detectados en Argentina por satélites
@@ -1161,7 +1148,6 @@ def inpe_focos():
 # ── FWI por grilla ────────────────────────────────────────────────────────────
 
 @app.route("/fwi-grid")
-@login_required
 def fwi_grid():
     """
     Calcula el FWI (Fire Weather Index) canadiense para cada punto de la grilla,
@@ -1206,7 +1192,6 @@ FUENTES_NASA = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'MODIS
 BBOX_ARG = "-73.5,-55.8,-53.5,-21.0"
 
 @app.route("/nasa-focos")
-@login_required
 def nasa_focos():
     import csv, io
     fuente = request.args.get("fuente", "VIIRS_SNPP_NRT")
