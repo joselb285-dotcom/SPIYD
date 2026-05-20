@@ -19,8 +19,11 @@ def login():
         if user and user.check_password(password) and user.active:
             login_user(user, remember=False)
             user.last_login = datetime.utcnow()
-            db.session.add(UsageLog(user_id=user.id, action='login'))
-            db.session.commit()
+            try:
+                db.session.add(UsageLog(user_id=user.id, action='login'))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
             next_page = request.args.get('next')
             if not next_page:
                 if user.role == 'superadmin':
