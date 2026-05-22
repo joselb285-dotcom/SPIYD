@@ -472,16 +472,10 @@
   <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
   <script>
-    // ── Validación de sesión de navegador ───────────────────────────────────
+    // Limpiar ?auth=1 de la URL si viene del login redirect
     (function () {
       const p = new URLSearchParams(location.search);
-      if (p.get('auth') === '1') {
-        sessionStorage.setItem('spiyd_sid', 'ok');
-        history.replaceState({}, '', '/mapa');
-      } else if (!sessionStorage.getItem('spiyd_sid')) {
-        // sessionStorage vacío = navegador recién abierto → forzar logout y login
-        fetch('/logout').finally(() => { location.href = '/login'; });
-      }
+      if (p.get('auth') === '1') history.replaceState({}, '', '/mapa');
     })();
 
     // ── Constantes ──────────────────────────────────────────────────────────
