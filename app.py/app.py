@@ -683,7 +683,25 @@ def ai_risk_analysis():
     smn_resumen = f"Amarillas: {smn_amarillo} | Naranja: {smn_naranja} | Rojas: {smn_rojo}" if (smn_amarillo + smn_naranja + smn_rojo) > 0 else "Sin alertas activas"
     inpe_resumen = f"{inpe_count} focos — satélites: {', '.join(inpe_sats)}" if inpe_count else "Sin datos INPE"
 
-    prompt = f"""Sos un experto operativo en combate de incendios forestales en Argentina. Analizá los datos en tiempo real del período de {dias} día(s):
+    SYSTEM_PROMPT = (
+        "Sos un agente de IA especializado en incendios forestales, rurales y de interfaz urbano-forestal "
+        "en Argentina y Paraguay. Tenés experiencia en coordinación operativa de brigadas, análisis satelital, "
+        "meteorología aplicada al fuego, logística de emergencia y aplicación de la Regla 30-30-30.\n\n"
+        "Tu función es analizar en tiempo real focos detectados por satélites y datos meteorológicos, "
+        "tomando como referencia las coordenadas seleccionadas por el usuario. Debés generar un análisis "
+        "técnico-operativo completo y un protocolo de acción concreto, priorizando siempre la seguridad "
+        "del personal y la protección de vidas humanas.\n\n"
+        "Clasificá el evento como Prioridad 1, 2, 3 o 4:\n"
+        "- Prioridad 1: crítica, con riesgo para vidas humanas o propagación extrema.\n"
+        "- Prioridad 2: alta, con incendio activo y posible expansión importante.\n"
+        "- Prioridad 3: media, con propagación moderada.\n"
+        "- Prioridad 4: baja, foco aislado o posible falso positivo.\n\n"
+        "No inventes datos. Si algún dato no está disponible, indicalo claramente. "
+        "No recomiendes acciones peligrosas para civiles. Siempre priorizá la seguridad del personal "
+        "y recomendá intervención de autoridades competentes cuando el riesgo sea alto, muy alto o extremo."
+    )
+
+    prompt = f"""Analizá los siguientes datos satelitales y meteorológicos en tiempo real (período: {dias} día(s)):
 
 ═══ FOCOS NASA FIRMS ═══
 Total focos activos: {fire_count}
@@ -712,24 +730,42 @@ Zonas FWI extremo (≥24): {fwi_extremos} | Zonas FWI muy alto (≥17): {fwi_muy
 Tipos: {resumen_veg}
 Especies: {resumen_especies}
 
-Respondé en español con exactamente estas 6 secciones numeradas (máx 320 palabras total, cada sección en 1-2 oraciones directas y operativas):
+Respondé con exactamente esta estructura en markdown:
 
-1. 🚨 NIVEL DE RIESGO: [BAJO/MODERADO/ALTO/CRÍTICO] — explicá en una oración el factor determinante.
+# Análisis operativo de foco de incendio
 
-2. 📍 ZONAS PRIORITARIAS: Regiones/provincias en mayor peligro según coordenadas de focos de alta confianza.
+## 1. Resumen ejecutivo
+Coordenadas de focos críticos, ubicación aproximada, prioridad asignada, riesgo meteorológico, riesgo de propagación y recomendación inmediata.
 
-3. 💧 ESTRATEGIA DE AGUA: Qué fuentes usar, accesibilidad estimada y logística de abastecimiento.
+## 2. Datos detectados
+Fuentes satelitales activas, fechas/horas de detección, niveles de confianza y observaciones relevantes.
 
-4. 🌿 RIESGO POR VEGETACIÓN: Qué tipos presentes son más combustibles y velocidad de propagación esperada.
+## 3. Condiciones meteorológicas
+Temperatura, humedad, viento (velocidad y dirección), ráfagas, precipitaciones y evaluación de la Regla 30-30-30.
 
-5. 🚗 ACCESO VEHICULAR: Rutas recomendadas, restricciones de terreno y puntos de acceso crítico.
+## 4. Análisis territorial
+Tipo de zona afectada, vegetación predominante, accesibilidad, infraestructura cercana y dirección probable de avance del fuego.
 
-6. ⚡ ACCIÓN INMEDIATA: Las 3 acciones más urgentes, en orden de prioridad, con tiempo estimado de ejecución."""
+## 5. Recursos cercanos
+Bomberos, Defensa Civil, centros de salud, fuentes de agua, rutas de acceso y puntos de abastecimiento más próximos.
+
+## 6. Protocolo de acción
+Fases: Confirmación · Activación inicial · Seguridad operativa · Ataque inicial o contención · Logística · Comunicación y coordinación · Monitoreo · Cierre y reporte.
+
+## 7. Alertas y advertencias
+Riesgos principales identificados y medidas preventivas recomendadas.
+
+## 8. Incertidumbre del análisis
+Datos faltantes, supuestos utilizados y nivel de confianza general del análisis.
+
+## 9. Recomendación final
+Acción inmediata, clara y ejecutiva."""
 
     client = anthropic.Anthropic(api_key=api_key)
     msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=900,
+        model="claude-sonnet-4-6",
+        max_tokens=2400,
+        system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}]
     )
 
@@ -791,6 +827,8 @@ def ai_foco_analysis():
     smn_rojo  = int(body.get("smn_rojo", 0))
     smn_nar   = int(body.get("smn_naranja", 0))
     smn_amar  = int(body.get("smn_amarillo", 0))
+    frp       = body.get("frp")       # Fire Radiative Power (MW) si viene de INPE
+    tipo_foco = body.get("tipo_foco", "NASA FIRMS")  # "NASA FIRMS" | "INPE"
 
     # ── Clima real del punto ────────────────────────────────────────────────
     wx = {}
@@ -862,12 +900,15 @@ out center tags;"""
     # ── Prompt ─────────────────────────────────────────────────────────────
     region = _region_argentina(lat, lon)
 
-    prompt = f"""Sos analista operativo senior de incendios forestales en Argentina. Se detectó un foco activo nuevo. Generá un informe de incidente completo y accionable:
+    frp_txt = f"{frp:.1f} MW" if frp is not None else "N/D"
+    prompt = f"""Se detectó un foco activo específico. El usuario seleccionó este punto en el mapa para análisis detallado. Generá un informe de incidente completo y accionable:
 
-═══ FOCO ACTIVO DETECTADO ═══
+═══ FOCO SELECCIONADO POR EL USUARIO ═══
+Fuente: {tipo_foco}
 Coordenadas: {lat:.4f}°S, {abs(lon):.4f}°O
 Región: {region}
 Satélite: {satellite} | Confianza: {conf}% | Temperatura radiativa: {brillo:.1f} K
+Potencia radiativa del fuego (FRP): {frp_txt}
 Fecha/hora detección: {fecha}
 
 ═══ METEOROLOGÍA LOCAL (Open-Meteo, tiempo real) ═══
@@ -901,10 +942,24 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
 
 7. ⚡ PRIMERAS ACCIONES (próximos 30 min): Lista de exactamente 5 acciones inmediatas ordenadas por urgencia, con responsable sugerido (bomberos/defensa civil/cuadrilla forestal)."""
 
+    FOCO_SYSTEM_PROMPT = (
+        "Sos un analista operativo senior especializado en incendios forestales, rurales y de interfaz "
+        "urbano-forestal en Argentina y Paraguay. Tenés experiencia en coordinación de brigadas, "
+        "interpretación de datos satelitales (NASA FIRMS, INPE), meteorología aplicada al fuego, "
+        "logística de emergencia y aplicación de la Regla 30-30-30 y el Fire Weather Index (FWI).\n\n"
+        "Cuando analizás un foco específico detectado por satélite:\n"
+        "- Priorizá siempre la seguridad del personal operativo sobre la protección de bienes materiales.\n"
+        "- No inventes datos. Si un dato no está disponible, indicalo con 'N/D'.\n"
+        "- Sé técnico, preciso y ejecutivo. Evitá introducciones genéricas.\n"
+        "- Usá lenguaje operativo de emergencias (no académico).\n"
+        "- Tus recomendaciones deben ser accionables en los próximos 30-60 minutos."
+    )
+
     client = anthropic.Anthropic(api_key=api_key)
     msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=1200,
+        model="claude-sonnet-4-6",
+        max_tokens=2000,
+        system=FOCO_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}]
     )
 

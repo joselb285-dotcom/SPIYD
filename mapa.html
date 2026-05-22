@@ -70,6 +70,13 @@
     .contador-label { font-size:9px; color:#666; text-transform:uppercase; letter-spacing:.4px; }
     .riesgo-badge   { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; margin-top:5px; }
 
+    /* ── Filtros confianza ────────────────────────────────── */
+    #confStrip { display:flex; }
+    .conf-btn { flex:1; padding:4px 2px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#555; font-size:10px; font-weight:700; cursor:pointer; transition:all .15s; text-align:center; }
+    .conf-btn.activo.alta  { background:rgba(183,28,28,0.28); border-color:rgba(183,28,28,0.6); color:#ff8a80; }
+    .conf-btn.activo.media { background:rgba(230,81,0,0.28); border-color:rgba(230,81,0,0.55); color:#ffb74d; }
+    .conf-btn.activo.baja  { background:rgba(245,127,23,0.22); border-color:rgba(245,127,23,0.5); color:#fff176; }
+
     /* ── Estado ───────────────────────────────────────────── */
     .estado-box { margin-top:8px; font-size:11px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:6px; padding:7px; color:#999; line-height:1.4; }
     .estado-box.ok   { border-left:3px solid #388e3c; }
@@ -243,6 +250,13 @@
     </div>
     <div style="text-align:center;margin-top:5px;">
       <span class="riesgo-badge" id="riesgoBadge" style="background:#333;color:#777;">RIESGO: —</span>
+    </div>
+
+    <!-- Filtros de confianza NASA -->
+    <div id="confStrip" style="display:none;gap:4px;margin-bottom:6px;display:none;">
+      <button id="confAlta"  class="conf-btn activo alta"  onclick="toggleConf('alta')" >🔴 Alta ≥80%</button>
+      <button id="confMedia" class="conf-btn activo media" onclick="toggleConf('media')">🟠 Media 50%</button>
+      <button id="confBaja"  class="conf-btn baja"         onclick="toggleConf('baja')" >🟡 Baja &lt;50%</button>
     </div>
 
     <div class="estado-box" id="estado">Presioná "Cargar focos" para iniciar.</div>
@@ -502,7 +516,28 @@
     basemaps["⛰ Terreno"].addTo(mapa);
 
     // ── Capas de overlay ────────────────────────────────────────────────────
-    const clusterFocos  = L.markerClusterGroup({ spiderfyOnMaxZoom:true, showCoverageOnHover:false, zoomToBoundsOnClick:true, chunkedLoading:true, maxClusterRadius:50 });
+    function mkClusterIcon(bg, border) {
+      return cluster => {
+        const n = cluster.getChildCount();
+        const sz = n > 99 ? 36 : n > 9 ? 30 : 24;
+        return L.divIcon({
+          html: `<div style="width:${sz}px;height:${sz}px;background:${bg};border:2px solid ${border};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">${n}</div>`,
+          iconSize: [sz, sz], iconAnchor: [sz/2, sz/2], className: ''
+        });
+      };
+    }
+    const clusterOpts = { spiderfyOnMaxZoom:true, showCoverageOnHover:false, zoomToBoundsOnClick:true, chunkedLoading:true, maxClusterRadius:50 };
+    const clusterAlta  = L.markerClusterGroup({ ...clusterOpts, iconCreateFunction: mkClusterIcon('rgba(183,28,28,0.88)','#ff5252') });
+    const clusterMedia = L.markerClusterGroup({ ...clusterOpts, iconCreateFunction: mkClusterIcon('rgba(230,81,0,0.88)','#ffb74d') });
+    const clusterBaja  = L.markerClusterGroup({ ...clusterOpts, iconCreateFunction: mkClusterIcon('rgba(245,127,23,0.72)','#fff176') });
+    const confState = { alta: true, media: true, baja: false };
+    window.toggleConf = function(nivel) {
+      confState[nivel] = !confState[nivel];
+      const btn = document.getElementById('conf' + nivel.charAt(0).toUpperCase() + nivel.slice(1));
+      if (btn) btn.classList.toggle('activo', confState[nivel]);
+      const cl = nivel === 'alta' ? clusterAlta : nivel === 'media' ? clusterMedia : clusterBaja;
+      confState[nivel] ? mapa.addLayer(cl) : mapa.removeLayer(cl);
+    };
     const capasAlertaSMN = L.layerGroup();
     const capaRiesgo30   = L.layerGroup();
     const capaAgua       = L.markerClusterGroup({ showCoverageOnHover:false, maxClusterRadius:60, chunkedLoading:true });
@@ -524,13 +559,16 @@
       { opacity:0.7, attribution:'&copy; CARTO', subdomains:'abcd', maxZoom:19 }
     );
 
-    mapa.addLayer(clusterFocos);
+    mapa.addLayer(clusterAlta);
+    mapa.addLayer(clusterMedia);
     mapa.addLayer(capasAlertaSMN);
 
     let capasViento = null;
 
     L.control.layers(basemaps, {
-      "🔥 Focos NASA":         clusterFocos,
+      "🔴 Focos NASA Alta":    clusterAlta,
+      "🟠 Focos NASA Media":   clusterMedia,
+      "🟡 Focos NASA Baja":    clusterBaja,
       "📋 Alertas SMN":        capasAlertaSMN,
       "⚡ Zonas 30-30-30":     capaRiesgo30,
       "💧 Fuentes de agua":    capaAgua,
@@ -984,7 +1022,7 @@
     }
 
     async function cargarFocos(msg=true) {
-      clusterFocos.clearLayers();
+      clusterAlta.clearLayers(); clusterMedia.clearLayers(); clusterBaja.clearLayers();
       firePts = [];
       focoDataMap = {}; focoCounter = 0;
       const dias = document.getElementById('dias').value;
@@ -1033,7 +1071,10 @@
               </button>
             </div>
           </div>`);
-          clusterFocos.addLayer(mk);
+          const confNum = parseFloat(conf) || 0;
+          if      (confNum >= 80) { if (confState.alta)  mapa.hasLayer(clusterAlta)  || mapa.addLayer(clusterAlta);  clusterAlta.addLayer(mk); }
+          else if (confNum >= 50) { if (confState.media) mapa.hasLayer(clusterMedia) || mapa.addLayer(clusterMedia); clusterMedia.addLayer(mk); }
+          else                    { if (confState.baja)  mapa.hasLayer(clusterBaja)  || mapa.addLayer(clusterBaja);  clusterBaja.addLayer(mk); }
           bnds.push([lat,lng]);
           firePts.push({ lat, lon:lng, conf });
           cnt++;
@@ -1047,6 +1088,7 @@
         }
         ultimoFocos = cnt;
         actualizarContadores();
+        if (cnt > 0) document.getElementById('confStrip').style.display = 'flex';
         setEstado(`Focos activos (>${dias}d): ${cnt} | ${new Date().toLocaleTimeString('es-AR')}`, cnt>0?'warn':'ok');
       } catch(e) {
         console.error(e);
@@ -1631,12 +1673,28 @@
         };
         const fc  = inpeFlames[f.satelite] || { outer:'#ff8f00', inner:'#ffe082' };
         const mk  = L.marker([f.lat, f.lon], { icon: flameIcon(fc.outer, fc.inner, 16) });
-        mk.bindPopup(`<div style="font-family:monospace;font-size:11px;">
+        const inpeId = focoCounter++;
+        focoDataMap[inpeId] = {
+          lat: f.lat, lon: f.lon,
+          conf: f.frp ? Math.min(99, Math.round(f.frp * 2 + 50)) : 70,
+          brillo: 0,
+          satellite: f.satelite,
+          fecha: f.datahora || 'N/D',
+          frp: f.frp || null,
+          tipo_foco: 'INPE'
+        };
+        mk.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:190px;">
           <b style="color:${fc.outer};">🛰 Foco INPE</b><br>
           Satélite: <b>${f.satelite}</b><br>
-          ${f.frp ? 'FRP: '+f.frp+' MW<br>' : ''}
+          ${f.frp ? 'FRP: <b>'+f.frp+' MW</b><br>' : ''}
           Fecha/Hora: ${f.datahora || 'N/D'}<br>
           <small style="color:#888;">Lat ${f.lat.toFixed(4)} | Lon ${f.lon.toFixed(4)}</small>
+          <div style="margin-top:7px;">
+            <button onclick="analizarFoco(${inpeId})"
+              style="width:100%;padding:5px 0;background:linear-gradient(135deg,#4a148c,#880e4f);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;">
+              🤖 Analizar este foco con IA
+            </button>
+          </div>
         </div>`);
         capaINPE.addLayer(mk);
       });
@@ -1890,7 +1948,7 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
           <div style="padding:8px 0 10px;background:linear-gradient(135deg,#6a1b9a,#b71c1c);color:#fff;font-size:11px;font-weight:700;margin:-14px -16px 12px;padding:9px 12px;">
             🔥 Analizando foco con IA…
           </div>
-          <div class="ia-loading"><div class="spinner"></div> Consultando Claude Haiku · Open-Meteo · Overpass…</div>
+          <div class="ia-loading"><div class="spinner"></div> Consultando Claude Sonnet · Open-Meteo · Overpass…</div>
           <div style="font-size:10px;color:#666;margin-top:6px;">${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O · ${d.satellite}</div>
         </div>`)
         .openOn(mapa);
@@ -1914,6 +1972,8 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         const body = {
           lat: d.lat, lon: d.lon, conf: d.conf, brillo: d.brillo,
           satellite: d.satellite, fecha: d.fecha, fwi_local,
+          frp:       d.frp  || null,
+          tipo_foco: d.tipo_foco || 'NASA FIRMS',
           smn_rojo:     ultimoSMN.rojo     || 0,
           smn_naranja:  ultimoSMN.naranja  || 0,
           smn_amarillo: ultimoSMN.amarillo || 0,
@@ -2028,7 +2088,7 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     }
 
     // ── Toggles de capa ──────────────────────────────────────────────────────
-    document.getElementById('togFocos') .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(clusterFocos);  else mapa.removeLayer(clusterFocos);  });
+    document.getElementById('togFocos') .addEventListener('change',e=>{ [clusterAlta,clusterMedia,clusterBaja].forEach(cl=>{ if(e.target.checked && confState[cl===clusterAlta?'alta':cl===clusterMedia?'media':'baja']) mapa.addLayer(cl); else mapa.removeLayer(cl); }); });
     document.getElementById('togRiesgo').addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaRiesgo30);  else mapa.removeLayer(capaRiesgo30);  });
     document.getElementById('togSMN')  .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capasAlertaSMN); else mapa.removeLayer(capasAlertaSMN); });
     document.getElementById('togAgua') .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaAgua);       else mapa.removeLayer(capaAgua);       });
