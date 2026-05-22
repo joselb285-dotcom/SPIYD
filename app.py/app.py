@@ -76,24 +76,24 @@ app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
 
 with app.app_context():
     db.create_all()
-    # Auto-migrate new columns added to existing tables
+    # Auto-migrate: each column uses its own connection so failures don't cascade
+    from sqlalchemy import text as _text
     _new_cols = [
         ("ai_informe", "analysis_text", "TEXT"),
-        ("ai_informe", "lat",           "REAL"),
-        ("ai_informe", "lon",           "REAL"),
+        ("ai_informe", "lat",           "DOUBLE PRECISION"),
+        ("ai_informe", "lon",           "DOUBLE PRECISION"),
         ("ai_informe", "satellite",     "VARCHAR(50)"),
         ("ai_informe", "conf",          "VARCHAR(20)"),
-        ("ai_informe", "fwi_val",       "REAL"),
+        ("ai_informe", "fwi_val",       "DOUBLE PRECISION"),
         ("ai_informe", "tipo_foco",     "VARCHAR(30)"),
     ]
-    from sqlalchemy import text as _text
-    with db.engine.connect() as _conn:
-        for _tbl, _col, _type in _new_cols:
-            try:
-                _conn.execute(_text(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_type}"))
-                _conn.commit()
-            except Exception:
-                _conn.rollback()
+    for _tbl, _col, _type in _new_cols:
+        try:
+            with db.engine.connect() as _c:
+                _c.execute(_text(f"ALTER TABLE {_tbl} ADD COLUMN IF NOT EXISTS {_col} {_type}"))
+                _c.commit()
+        except Exception:
+            pass
 
 @app.route('/')
 def landing():
