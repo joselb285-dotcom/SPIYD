@@ -153,7 +153,11 @@ def mapa():
     with open(os.path.join(BASE_DIR, 'mapa.html'), 'r', encoding='utf-8') as f:
         html = f.read()
     html = html.replace('__MAPTILER_KEY__', maptiler_key)
-    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    return html, 200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+    }
 
 @app.route('/dashboard')
 def dashboard_alertas():
