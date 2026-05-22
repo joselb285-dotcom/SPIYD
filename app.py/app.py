@@ -76,6 +76,24 @@ app.register_blueprint(superadmin_bp, url_prefix='/superadmin')
 
 with app.app_context():
     db.create_all()
+    # Auto-migrate new columns added to existing tables
+    _new_cols = [
+        ("ai_informe", "analysis_text", "TEXT"),
+        ("ai_informe", "lat",           "REAL"),
+        ("ai_informe", "lon",           "REAL"),
+        ("ai_informe", "satellite",     "VARCHAR(50)"),
+        ("ai_informe", "conf",          "VARCHAR(20)"),
+        ("ai_informe", "fwi_val",       "REAL"),
+        ("ai_informe", "tipo_foco",     "VARCHAR(30)"),
+    ]
+    from sqlalchemy import text as _text
+    with db.engine.connect() as _conn:
+        for _tbl, _col, _type in _new_cols:
+            try:
+                _conn.execute(_text(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_type}"))
+                _conn.commit()
+            except Exception:
+                _conn.rollback()
 
 @app.route('/')
 def landing():
@@ -806,11 +824,15 @@ Acción inmediata, clara y ejecutiva."""
         sev = ('critical' if (fire_count > 100 or fwi_max >= 24)
                else 'high' if (fire_count > 30 or fwi_max >= 12)
                else 'medium')
+        analysis_txt = msg.content[0].text
         db.session.add(AiInforme(
             region='Argentina',
             severidad=sev,
             ha=None,
             user_id=current_user.id,
+            analysis_text=analysis_txt,
+            tipo_foco='general',
+            fwi_val=fwi_max,
         ))
         db.session.commit()
     except Exception:
@@ -1040,6 +1062,13 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
             severidad=_fwi_to_severidad(fwi_local),
             ha=None,
             user_id=current_user.id,
+            analysis_text=msg.content[0].text,
+            lat=lat,
+            lon=lon,
+            satellite=satellite,
+            conf=str(conf),
+            fwi_val=fwi_local,
+            tipo_foco=tipo_foco,
         ))
         db.session.commit()
     except Exception:

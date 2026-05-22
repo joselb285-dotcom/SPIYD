@@ -61,6 +61,13 @@ class AiInforme(db.Model):
     ha = db.Column(db.Float)
     pdf_path = db.Column(db.String(256))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    analysis_text = db.Column(db.Text)
+    lat = db.Column(db.Float)
+    lon = db.Column(db.Float)
+    satellite = db.Column(db.String(50))
+    conf = db.Column(db.String(20))
+    fwi_val = db.Column(db.Float)
+    tipo_foco = db.Column(db.String(30))
 
 
 class FocoLog(db.Model):

@@ -203,17 +203,35 @@
                         <span class="text-[10px] font-label-technical text-on-surface-variant">{{ ai_mes }} ESTE MES</span>
                     </div>
                     <div class="space-y-3">
-                        {% for inf in ai_recientes[:3] %}
-                        <div class="p-3 bg-surface-container rounded-xl border border-outline-variant/10 hover:border-primary/40 cursor-pointer transition-all group">
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="text-[10px] font-label-technical text-primary">
-                                    {% if inf.severidad == 'critical' %}CRÍTICO{% elif inf.severidad == 'high' %}ALTO{% else %}MEDIO{% endif %}
-                                </span>
-                                <span class="font-label-technical text-[10px] opacity-40">{{ inf.timestamp.strftime('%d/%m %H:%M') }}</span>
+                        {% for inf in ai_recientes[:5] %}
+                        <details class="group bg-surface-container rounded-xl border border-outline-variant/10 hover:border-primary/40 transition-all overflow-hidden">
+                            <summary class="p-3 cursor-pointer list-none flex flex-col gap-1">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-label-technical {% if inf.severidad == 'critical' %}text-error{% elif inf.severidad == 'high' %}text-tertiary{% else %}text-primary{% endif %}">
+                                        {% if inf.severidad == 'critical' %}🔴 CRÍTICO{% elif inf.severidad == 'high' %}🟠 ALTO{% else %}🟡 MEDIO{% endif %}
+                                        {% if inf.tipo_foco and inf.tipo_foco != 'general' %} · {{ inf.tipo_foco }}{% endif %}
+                                    </span>
+                                    <span class="font-label-technical text-[10px] opacity-40">{{ inf.timestamp.strftime('%d/%m %H:%M') }}</span>
+                                </div>
+                                <p class="text-[13px] font-bold">{{ inf.region or 'Sin región' }}</p>
+                                {% if inf.lat %}
+                                <p class="text-[10px] text-on-surface-variant font-label-technical">
+                                    📍 {{ "%.4f"|format(inf.lat) }}°S {{ "%.4f"|format(inf.lon|abs) }}°O
+                                    {% if inf.satellite %} · {{ inf.satellite }}{% endif %}
+                                    {% if inf.conf %} · {{ inf.conf }}%{% endif %}
+                                    {% if inf.fwi_val %} · FWI {{ "%.0f"|format(inf.fwi_val) }}{% endif %}
+                                </p>
+                                {% endif %}
+                                <p class="text-[9px] text-on-surface-variant opacity-40 mt-1">▼ Ver análisis completo</p>
+                            </summary>
+                            {% if inf.analysis_text %}
+                            <div class="px-3 pb-3 border-t border-outline-variant/10">
+                                <pre class="text-[10px] text-on-surface-variant leading-relaxed whitespace-pre-wrap font-label-technical mt-3 max-h-80 overflow-y-auto" style="font-family:'JetBrains Mono',monospace;">{{ inf.analysis_text }}</pre>
                             </div>
-                            <p class="text-[13px] font-bold">{{ inf.region or 'Sin región' }}</p>
-                            <p class="text-[10px] text-on-surface-variant mt-1">{{ inf.ha|int if inf.ha else '—' }} ha afectadas</p>
-                        </div>
+                            {% else %}
+                            <div class="px-3 pb-3 text-[10px] text-on-surface-variant opacity-40 border-t border-outline-variant/10 pt-2">Sin texto de análisis guardado</div>
+                            {% endif %}
+                        </details>
                         {% else %}
                         <div class="p-3 text-center text-on-surface-variant text-[12px]">Sin informes generados aún</div>
                         {% endfor %}
