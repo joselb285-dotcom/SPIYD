@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monitor de Incendios - Argentina · Regla 30-30-30</title>
+  <title>Monitor de Incendios - Argentina · Paraguay · Regla 30-30-30</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -22,7 +22,7 @@
       background:rgba(10,12,18,0.96); color:#e0e0e0;
       padding:12px; border-radius:14px;
       box-shadow:0 6px 36px rgba(0,0,0,0.8);
-      min-width:280px; max-width:300px;
+      min-width:255px; max-width:265px;
       max-height:calc(100vh - 20px); overflow-y:auto;
       border:1px solid rgba(255,255,255,0.08);
       backdrop-filter:blur(8px);
@@ -39,20 +39,39 @@
     .ph-logout { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#777; border-radius:7px; padding:5px 8px; cursor:pointer; font-size:13px; transition:all .15s; }
     .ph-logout:hover { background:rgba(229,57,53,0.2); color:#ff8a80; border-color:rgba(229,57,53,0.4); }
 
-    /* ── Button grid (3×3) ───────────────────────────────── */
-    .btn-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-bottom:9px; }
+    /* ── Button groups ───────────────────────────────────── */
+    .btn-group { margin-bottom:7px; }
+    .btn-group-label {
+      font-size:8px; font-weight:800; text-transform:uppercase;
+      letter-spacing:1px; color:#3d3d3d; margin-bottom:4px;
+      display:flex; align-items:center; gap:5px;
+    }
+    .btn-group-label::after { content:''; flex:1; height:1px; background:rgba(255,255,255,.05); }
+    .btn-row { display:flex; gap:5px; }
+
     .qbtn {
       display:flex; flex-direction:column; align-items:center; justify-content:center;
-      gap:3px; padding:9px 4px 7px; border-radius:9px;
-      border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.05);
-      color:#c0c0c0; cursor:pointer; transition:all .15s; font-family:inherit;
+      gap:5px; padding:10px 4px 8px; border-radius:10px; flex:1;
+      border:1px solid rgba(255,255,255,0.07);
+      background:linear-gradient(160deg,rgba(255,255,255,0.06) 0%,rgba(255,255,255,0.02) 100%);
+      color:#888; cursor:pointer; transition:all .18s; font-family:inherit;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 2px 6px rgba(0,0,0,.35);
     }
-    .qbtn:hover { background:rgba(255,255,255,0.12); transform:translateY(-1px); box-shadow:0 3px 10px rgba(0,0,0,0.5); color:#fff; }
-    .qbtn:active { transform:translateY(0); }
-    .qbtn:disabled { opacity:.35; cursor:not-allowed; transform:none; }
-    .qbtn.active { background:rgba(245,124,0,0.18); border-color:rgba(245,124,0,0.5); color:#ffb74d; }
-    .qi { font-size:18px; line-height:1; }
-    .ql { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; white-space:nowrap; }
+    .qbtn:hover {
+      background:linear-gradient(160deg,rgba(255,255,255,0.12) 0%,rgba(255,255,255,0.05) 100%);
+      border-color:rgba(255,255,255,.14); color:#ddd;
+      transform:translateY(-1px);
+      box-shadow:0 5px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+    .qbtn:active { transform:translateY(0); box-shadow:0 1px 3px rgba(0,0,0,.4); }
+    .qbtn:disabled { opacity:.3; cursor:not-allowed; transform:none !important; }
+    .qbtn.active {
+      background:linear-gradient(160deg,rgba(245,124,0,0.2) 0%,rgba(245,124,0,0.08) 100%);
+      border-color:rgba(245,124,0,0.45); color:#ffb74d;
+      box-shadow:0 0 14px rgba(245,124,0,.15), inset 0 1px 0 rgba(255,183,77,.1);
+    }
+    .qbtn .qi { display:flex; align-items:center; justify-content:center; }
+    .ql { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; white-space:nowrap; }
 
     /* ── Filtros confianza ────────────────────────────────── */
     #confStrip { display:flex; gap:4px; margin-bottom:7px; }
@@ -145,6 +164,23 @@
     /* ── Marcadores ─────────────────────────────────────── */
     .agua-marker { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid rgba(255,255,255,0.5); box-shadow:0 2px 6px rgba(0,0,0,0.6); }
     .veg-marker  { width:18px; height:18px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; border:1px solid rgba(255,255,255,0.2); box-shadow:0 1px 4px rgba(0,0,0,0.4); }
+
+    /* ── Zona análisis ────────────────────────────────────────────── */
+    .qbtn.zona-btn {
+      background:linear-gradient(160deg,rgba(103,58,183,0.14) 0%,rgba(103,58,183,0.05) 100%);
+      border-color:rgba(103,58,183,0.3); color:#b39ddb;
+      box-shadow:inset 0 1px 0 rgba(179,157,219,.05), 0 2px 6px rgba(0,0,0,.35);
+    }
+    .qbtn.zona-btn:hover {
+      background:linear-gradient(160deg,rgba(103,58,183,0.25) 0%,rgba(103,58,183,0.1) 100%);
+      color:#ce93d8; border-color:rgba(103,58,183,0.5);
+    }
+    .qbtn.zona-btn.active {
+      border-color:rgba(179,157,219,0.6);
+      box-shadow:0 0 16px rgba(179,157,219,.22), inset 0 1px 0 rgba(179,157,219,.1);
+    }
+    .zona-crosshair, .zona-crosshair * { cursor:crosshair !important; }
+    @keyframes zona-dash { to { stroke-dashoffset:-20; } }
   </style>
 </head>
 <body>
@@ -157,42 +193,82 @@
         <span class="ph-icon">🔥</span>
         <div>
           <div class="ph-title">SPIYD Monitor</div>
-          <div class="ph-sub">Argentina · Incendios Satelital</div>
+          <div class="ph-sub">Argentina · Paraguay · Incendios</div>
         </div>
       </div>
       <a href="/logout" class="ph-logout" title="Cerrar sesión">⏻</a>
     </div>
 
-    <!-- ── Botones acción 3×3 ─────────────────────────── -->
-    <div class="btn-grid">
-      <button class="qbtn" id="btnCargar">
-        <span class="qi">🛰</span><span class="ql">NASA</span>
+    <!-- ── Botones acción ─────────────────────────────── -->
+    <div style="margin-bottom:9px;">
+
+      <!-- Datos de incendio -->
+      <div class="btn-group">
+        <div class="btn-group-label">Datos de incendio</div>
+        <div class="btn-row">
+          <button class="qbtn" id="btnCargar">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="9" y="8" width="6" height="8" rx="1.5" fill="#b0c4de" stroke="#7a9bb5" stroke-width=".7"/><rect x="1.5" y="10" width="7" height="4.5" rx="1" fill="#1a56a8" stroke="#2169c4" stroke-width=".5"/><line x1="3.5" y1="10" x2="3.5" y2="14.5" stroke="#0d3d82" stroke-width=".6"/><line x1="6" y1="10" x2="6" y2="14.5" stroke="#0d3d82" stroke-width=".6"/><rect x="15.5" y="10" width="7" height="4.5" rx="1" fill="#1a56a8" stroke="#2169c4" stroke-width=".5"/><line x1="17.5" y1="10" x2="17.5" y2="14.5" stroke="#0d3d82" stroke-width=".6"/><line x1="20" y1="10" x2="20" y2="14.5" stroke="#0d3d82" stroke-width=".6"/><line x1="12" y1="8" x2="12" y2="5" stroke="#7a9bb5" stroke-width=".9"/><circle cx="12" cy="4.5" r="1.8" fill="none" stroke="#7a9bb5" stroke-width=".9"/><circle cx="12" cy="16" r="1.5" fill="#ff5722" opacity=".9"/></svg></span>
+            <span class="ql">NASA</span>
+          </button>
+          <button class="qbtn" id="btnINPE">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="9.5" y="7.5" width="5" height="9" rx="1.5" fill="#c8d8e8" stroke="#7a9bb5" stroke-width=".7"/><rect x="2" y="10.5" width="7" height="3.5" rx="1" fill="#c62828" stroke="#ef5350" stroke-width=".5"/><line x1="4" y1="10.5" x2="4" y2="14" stroke="#b71c1c" stroke-width=".6"/><line x1="6.5" y1="10.5" x2="6.5" y2="14" stroke="#b71c1c" stroke-width=".6"/><rect x="15" y="10.5" width="7" height="3.5" rx="1" fill="#c62828" stroke="#ef5350" stroke-width=".5"/><line x1="17" y1="10.5" x2="17" y2="14" stroke="#b71c1c" stroke-width=".6"/><line x1="19.5" y1="10.5" x2="19.5" y2="14" stroke="#b71c1c" stroke-width=".6"/><line x1="12" y1="7.5" x2="10" y2="4.5" stroke="#7a9bb5" stroke-width=".9"/><circle cx="9.5" cy="3.5" r="1.8" fill="none" stroke="#7a9bb5" stroke-width=".9"/><circle cx="14" cy="16.5" r="1.5" fill="#ff8f00" opacity=".9"/></svg></span>
+            <span class="ql">INPE</span>
+          </button>
+          <button class="qbtn" id="btnFWI">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C10 5.5,5.5 9,5.5 14C5.5 18,7.5 21,9.5 22C8.5 19,10 16.5,10.5 15.5C10.5 18,11 20.5,12 22C13 20.5,13.5 18,13.5 15.5C14 16.5,15.5 19,14.5 22C16.5 21,18.5 18,18.5 14C18.5 9,14 5.5,12 2Z" fill="#b71c1c"/><path d="M12 11C10.2 14,9.5 16.5,9.5 18.5C9.5 20.8,10.6 22.5,12 22.5C13.4 22.5,14.5 20.8,14.5 18.5C14.5 16.5,13.8 14,12 11Z" fill="#ff6d00" opacity=".92"/><path d="M12 15C11.2 16.8,11 18,11 19C11 20.2,11.4 21,12 21C12.6 21,13 20.2,13 19C13 18,12.8 16.8,12 15Z" fill="#fff176" opacity=".75"/></svg></span>
+            <span class="ql">FWI</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Ambiente -->
+      <div class="btn-group">
+        <div class="btn-group-label">Ambiente</div>
+        <div class="btn-row">
+          <button class="qbtn" id="btnClima">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="18.5" r="3.5" fill="#e53935" opacity=".9"/><rect x="10.5" y="4" width="3" height="15.5" rx="1.5" fill="#e0e0e0" stroke="#bdbdbd" stroke-width=".5"/><rect x="11.2" y="6" width="1.6" height="11" rx=".8" fill="#e53935" opacity=".8"/><line x1="13.5" y1="8" x2="16.5" y2="8" stroke="#ffa726" stroke-width="1.1" stroke-linecap="round"/><line x1="13.5" y1="11.5" x2="16.5" y2="11.5" stroke="#ffa726" stroke-width="1.1" stroke-linecap="round"/><line x1="13.5" y1="15" x2="16.5" y2="15" stroke="#ffa726" stroke-width="1.1" stroke-linecap="round"/><circle cx="5.5" cy="8" r="2.8" fill="#ffa726" opacity=".85"/><line x1="5.5" y1="2.5" x2="5.5" y2="4.5" stroke="#ffa726" stroke-width=".9" stroke-linecap="round"/><line x1="8.5" y1="5" x2="7.3" y2="6.2" stroke="#ffa726" stroke-width=".9" stroke-linecap="round"/><line x1="10" y1="8" x2="8.3" y2="8" stroke="#ffa726" stroke-width=".9" stroke-linecap="round"/><line x1="8.5" y1="11" x2="7.3" y2="9.8" stroke="#ffa726" stroke-width=".9" stroke-linecap="round"/></svg></span>
+            <span class="ql">Clima</span>
+          </button>
+          <button class="qbtn" id="btnAgua">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C12 2,4.5 11,4.5 16C4.5 20,7.9 23,12 23C16.1 23,19.5 20,19.5 16C19.5 11,12 2,12 2Z" fill="#0288d1" opacity=".9"/><path d="M8.5 16.5Q12 14,15.5 16.5" stroke="#fff" stroke-width="1.3" fill="none" opacity=".55" stroke-linecap="round"/><path d="M9.5 12Q12 10.5,14.5 12" stroke="rgba(255,255,255,.25)" stroke-width=".9" fill="none" stroke-linecap="round"/><ellipse cx="12" cy="17.5" rx="5.5" ry="3" fill="rgba(255,255,255,.08)"/></svg></span>
+            <span class="ql">Agua</span>
+          </button>
+          <button class="qbtn" id="btnVeg">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 21Q12 21,12 12Q12 3,21 3Q21 12,12 12" fill="#2e7d32"/><path d="M12 21Q12 21,12 12Q12 3,3 3Q3 12,12 12" fill="#388e3c" opacity=".9"/><line x1="12" y1="21" x2="12" y2="12" stroke="#1b5e20" stroke-width=".9"/><line x1="12" y1="17" x2="15.5" y2="13.5" stroke="#1b5e20" stroke-width=".7" stroke-linecap="round"/><line x1="12" y1="14" x2="8.5" y2="10.5" stroke="#1b5e20" stroke-width=".7" stroke-linecap="round"/></svg></span>
+            <span class="ql">Veg.</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Cobertura -->
+      <div class="btn-group">
+        <div class="btn-group-label">Cobertura</div>
+        <div class="btn-row">
+          <button class="qbtn" id="btnSMN">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 12L3.5 5.5A9.5 9.5 0 0 1 20.5 5.5Z" fill="#1565c0" opacity=".65"/><path d="M3.5 5.5A9.5 9.5 0 0 1 20.5 5.5" stroke="#29b6f6" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="12" cy="12" r="2.2" fill="#29b6f6"/><line x1="12" y1="12" x2="12" y2="20" stroke="#37474f" stroke-width="1.6"/><line x1="7.5" y1="21" x2="16.5" y2="21" stroke="#37474f" stroke-width="1.6" stroke-linecap="round"/><path d="M5 8A8 8 0 0 1 19 8" stroke="#29b6f6" stroke-width=".8" fill="none" opacity=".45" stroke-linecap="round"/><path d="M7 5A6 6 0 0 1 17 5" stroke="#29b6f6" stroke-width=".8" fill="none" opacity=".3" stroke-linecap="round"/></svg></span>
+            <span class="ql">SMN</span>
+          </button>
+          <button class="qbtn" id="btnGOES_RT" style="position:relative;">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="16" r="5.5" fill="#0d47a1" opacity=".75"/><path d="M7 15Q12 12.5,17 15" stroke="#29b6f6" stroke-width=".8" fill="none" opacity=".6"/><path d="M7.5 17.5Q12 15.5,16.5 17.5" stroke="#90caf9" stroke-width=".7" fill="none" opacity=".45"/><rect x="9" y="4" width="6" height="7.5" rx="1.5" fill="#b0c4de" stroke="#7a9bb5" stroke-width=".7"/><rect x="2" y="6" width="6.5" height="3.5" rx="1" fill="#1565c0"/><rect x="15.5" y="6" width="6.5" height="3.5" rx="1" fill="#1565c0"/><line x1="9" y1="11.5" x2="9.5" y2="13" stroke="#7a9bb5" stroke-width=".9"/><line x1="15" y1="11.5" x2="14.5" y2="13" stroke="#7a9bb5" stroke-width=".9"/></svg></span>
+            <span class="ql">GOES</span>
+            <span id="goesRtBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff1744;color:#fff;font-size:8px;padding:1px 4px;border-radius:999px;font-weight:700;">LIVE</span>
+          </button>
+          <button class="qbtn" id="btnPrecip" onclick="cargarPrecipitacion()">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17.5 9.5A4.5 4.5 0 0 0 10 9A3.5 3.5 0 0 0 10 16L18 16A4.5 4.5 0 0 0 17.5 9.5Z" fill="#546e7a" opacity=".85"/><path d="M7.5 11A3.5 3.5 0 0 0 7.5 16L13 16" stroke="#546e7a" stroke-width="2.5" fill="none" stroke-linecap="round"/><line x1="9" y1="18" x2="8" y2="21.5" stroke="#29b6f6" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="18" x2="11" y2="22" stroke="#29b6f6" stroke-width="1.3" stroke-linecap="round"/><line x1="15" y1="18" x2="14" y2="21.5" stroke="#29b6f6" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+            <span class="ql">Precip.</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- IA full-width -->
+      <button class="qbtn zona-btn" id="btnZonaIA" style="width:100%;flex-direction:row;padding:10px 14px;gap:11px;min-height:0;justify-content:flex-start;border-radius:10px;box-sizing:border-box;">
+        <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" stroke="#ab47bc" stroke-width="1.1" fill="none" opacity=".65"/><circle cx="12" cy="12" r="5.5" stroke="#ce93d8" stroke-width="1.1" fill="none"/><circle cx="12" cy="12" r="1.8" fill="#ab47bc"/><line x1="12" y1="1" x2="12" y2="5" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="23" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/><line x1="1" y1="12" x2="5" y2="12" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/><line x1="19" y1="12" x2="23" y2="12" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/></svg></span>
+        <span style="display:flex;flex-direction:column;gap:1px;text-align:left;">
+          <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:inherit;">Analizar Zona</span>
+          <span style="font-size:8px;color:#7e57c2;letter-spacing:.3px;">IA · Claude Sonnet</span>
+        </span>
       </button>
-      <button class="qbtn" id="btnSMN">
-        <span class="qi">📡</span><span class="ql">SMN</span>
-      </button>
-      <button class="qbtn" id="btnClima">
-        <span class="qi">🌡</span><span class="ql">Clima</span>
-      </button>
-      <button class="qbtn" id="btnAgua">
-        <span class="qi">💧</span><span class="ql">Agua</span>
-      </button>
-      <button class="qbtn" id="btnVeg">
-        <span class="qi">🌿</span><span class="ql">Veg.</span>
-      </button>
-      <button class="qbtn" id="btnINPE">
-        <span class="qi">🛰</span><span class="ql">INPE</span>
-      </button>
-      <button class="qbtn" id="btnFWI">
-        <span class="qi">🔥</span><span class="ql">FWI</span>
-      </button>
-      <button class="qbtn" id="btnGOES_RT" style="position:relative;">
-        <span class="qi">📺</span><span class="ql">GOES RT</span>
-        <span id="goesRtBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff1744;color:#fff;font-size:8px;padding:1px 4px;border-radius:999px;font-weight:700;">LIVE</span>
-      </button>
-      <button class="qbtn" id="btnPrecip" onclick="cargarPrecipitacion()">
-        <span class="qi">🌧</span><span class="ql">Precip.</span>
-      </button>
+
     </div>
 
     <!-- ── Filtros confianza (se muestra al cargar focos) ── -->
@@ -217,7 +293,7 @@
     <div style="text-align:center;">
       <span class="riesgo-badge" id="riesgoBadge" style="background:#1e1e1e;color:#555;">RIESGO: —</span>
     </div>
-    <div class="estado-box" id="estado">Presioná "NASA" para cargar focos.</div>
+    <div class="estado-box" id="estado">Presioná "NASA" para cargar focos de Argentina y Paraguay.</div>
 
     <!-- ── Regla 30-30-30 ────────────────────────────── -->
     <div class="regla-panel">
@@ -249,7 +325,7 @@
     <!-- SMN -->
     <div class="seccion">
       <div class="seccion-header" onclick="toggleSeccion('secSMN')">
-        <span>📋 Alertas SMN</span><span class="seccion-chevron" id="chev-secSMN">▼</span>
+        <span>Alertas SMN <span id="chev-secSMN" class="seccion-chevron">▼</span></span>
       </div>
       <div class="seccion-body" id="secSMN">
         <div id="resumenSMN" style="margin-top:5px;font-size:11px;color:#666;">Presioná "SMN".</div>
@@ -260,8 +336,7 @@
     <!-- Agua -->
     <div class="seccion">
       <div class="seccion-header" onclick="toggleSeccion('secAgua')">
-        <span>💧 Fuentes de agua <span id="aguaCount" class="data-badge db-agua" style="display:none;"></span></span>
-        <span class="seccion-chevron" id="chev-secAgua">▼</span>
+        <span>Fuentes de agua <span id="aguaCount" class="data-badge db-agua" style="display:none;"></span> <span id="chev-secAgua" class="seccion-chevron">▼</span></span>
       </div>
       <div class="seccion-body" id="secAgua">
         <div id="aguaResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Agua".</div>
@@ -272,8 +347,7 @@
     <!-- Vegetación -->
     <div class="seccion">
       <div class="seccion-header" onclick="toggleSeccion('secVeg')">
-        <span>🌿 Vegetación <span id="vegCount" class="data-badge db-veg" style="display:none;"></span></span>
-        <span class="seccion-chevron" id="chev-secVeg">▼</span>
+        <span>Vegetación <span id="vegCount" class="data-badge db-veg" style="display:none;"></span> <span id="chev-secVeg" class="seccion-chevron">▼</span></span>
       </div>
       <div class="seccion-body" id="secVeg">
         <div id="vegResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Veg.".</div>
@@ -284,8 +358,7 @@
     <!-- INPE -->
     <div class="seccion">
       <div class="seccion-header" onclick="toggleSeccion('secINPE')">
-        <span>🛰 Focos INPE <span id="inpeCount" class="data-badge" style="display:none;background:rgba(230,81,0,.4);color:#ffcc80;border:1px solid #e65100;"></span></span>
-        <span class="seccion-chevron" id="chev-secINPE">▼</span>
+        <span>Focos INPE <span id="inpeCount" class="data-badge" style="display:none;background:rgba(230,81,0,.4);color:#ffcc80;border:1px solid #e65100;"></span> <span id="chev-secINPE" class="seccion-chevron">▼</span></span>
       </div>
       <div class="seccion-body" id="secINPE">
         <div id="inpeResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "INPE".</div>
@@ -296,8 +369,7 @@
     <!-- FWI -->
     <div class="seccion">
       <div class="seccion-header" onclick="toggleSeccion('secFWI')">
-        <span>🔥 FWI — Índice de peligro</span>
-        <span class="seccion-chevron" id="chev-secFWI">▼</span>
+        <span>FWI — Índice de peligro <span id="chev-secFWI" class="seccion-chevron">▼</span></span>
       </div>
       <div class="seccion-body" id="secFWI">
         <div id="fwiResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "FWI".</div>
@@ -378,15 +450,17 @@
             <option value="300000" selected>Cada 5 minutos</option>
             <option value="600000">Cada 10 minutos</option>
           </select>
-          <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:9px 0 5px;">Capas visibles</div>
-          <label class="capa-toggle"><input type="checkbox" id="togFocos" checked><span class="capa-dot" style="background:#c62828;"></span>Focos NASA</label>
-          <label class="capa-toggle"><input type="checkbox" id="togRiesgo"><span class="capa-dot" style="background:#ff7043;"></span>Zonas 30-30-30</label>
-          <label class="capa-toggle"><input type="checkbox" id="togViento"><span class="capa-dot" style="background:#29b6f6;"></span>Animación de viento</label>
-          <label class="capa-toggle"><input type="checkbox" id="togSMN"><span class="capa-dot" style="background:#fdd835;"></span>Alertas SMN</label>
-          <label class="capa-toggle"><input type="checkbox" id="togAgua"><span class="capa-dot" style="background:#00acc1;"></span>Fuentes de agua</label>
-          <label class="capa-toggle"><input type="checkbox" id="togVeg"><span class="capa-dot" style="background:#66bb6a;"></span>Vegetación</label>
-          <label class="capa-toggle"><input type="checkbox" id="togINPE"><span class="capa-dot" style="background:#ff8f00;"></span>Focos INPE</label>
-          <label class="capa-toggle"><input type="checkbox" id="togFWI"><span class="capa-dot" style="background:#ab47bc;"></span>FWI</label>
+          <!-- Inputs ocultos requeridos por JS -->
+          <input type="checkbox" id="togFocos" checked style="display:none;">
+          <input type="checkbox" id="togRiesgo" style="display:none;">
+          <input type="checkbox" id="togViento" style="display:none;">
+          <input type="checkbox" id="togSMN" style="display:none;">
+          <input type="checkbox" id="togAgua" style="display:none;">
+          <input type="checkbox" id="togVeg" style="display:none;">
+          <input type="checkbox" id="togINPE" style="display:none;">
+          <input type="checkbox" id="togFWI" style="display:none;">
+          <!-- Capas adicionales sin botón propio -->
+          <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:9px 0 5px;">Capas adicionales</div>
           <label class="capa-toggle"><input type="checkbox" id="togTopo"><span class="capa-dot" style="background:#bdbdbd;"></span>Topografía</label>
           <label class="capa-toggle"><input type="checkbox" id="togRoads"><span class="capa-dot" style="background:#ffb74d;"></span>Caminos</label>
           <label class="capa-toggle"><input type="checkbox" id="togRadarEstaciones" checked><span class="capa-dot" style="background:#e1f5fe;border:1px solid #29b6f6;"></span>Estaciones radar</label>
@@ -456,7 +530,7 @@
         </div>
 
         <div style="margin-top:8px;font-size:9px;color:#333;text-align:center;">
-          NASA FIRMS · Open-Meteo · OSM · SMN Argentina · RainViewer · Claude Sonnet
+          NASA FIRMS · Open-Meteo · OSM · SMN Argentina · RainViewer · Claude
         </div>
       </div>
     </div>
@@ -644,7 +718,13 @@
       }
       return null;
     }
+    // Bounding box de Paraguay para aceptar puntos fuera del GeoJSON argentino
+    function estaEnParaguay(lat, lng) {
+      return lat >= -27.7 && lat <= -19.2 && lng >= -62.7 && lng <= -54.2;
+    }
+
     function estaEnArg(lat, lng) {
+      if (estaEnParaguay(lat, lng)) return true;
       if (!geojsonArg) return true;
       return geojsonArg.features.some(f => turf.booleanPointInPolygon(turf.point([lng,lat]), f));
     }
@@ -2117,7 +2197,178 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     }
 
     // ── Click en mapa ─────────────────────────────────────────────────────────
-    mapa.on('click',e=>L.popup().setLatLng(e.latlng).setContent(`<span style="font-family:monospace;font-size:11px;">Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}</span>`).openOn(mapa));
+    mapa.on('click', e => {
+      if (zonaDrawMode) return;
+      L.popup().setLatLng(e.latlng).setContent(`<span style="font-family:monospace;font-size:11px;">Lat: ${e.latlng.lat.toFixed(5)}<br>Lng: ${e.latlng.lng.toFixed(5)}</span>`).openOn(mapa);
+    });
+
+    // ── Modo Analizar Zona con IA ─────────────────────────────────────────────
+    let zonaDrawMode = false;
+    let zonaDrawing  = false;
+    let zonaStart    = null;
+    let zonaRect     = null;
+
+    function toggleZonaMode() {
+      zonaDrawMode = !zonaDrawMode;
+      const btn = document.getElementById('btnZonaIA');
+      btn.classList.toggle('active', zonaDrawMode);
+      if (zonaDrawMode) {
+        mapa.getContainer().classList.add('zona-crosshair');
+        setEstado('📐 Hacé clic y arrastrá para seleccionar una zona. Soltá para ver el análisis.', 'warn');
+      } else {
+        mapa.getContainer().classList.remove('zona-crosshair');
+        zonaDrawing = false;
+        zonaStart   = null;
+        if (zonaRect) { mapa.removeLayer(zonaRect); zonaRect = null; }
+        setEstado('Modo zona desactivado.', '');
+      }
+    }
+
+    mapa.on('mousedown', function(e) {
+      if (!zonaDrawMode) return;
+      mapa.dragging.disable();
+      zonaDrawing = true;
+      zonaStart   = e.latlng;
+      if (zonaRect) { mapa.removeLayer(zonaRect); zonaRect = null; }
+    });
+
+    mapa.on('mousemove', function(e) {
+      if (!zonaDrawMode || !zonaDrawing || !zonaStart) return;
+      if (zonaRect) mapa.removeLayer(zonaRect);
+      zonaRect = L.rectangle(L.latLngBounds(zonaStart, e.latlng), {
+        color: '#9c64c4', weight: 2, fillColor: '#7c4dff',
+        fillOpacity: 0.12, dashArray: '6,4'
+      }).addTo(mapa);
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!zonaDrawMode || !zonaDrawing) return;
+      mapa.dragging.enable();
+      zonaDrawing = false;
+      if (!zonaRect) return;
+      const bounds = zonaRect.getBounds();
+      const diagKm = haversineKm(bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast());
+      if (diagKm < 3) {
+        mapa.removeLayer(zonaRect); zonaRect = null;
+        return;
+      }
+      toggleZonaMode(); // salir del modo dibujo
+      mostrarZonaPanel(bounds);
+    });
+
+    function mostrarZonaPanel(bounds) {
+      const s = bounds.getSouth(), w = bounds.getWest();
+      const n = bounds.getNorth(), e = bounds.getEast();
+      const center = bounds.getCenter();
+
+      // Stats desde datos ya cargados
+      const focosEnZona = firePts.filter(p => p.lat >= s && p.lat <= n && p.lon >= w && p.lon <= e).length;
+      const fwiEnZona   = datosFWI.filter(p => p.lat >= s && p.lat <= n && p.lon >= w && p.lon <= e && p.fwi != null);
+      const fwiMax      = fwiEnZona.length ? Math.max(...fwiEnZona.map(d => d.fwi)) : null;
+      const fwiProm     = fwiEnZona.length ? (fwiEnZona.reduce((a,b) => a + b.fwi, 0) / fwiEnZona.length).toFixed(1) : null;
+      const aguaEnZona  = datosAgua.filter(a => a.lat >= s && a.lat <= n && a.lon >= w && a.lon <= e).length;
+      const areaDeg     = (n - s) * (e - w);
+      const areaKm2     = Math.round(areaDeg * 12100);
+
+      function stat(val, label, color) {
+        return `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:${color};">${val !== null ? val : '—'}</div>
+          <div style="font-size:9px;color:#777;text-transform:uppercase;margin-top:2px;">${label}</div>
+        </div>`;
+      }
+
+      const contenido = `<div style="font-family:monospace;">
+        <div style="padding:9px 36px 9px 12px;background:linear-gradient(135deg,#4a148c,#311b92);color:#fff;font-size:11.5px;font-weight:700;line-height:1.4;">
+          🎯 Zona seleccionada
+          <div style="font-size:10px;font-weight:400;opacity:.8;margin-top:2px;">~${areaKm2.toLocaleString()} km² · Centro ${center.lat.toFixed(3)}°S ${Math.abs(center.lng).toFixed(3)}°O</div>
+        </div>
+        <div style="padding:10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px;">
+            ${stat(focosEnZona, 'Focos activos', '#ff5252')}
+            ${stat(fwiMax !== null ? fwiMax : null, 'FWI máximo', '#ab47bc')}
+            ${stat(aguaEnZona, 'Fuentes agua', '#00acc1')}
+          </div>
+          ${fwiProm !== null ? `<div style="font-size:10px;color:#888;margin-bottom:8px;">FWI promedio en la zona: <b style="color:#ab47bc;">${fwiProm}</b></div>` : ''}
+          <button onclick="analizarZonaIA(${s},${w},${n},${e},${focosEnZona},${fwiMax||0},${fwiProm||0},${aguaEnZona})"
+            style="width:100%;padding:9px;background:linear-gradient(135deg,#6a1b9a,#4a148c);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;font-family:monospace;letter-spacing:.3px;">
+            🤖 Analizar esta zona con IA
+          </button>
+          <button onclick="if(zonaRect){mapa.removeLayer(zonaRect);zonaRect=null;}mapa.closePopup();"
+            style="width:100%;padding:5px;background:rgba(255,255,255,0.05);color:#666;border:1px solid rgba(255,255,255,0.1);border-radius:5px;cursor:pointer;font-size:10px;font-family:monospace;margin-top:5px;">
+            ✕ Cancelar
+          </button>
+        </div>
+      </div>`;
+
+      L.popup({ maxWidth: 340, minWidth: 300, className: 'informe-popup', autoPan: true, autoPanPadding: [60,60] })
+        .setLatLng(center)
+        .setContent(contenido)
+        .openOn(mapa);
+    }
+
+    window.analizarZonaIA = async function(s, w, n, e, focosCount, fwiMax, fwiProm, aguaCount) {
+      const lat = (s + n) / 2, lon = (w + e) / 2;
+
+      if (informePopup) mapa.closePopup(informePopup);
+      informePopup = L.popup({ maxWidth: 440, minWidth: 440, className: 'informe-popup', autoPan: true, autoPanPadding: [60,60] })
+        .setLatLng([lat, lon])
+        .setContent(`<div style="font-family:monospace;padding:14px 16px;">
+          <div style="padding:8px 12px;background:linear-gradient(135deg,#4a148c,#311b92);color:#fff;font-size:11px;font-weight:700;margin:-14px -16px 12px;">
+            🎯 Analizando zona con IA…
+          </div>
+          <div class="ia-loading"><div class="spinner"></div> Consultando Claude · Open-Meteo · Overpass…</div>
+          <div style="font-size:10px;color:#666;margin-top:6px;">Centro ${lat.toFixed(3)}°S ${Math.abs(lon).toFixed(3)}°O · ${focosCount} focos · FWI ${fwiMax}</div>
+        </div>`)
+        .openOn(mapa);
+
+      try {
+        const data = await fetch(`${BACKEND}/ai-zona-analysis`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            s, w, n, e,
+            focos_count:  focosCount,
+            fwi_max:      fwiMax,
+            fwi_prom:     fwiProm,
+            agua_count:   aguaCount,
+            smn_rojo:     ultimoSMN.rojo,
+            smn_naranja:  ultimoSMN.naranja,
+            smn_amarillo: ultimoSMN.amarillo,
+          })
+        }).then(r => r.json());
+
+        if (data.error) {
+          informePopup.setContent(`<div style="font-family:monospace;padding:14px;color:#ff8a80;">❌ ${data.error}</div>`);
+          return;
+        }
+
+        const sectionsHTML = renderIAAnalysis(data.analysis);
+        const timestamp    = new Date().toLocaleString('es-AR');
+
+        informePopup.setContent(`<div style="font-family:monospace;">
+          <div style="padding:9px 36px 9px 12px;background:linear-gradient(135deg,#4a148c,#311b92);color:#fff;font-size:11.5px;font-weight:700;line-height:1.4;">
+            🎯 Análisis de Zona<br>
+            <span style="font-size:10px;font-weight:400;opacity:.85;">${lat.toFixed(3)}°S ${Math.abs(lon).toFixed(3)}°O · ${focosCount} focos · FWI ${fwiMax}</span>
+          </div>
+          <div style="padding:10px;max-height:460px;overflow-y:auto;">
+            ${sectionsHTML}
+            <div style="font-size:9px;color:#444;margin-top:6px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);padding-top:4px;">
+              🤖 Claude · ${timestamp}
+            </div>
+          </div>
+        </div>`);
+
+        const div = document.getElementById('iaResultado');
+        const sec = document.getElementById('secIA');
+        if (!sec.classList.contains('abierto')) toggleSeccion('secIA');
+        div.innerHTML = `<div style="font-size:10px;color:#9c64c4;font-weight:700;margin-bottom:5px;">
+          🎯 Análisis de zona activo en el mapa · ${lat.toFixed(3)}°S</div>`;
+      } catch(err) {
+        informePopup.setContent(`<div style="font-family:monospace;padding:14px;color:#e53935;">Error de conexión.</div>`);
+      }
+    };
+
+    document.getElementById('btnZonaIA').addEventListener('click', toggleZonaMode);
 
     // ── Event listeners ───────────────────────────────────────────────────────
     document.getElementById('btnCargar').addEventListener('click',()=>cargarFocos(true));
