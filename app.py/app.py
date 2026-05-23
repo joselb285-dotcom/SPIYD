@@ -46,7 +46,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['REMEMBER_COOKIE_DURATION'] = 0   # "recordarme" deshabilitado
 app.config['PERMANENT_SESSION_LIFETIME'] = __import__('datetime').timedelta(hours=8)
 
-from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog
+from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso
 db.init_app(app)
 
 login_manager = LoginManager()
@@ -890,6 +890,47 @@ def _region_argentina(lat, lon):
     if lat > -50:                        return "Patagonia Sur — Chubut / Santa Cruz"
     return "Tierra del Fuego"
 
+def _recursos_para_ia(lat_ref=None, lon_ref=None, max_items=30):
+    """Devuelve string formateado con todos los recursos activos, ordenados por distancia si se dan coords."""
+    try:
+        recursos = Recurso.query.filter_by(activo=True).all()
+        if not recursos:
+            return ""
+        if lat_ref is not None and lon_ref is not None:
+            def _dist(r):
+                if r.lat and r.lon:
+                    dlat = r.lat - lat_ref
+                    dlon = (r.lon - lon_ref) * math.cos(math.radians(lat_ref))
+                    return dlat**2 + dlon**2
+                return float('inf')
+            recursos = sorted(recursos, key=_dist)[:max_items]
+        lines = ["═══ RECURSOS REGISTRADOS EN LA BASE DE DATOS SPIYD ═══"]
+        for r in recursos:
+            distancia = ""
+            if lat_ref and lon_ref and r.lat and r.lon:
+                dlat = r.lat - lat_ref
+                dlon = (r.lon - lon_ref) * math.cos(math.radians(lat_ref))
+                km = math.sqrt(dlat**2 + dlon**2) * 111
+                distancia = f" (~{km:.0f} km del foco)"
+            partes = [f"[{r.tipo_label}] {r.nombre}{distancia}"]
+            if r.localidad or r.provincia_departamento:
+                partes.append(f"  Ubicación: {', '.join(filter(None, [r.localidad, r.provincia_departamento, r.pais]))}")
+            if r.lat and r.lon:
+                partes.append(f"  Coords: {r.lat:.4f}, {r.lon:.4f}")
+            if r.telefono:
+                partes.append(f"  Tel: {r.telefono}")
+            if r.contacto_nombre:
+                partes.append(f"  Contacto: {r.contacto_nombre}")
+            if r.horario:
+                partes.append(f"  Horario: {r.horario}")
+            if r.descripcion:
+                partes.append(f"  Descripción: {r.descripcion}")
+            lines.append("\n".join(partes))
+        return "\n\n".join(lines)
+    except Exception:
+        return ""
+
+
 @app.route("/ai-foco-analysis", methods=["POST"])
 @limiter.limit("20 per hour")
 def ai_foco_analysis():
@@ -1011,6 +1052,8 @@ Total fuentes: {agua_count} | Cuarteles de bomberos: {bomberos_count}
 
 ═══ ALERTAS SMN ═══
 Alertas activas — Roja: {smn_rojo} | Naranja: {smn_nar} | Amarilla: {smn_amar}
+
+{_recursos_para_ia(lat, lon)}
 
 Generá exactamente estas 7 secciones numeradas en español técnico-operativo (máx 420 palabras, cada sección 1-3 oraciones directas sin explicaciones innecesarias):
 
@@ -1204,6 +1247,8 @@ Fuentes de agua detectadas: {agua_count}
 
 ═══ ALERTAS SMN ACTIVAS ═══
 Roja: {smn_rojo} | Naranja: {smn_nar} | Amarilla: {smn_amar}
+
+{_recursos_para_ia(lat, lon)}
 
 Generá exactamente estas 5 secciones numeradas (español, conciso, operativo):
 1. 🚨 EVALUACIÓN DE RIESGO: nivel general CRÍTICO/ALTO/MODERADO/BAJO y justificación en 2 oraciones.

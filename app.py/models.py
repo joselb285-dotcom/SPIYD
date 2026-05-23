@@ -73,6 +73,43 @@ class AiInforme(db.Model):
     tipo_foco = db.Column(db.String(30))
 
 
+TIPOS_RECURSO = [
+    ('bomberos',       'Cuartel de Bomberos'),
+    ('defensa_civil',  'Defensa Civil'),
+    ('hospital',       'Hospital'),
+    ('caps',           'CAPS / Centro de Salud'),
+    ('avion',          'Avión / Aeronave'),
+    ('gubernamental',  'Ente Gubernamental'),
+    ('policia',        'Policía / Seguridad'),
+    ('municipio',      'Municipio / Intendencia'),
+    ('otro',           'Otro'),
+]
+
+class Recurso(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    tipo = db.Column(db.String(50), nullable=False)
+    nombre = db.Column(db.String(150), nullable=False)
+    descripcion = db.Column(db.Text)
+    pais = db.Column(db.String(50))
+    provincia_departamento = db.Column(db.String(100))
+    localidad = db.Column(db.String(100))
+    direccion = db.Column(db.String(200))
+    lat = db.Column(db.Float)
+    lon = db.Column(db.Float)
+    telefono = db.Column(db.String(50))
+    email = db.Column(db.String(120))
+    contacto_nombre = db.Column(db.String(100))
+    horario = db.Column(db.String(100))
+    notas = db.Column(db.Text)
+    activo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+    @property
+    def tipo_label(self):
+        return dict(TIPOS_RECURSO).get(self.tipo, self.tipo)
+
+
 class FocoLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)

@@ -1,0 +1,173 @@
+{% extends "base_admin.html" %}
+{% block title %}{{ 'Nuevo Recurso' if action == 'new' else 'Editar Recurso' }} — SPIYD Admin{% endblock %}
+{% block page_title %}{{ 'Nuevo Recurso' if action == 'new' else 'Editar: ' + recurso.nombre }}{% endblock %}
+{% block breadcrumb %}<a href="/admin/recursos" style="color:var(--muted);text-decoration:none">Recursos</a> › {{ 'Nuevo' if action == 'new' else 'Editar' }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="form-card">
+      <form method="post">
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <label class="form-label">Tipo de recurso *</label>
+            <select name="tipo" class="form-select" required>
+              {% for val, label in tipos %}
+                <option value="{{ val }}" {% if recurso and recurso.tipo == val %}selected{% elif not recurso and val == 'bomberos' %}selected{% endif %}>
+                  {{ label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nombre *</label>
+            <input type="text" name="nombre" class="form-control" required autofocus
+                   value="{{ recurso.nombre if recurso else '' }}" placeholder="Ej: Cuartel Central Resistencia">
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Descripción</label>
+          <textarea name="descripcion" class="form-control" rows="2"
+                    placeholder="Capacidad, dotación, tipo de unidades...">{{ recurso.descripcion if recurso and recurso.descripcion else '' }}</textarea>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-4">
+            <label class="form-label">País</label>
+            <select name="pais" class="form-select">
+              <option value="">— Sin especificar —</option>
+              <option value="argentina" {% if recurso and recurso.pais == 'argentina' %}selected{% endif %}>Argentina</option>
+              <option value="paraguay" {% if recurso and recurso.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Provincia / Departamento</label>
+            <input type="text" name="provincia_departamento" class="form-control"
+                   value="{{ recurso.provincia_departamento if recurso and recurso.provincia_departamento else '' }}"
+                   placeholder="Chaco, Alto Paraná...">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Localidad</label>
+            <input type="text" name="localidad" class="form-control"
+                   value="{{ recurso.localidad if recurso and recurso.localidad else '' }}"
+                   placeholder="Ciudad o municipio">
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Dirección</label>
+          <input type="text" name="direccion" class="form-control"
+                 value="{{ recurso.direccion if recurso and recurso.direccion else '' }}"
+                 placeholder="Calle, número, referencia...">
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <label class="form-label">Latitud</label>
+            <input type="text" name="lat" id="inputLat" class="form-control" pattern="-?\d+\.?\d*"
+                   value="{{ recurso.lat if recurso and recurso.lat else '' }}"
+                   placeholder="-27.4513">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Longitud</label>
+            <input type="text" name="lon" id="inputLon" class="form-control" pattern="-?\d+\.?\d*"
+                   value="{{ recurso.lon if recurso and recurso.lon else '' }}"
+                   placeholder="-58.9862">
+          </div>
+        </div>
+
+        <!-- Mini mapa para seleccionar coords -->
+        <div class="mb-4">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px">
+            <i class="fas fa-map-marker-alt" style="color:var(--orange)"></i>
+            Seleccionar coordenadas en el mapa
+            <span style="font-size:0.75rem;color:var(--muted);font-weight:400">(click para marcar)</span>
+          </label>
+          <div id="miniMap" style="height:280px;border-radius:8px;border:1px solid var(--border);overflow:hidden"></div>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-4">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="telefono" class="form-control"
+                   value="{{ recurso.telefono if recurso and recurso.telefono else '' }}"
+                   placeholder="+54 362 ...">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control"
+                   value="{{ recurso.email if recurso and recurso.email else '' }}"
+                   placeholder="contacto@organismo.gob.ar">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Nombre de contacto</label>
+            <input type="text" name="contacto_nombre" class="form-control"
+                   value="{{ recurso.contacto_nombre if recurso and recurso.contacto_nombre else '' }}"
+                   placeholder="Jefe / Encargado">
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Horario de atención / disponibilidad</label>
+          <input type="text" name="horario" class="form-control"
+                 value="{{ recurso.horario if recurso and recurso.horario else '' }}"
+                 placeholder="24hs / Lunes a viernes 8-18hs">
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Notas adicionales</label>
+          <textarea name="notas" class="form-control" rows="3"
+                    placeholder="Capacidad de respuesta, equipamiento especial, protocolos, etc.">{{ recurso.notas if recurso and recurso.notas else '' }}</textarea>
+        </div>
+
+        <div class="mb-4">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="activo" id="activoCheck"
+                   {{ 'checked' if not recurso or recurso.activo else '' }}>
+            <label class="form-check-label" for="activoCheck" style="font-size:0.9rem">
+              Recurso activo (visible para el agente IA)
+            </label>
+          </div>
+        </div>
+
+        <div class="d-flex gap-3 mt-2">
+          <button type="submit" class="btn-spiyd">
+            <i class="fas fa-{{ 'plus' if action == 'new' else 'floppy-disk' }}"></i>
+            {{ 'Crear recurso' if action == 'new' else 'Guardar cambios' }}
+          </button>
+          <a href="/admin/recursos" class="btn-spiyd-outline">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const initLat = parseFloat(document.getElementById('inputLat').value) || -27.5;
+const initLon = parseFloat(document.getElementById('inputLon').value) || -60.0;
+
+const map = L.map('miniMap').setView([initLat, initLon], initLat === -27.5 ? 5 : 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap', maxZoom: 18
+}).addTo(map);
+
+let marker = null;
+if (document.getElementById('inputLat').value) {
+  marker = L.marker([initLat, initLon]).addTo(map);
+}
+
+map.on('click', function(e) {
+  const { lat, lng } = e.latlng;
+  document.getElementById('inputLat').value = lat.toFixed(6);
+  document.getElementById('inputLon').value = lng.toFixed(6);
+  if (marker) marker.setLatLng([lat, lng]);
+  else marker = L.marker([lat, lng]).addTo(map);
+});
+</script>
+{% endblock %}
