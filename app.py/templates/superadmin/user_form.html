@@ -39,6 +39,31 @@
           </select>
         </div>
 
+        <div class="mb-4">
+          <label class="form-label">País</label>
+          <select name="pais" id="selectPais" class="form-select" onchange="onPaisChange()">
+            <option value="">— Sin restricción —</option>
+            <option value="argentina" {% if user and user.pais == 'argentina' %}selected{% endif %}>Argentina</option>
+            <option value="paraguay" {% if user and user.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
+          </select>
+        </div>
+
+        <div class="mb-4" id="divRegionTipo" style="display:none">
+          <label class="form-label">Alcance geográfico</label>
+          <select name="region_tipo" id="selectRegionTipo" class="form-select" onchange="onRegionTipoChange()">
+            <option value="pais">Todo el país</option>
+            <option value="provincia"  id="optProvincia"  style="display:none">Provincia</option>
+            <option value="departamento" id="optDepartamento" style="display:none">Departamento</option>
+          </select>
+        </div>
+
+        <div class="mb-4" id="divRegionNombre" style="display:none">
+          <label class="form-label" id="labelRegionNombre">Provincia / Departamento</label>
+          <select name="region_nombre" id="selectRegionNombre" class="form-select">
+            <option value="">Seleccioná una opción</option>
+          </select>
+        </div>
+
         {% if action == 'edit' %}
         <div class="mb-4">
           <div class="form-check">
@@ -62,4 +87,79 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PROVINCIAS = {{ provincias | tojson }};
+const DEPARTAMENTOS = {{ departamentos | tojson }};
+
+const initPais = {{ (user.pais | tojson) if user and user.pais else 'null' }};
+const initRegionTipo = {{ (user.region_tipo | tojson) if user and user.region_tipo else '"pais"' }};
+const initRegionNombre = {{ (user.region_nombre | tojson) if user and user.region_nombre else 'null' }};
+
+function populateRegionNombre(lista, selected) {
+  const sel = document.getElementById('selectRegionNombre');
+  sel.innerHTML = '<option value="">Seleccioná una opción</option>';
+  lista.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item;
+    opt.textContent = item;
+    if (item === selected) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function onRegionTipoChange() {
+  const tipo = document.getElementById('selectRegionTipo').value;
+  const divNombre = document.getElementById('divRegionNombre');
+  const pais = document.getElementById('selectPais').value;
+  if (tipo === 'pais') {
+    divNombre.style.display = 'none';
+  } else {
+    const lista = pais === 'argentina' ? PROVINCIAS : DEPARTAMENTOS;
+    document.getElementById('labelRegionNombre').textContent = pais === 'argentina' ? 'Provincia' : 'Departamento';
+    populateRegionNombre(lista, null);
+    divNombre.style.display = 'block';
+  }
+}
+
+function onPaisChange() {
+  const pais = document.getElementById('selectPais').value;
+  const divTipo = document.getElementById('divRegionTipo');
+  const optProv = document.getElementById('optProvincia');
+  const optDep  = document.getElementById('optDepartamento');
+  const selTipo = document.getElementById('selectRegionTipo');
+  if (!pais) {
+    divTipo.style.display = 'none';
+    document.getElementById('divRegionNombre').style.display = 'none';
+    return;
+  }
+  divTipo.style.display = 'block';
+  if (pais === 'argentina') {
+    optProv.style.display = 'block';
+    optDep.style.display = 'none';
+    if (selTipo.value === 'departamento') selTipo.value = 'pais';
+  } else {
+    optDep.style.display = 'block';
+    optProv.style.display = 'none';
+    if (selTipo.value === 'provincia') selTipo.value = 'pais';
+  }
+  onRegionTipoChange();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (initPais) {
+    document.getElementById('selectPais').value = initPais;
+    onPaisChange();
+    if (initRegionTipo && initRegionTipo !== 'pais') {
+      document.getElementById('selectRegionTipo').value = initRegionTipo;
+      onRegionTipoChange();
+      if (initRegionNombre) {
+        document.getElementById('selectRegionNombre').value = initRegionNombre;
+      }
+    }
+  }
+});
+</script>
 {% endblock %}

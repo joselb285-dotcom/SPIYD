@@ -9,6 +9,19 @@ superadmin_bp = Blueprint('superadmin', __name__)
 
 ROLES = ['user', 'admin', 'superadmin']
 
+PROVINCIAS_ARG = [
+    'Buenos Aires', 'Catamarca', 'Chaco', 'Chubut', 'Ciudad Autónoma de Buenos Aires',
+    'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
+    'Mendoza', 'Misiones', 'Neuquén', 'Río Negro', 'Salta', 'San Juan', 'San Luis',
+    'Santa Cruz', 'Santa Fe', 'Santiago del Estero', 'Tierra del Fuego', 'Tucumán',
+]
+
+DEPARTAMENTOS_PRY = [
+    'Alto Paraguay', 'Alto Paraná', 'Amambay', 'Asunción', 'Boquerón', 'Caaguazú',
+    'Caazapá', 'Canindeyú', 'Central', 'Concepción', 'Cordillera', 'Guairá',
+    'Itapúa', 'Misiones', 'Ñeembucú', 'Paraguarí', 'Presidente Hayes', 'San Pedro',
+]
+
 
 def superadmin_required(f):
     @wraps(f)
@@ -88,13 +101,20 @@ def user_new():
         elif User.query.filter_by(email=email).first():
             flash('El email ya está registrado', 'error')
         else:
-            user = User(username=username, email=email, role=role or 'user')
+            pais = request.form.get('pais', '').strip() or None
+            region_tipo = request.form.get('region_tipo', 'pais').strip()
+            region_nombre = request.form.get('region_nombre', '').strip() or None
+            if region_tipo == 'pais':
+                region_nombre = None
+            user = User(username=username, email=email, role=role or 'user',
+                        pais=pais, region_tipo=region_tipo, region_nombre=region_nombre)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
             flash(f'Usuario {username} creado exitosamente', 'success')
             return redirect(url_for('superadmin.users'))
-    return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES)
+    return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES,
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
 
 
 @superadmin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -111,15 +131,24 @@ def user_edit(user_id):
         if existing:
             flash('El email ya está en uso por otro usuario', 'error')
         else:
+            pais = request.form.get('pais', '').strip() or None
+            region_tipo = request.form.get('region_tipo', 'pais').strip()
+            region_nombre = request.form.get('region_nombre', '').strip() or None
+            if region_tipo == 'pais':
+                region_nombre = None
             user.email = email
             user.role = role
             user.active = active
+            user.pais = pais
+            user.region_tipo = region_tipo
+            user.region_nombre = region_nombre
             if new_password:
                 user.set_password(new_password)
             db.session.commit()
             flash(f'Usuario {user.username} actualizado', 'success')
             return redirect(url_for('superadmin.users'))
-    return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES)
+    return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES,
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
 
 
 @superadmin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
