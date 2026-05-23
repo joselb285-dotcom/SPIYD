@@ -244,21 +244,6 @@ def recurso_delete(recurso_id):
     return redirect(url_for('admin.recursos'))
 
 
-@admin_bp.route('/usuarios/<int:user_id>/delete', methods=['POST'])
-@login_required
-@admin_required
-def user_delete(user_id):
-    user = db.get_or_404(User, user_id)
-    if user.id == current_user.id:
-        flash('No puedes eliminar tu propio usuario', 'error')
-        return redirect(url_for('admin.users'))
-    username = user.username
-    db.session.delete(user)
-    db.session.commit()
-    flash(f'Usuario {username} eliminado', 'success')
-    return redirect(url_for('admin.users'))
-
-
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 @admin_required
