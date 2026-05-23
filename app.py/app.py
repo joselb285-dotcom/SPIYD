@@ -95,6 +95,14 @@ with app.app_context():
         except Exception:
             pass
 
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({"error": f"Límite de uso alcanzado. Intentá en unos minutos."}), 429
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+
 @app.route('/')
 def landing():
     return render_template('landing.html')
@@ -188,7 +196,7 @@ SMN_FEEDS = [
     {"tipo": "Avisos a muy corto plazo", "url": "https://ssl.smn.gob.ar/feeds/CAP/avisocortoplazo/rss_acpCAP.xml",      "nivel_base": "amarillo"}
 ]
 
-GRID_LATS = list(range(-22, -56, -3))
+GRID_LATS = list(range(-19, -56, -3))
 GRID_LONS = list(range(-74, -52, 3))
 
 OVERPASS_SERVERS = [
@@ -522,7 +530,7 @@ def water_sources():
     s, w, n, e = s-buf, w-buf, n+buf, e+buf
 
     # Limitar bbox máximo a ~10° para evitar timeout
-    s = max(s, -56.0); n = min(n, -21.0); w = max(w, -74.0); e = min(e, -53.0)
+    s = max(s, -56.0); n = min(n, -19.0); w = max(w, -74.0); e = min(e, -53.0)
 
     ql = f"""
 [out:json][timeout:55];
@@ -820,13 +828,16 @@ Datos faltantes, supuestos utilizados y nivel de confianza general del análisis
 ## 9. Recomendación final
 Acción inmediata, clara y ejecutiva."""
 
-    client = anthropic.Anthropic(api_key=api_key)
-    msg = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2400,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2400,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt}]
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502
 
     try:
         sev = ('critical' if (fire_count > 100 or fwi_max >= 24)
@@ -857,6 +868,15 @@ Acción inmediata, clara y ejecutiva."""
 # ── Análisis IA de foco específico ──────────────────────────────────────────
 
 def _region_argentina(lat, lon):
+    # Paraguay: lat -19.3 a -27.6, lon -54.2 a -62.6
+    if lat > -27.6 and lon > -62.6 and lon < -54.2 and lat < -19.2:
+        if lon > -58.0:
+            return "Paraguay Oriental — Asunción / Central / Alto Paraná"
+        else:
+            return "Chaco Paraguayo — Boquerón / Alto Paraguay"
+    if lat > -19.2 and lon > -62.6 and lon < -54.2:
+        return "Paraguay Norte — Amambay / Concepción"
+    # Argentina
     if lat > -23:                        return "NOA — Jujuy / Salta / Tucumán"
     if lat > -28 and lon < -60:          return "Chaco / Formosa"
     if lat > -28 and lon >= -60:         return "Misiones / Corrientes"
@@ -1056,13 +1076,16 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
         "y recomendá intervención de autoridades competentes cuando el riesgo sea alto, muy alto o extremo."
     )
 
-    client = anthropic.Anthropic(api_key=api_key)
-    msg = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2000,
-        system=FOCO_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=2000,
+            system=FOCO_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": prompt}]
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502
 
     try:
         db.session.add(AiInforme(
@@ -1081,6 +1104,120 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
         db.session.commit()
     except Exception:
         db.session.rollback()
+
+    return jsonify({"analysis": msg.content[0].text})
+
+
+# ── Análisis IA de zona geográfica seleccionada por el usuario ───────────────
+
+@app.route("/ai-zona-analysis", methods=["POST"])
+@limiter.limit("10 per hour")
+def ai_zona_analysis():
+    try:
+        import anthropic
+    except ImportError:
+        return jsonify({"error": "Instala: pip install anthropic"}), 503
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY no configurada"}), 503
+
+    body        = request.get_json(silent=True) or {}
+    s           = float(body.get("s", -35))
+    w           = float(body.get("w", -65))
+    n           = float(body.get("n", -33))
+    e           = float(body.get("e", -63))
+    focos_count = int(body.get("focos_count", 0))
+    fwi_max     = float(body.get("fwi_max", 0) or 0)
+    fwi_prom    = float(body.get("fwi_prom", 0) or 0)
+    agua_count  = int(body.get("agua_count", 0))
+    smn_rojo    = int(body.get("smn_rojo", 0))
+    smn_nar     = int(body.get("smn_naranja", 0))
+    smn_amar    = int(body.get("smn_amarillo", 0))
+
+    lat = (s + n) / 2
+    lon = (w + e) / 2
+    area_km2 = round(abs((n - s) * (e - w)) * 12100)
+
+    # Clima del centro de la zona
+    wx = {}
+    try:
+        url = (f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+               f"&current=temperature_2m,relative_humidity_2m,wind_speed_10m,"
+               f"wind_direction_10m,precipitation,weather_code"
+               f"&wind_speed_unit=kmh&timezone=America%2FArgentina%2FBuenos_Aires")
+        wx = requests.get(url, timeout=8).json().get("current", {})
+    except Exception:
+        pass
+
+    temp     = wx.get("temperature_2m", "N/D")
+    humid    = wx.get("relative_humidity_2m", "N/D")
+    wind_spd = wx.get("wind_speed_10m", "N/D")
+    wind_dir = wx.get("wind_direction_10m", "N/D")
+    precip   = wx.get("precipitation", 0)
+
+    dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO"]
+    try:
+        wind_dir_str = dirs[round(float(wind_dir) / 22.5) % 16]
+    except Exception:
+        wind_dir_str = "?"
+
+    regla_30 = (
+        isinstance(temp, (int, float)) and temp >= 30 and
+        isinstance(humid, (int, float)) and humid <= 30 and
+        isinstance(wind_spd, (int, float)) and wind_spd >= 30
+    )
+
+    if   fwi_max >= 24: fwi_nivel = "EXTREMO"
+    elif fwi_max >= 17: fwi_nivel = "MUY ALTO"
+    elif fwi_max >= 10: fwi_nivel = "ALTO"
+    elif fwi_max >= 5:  fwi_nivel = "MODERADO"
+    else:               fwi_nivel = "BAJO"
+
+    region = _region_argentina(lat, lon)
+
+    prompt = f"""El usuario seleccionó una zona geográfica en el mapa de monitoreo de incendios de Argentina y Paraguay para análisis con IA. Generá un análisis táctico de riesgo de incendio para esa zona:
+
+═══ ZONA SELECCIONADA POR EL USUARIO ═══
+Región: {region}
+Bounding box: S{s:.3f}° N{n:.3f}° O{abs(w):.3f}° E{abs(e):.3f}°
+Área aproximada: ~{area_km2:,} km²
+Centro: {lat:.3f}°S, {abs(lon):.3f}°O
+
+═══ FOCOS ACTIVOS DENTRO DE LA ZONA ═══
+Total focos satelitales detectados: {focos_count}
+
+═══ CLIMA EN EL CENTRO DE LA ZONA (Open-Meteo, tiempo real) ═══
+Temperatura: {temp}°C | Humedad: {humid}% | Precipitación: {precip} mm/h
+Viento: {wind_spd} km/h rumbo {wind_dir_str}
+{"⚡ REGLA 30-30-30 ACTIVA — condiciones de propagación explosiva." if regla_30 else "Regla 30-30-30: no activa."}
+
+═══ ÍNDICE FWI EN LA ZONA ═══
+FWI máximo: {fwi_max:.1f} — nivel {fwi_nivel}
+FWI promedio: {fwi_prom:.1f}
+
+═══ RECURSOS HÍDRICOS EN LA ZONA ═══
+Fuentes de agua detectadas: {agua_count}
+
+═══ ALERTAS SMN ACTIVAS ═══
+Roja: {smn_rojo} | Naranja: {smn_nar} | Amarilla: {smn_amar}
+
+Generá exactamente estas 5 secciones numeradas (español, conciso, operativo):
+1. 🚨 EVALUACIÓN DE RIESGO: nivel general CRÍTICO/ALTO/MODERADO/BAJO y justificación en 2 oraciones.
+2. 🔥 SITUACIÓN ACTUAL: qué está ocurriendo en esta zona, focos, propagación esperada según el viento ({wind_dir_str} a {wind_spd} km/h).
+3. 💧 RECURSOS DISPONIBLES: fuentes de agua detectadas y acceso para extinción en la zona.
+4. 🚒 ACCIONES RECOMENDADAS: 3 acciones concretas y prioritarias para esta zona.
+5. ⚡ FACTOR CRÍTICO: el elemento de mayor riesgo que define la situación en esta zona."""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}]
+        )
+    except Exception as e:
+        return jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502
 
     return jsonify({"analysis": msg.content[0].text})
 
@@ -1282,8 +1419,8 @@ def inpe_focos():
 
                 if lat is None or lon is None:
                     continue
-                # Filtrar bounding box Argentina
-                if not (-55.8 <= float(lat) <= -21.0 and -73.5 <= float(lon) <= -53.5):
+                # Filtrar bounding box Argentina + Paraguay
+                if not (-55.8 <= float(lat) <= -19.0 and -73.5 <= float(lon) <= -53.5):
                     continue
                 clave = f"{round(float(lat),3)}|{round(float(lon),3)}"
                 if clave in vistos:
@@ -1353,7 +1490,7 @@ def fwi_grid():
 # ── NASA FIRMS proxy ─────────────────────────────────────────────────────────
 
 FUENTES_NASA = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'MODIS_NRT', 'GOES_NRT']
-BBOX_ARG = "-73.5,-55.8,-53.5,-21.0"
+BBOX_ARG = "-73.5,-55.8,-53.5,-19.0"  # Argentina + Paraguay
 
 @app.route("/nasa-focos")
 def nasa_focos():
