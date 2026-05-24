@@ -54,9 +54,20 @@
 </head>
 <body>
 <div id="root"></div>
-
+<script>
+window.SPIYD_CONFIG = {{ config|tojson|safe }};
+window.SPIYD_FOCOS  = {{ focos_data|tojson|safe }};
+window.SPIYD_SMN    = {{ smn_data|tojson|safe }};
+</script>
+{% raw %}
 <script type="text/babel">
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+/* ════ SERVER DATA ════ */
+const SPIYD_CONFIG  = window.SPIYD_CONFIG  || {};
+const SPIYD_FOCOS   = window.SPIYD_FOCOS   || [];
+const SPIYD_SMN     = window.SPIYD_SMN     || [];
+const HAS_REAL_DATA = SPIYD_FOCOS.length   > 0;
 
 /* ════ CONSTANTS ════ */
 const SOURCES = ['NASA FIRMS','GOES-16','NOAA-20','METOP-B','AQUA','TERRA','INPE'];
@@ -125,7 +136,7 @@ function genAlert(provincePick) {
   };
 }
 
-const INITIAL = Array.from({length:22}, ()=>genAlert(null));
+const INITIAL = HAS_REAL_DATA ? SPIYD_FOCOS : Array.from({length:10}, ()=>genAlert(null));
 
 /* ── Hourly trend ── */
 const HOURLY_24 = Array.from({length:24}, (_,i) => ({
@@ -357,11 +368,16 @@ function DetailPanel({alert}) {
 
   useEffect(()=>{
     if(!alert) return;
+    if(alert.analysis_text) {
+      setAiText(alert.analysis_text);
+      setLoading(false);
+      return;
+    }
     setAiText(''); setLoading(true);
-    const prompt = `Sos el sistema IA de SPIYD. En 3 oraciones directas y operativas, describí el riesgo y recomendación para: incendio ${alert.severity} en ${alert.region}, ${alert.ha} ha, temperatura ${alert.temp}K, FRP ${alert.frp} MW, detectado por ${alert.source}. Español, sin intro.`;
-    window.claude?.complete(prompt)
-      .then(r=>{setAiText(r);setLoading(false);})
-      .catch(()=>{setAiText('Riesgo de propagación elevado por condiciones meteorológicas desfavorables en la región. Se recomienda activación inmediata de brigadas terrestres y vigilancia aérea en un radio de 15 km. Coordinar con defensa civil provincial para posible evacuación preventiva de localidades colindantes.');setLoading(false);});
+    setTimeout(()=>{
+      setAiText('Sin análisis IA almacenado para este foco. Los focos con análisis completo muestran el informe detallado generado por el sistema al momento de la detección.');
+      setLoading(false);
+    }, 200);
   },[alert?.id]);
 
   if(!alert) return <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,.18)',fontSize:'.78rem'}}>Seleccioná una alerta para ver el análisis</div>;
@@ -430,10 +446,23 @@ function DetailPanel({alert}) {
 
 /* ═══════════════ APP ═══════════════ */
 function App() {
+  function getInitialProvince() {
+    const cfg = SPIYD_CONFIG;
+    if (!cfg.pais) return 'all';
+    if (cfg.pais === 'paraguay') return 'PY';
+    const rmap = {
+      'Chaco':'AR-H','Corrientes':'AR-W','Entre Ríos':'AR-E','Formosa':'AR-P',
+      'Misiones':'AR-N','Buenos Aires':'AR-B','Santa Fe':'AR-S',
+      'Santiago del Estero':'AR-G','Salta':'AR-A','Jujuy':'AR-Y',
+    };
+    if (cfg.region_nombre && rmap[cfg.region_nombre]) return rmap[cfg.region_nombre];
+    return 'AR';
+  }
+
   const [alerts, setAlerts]       = useState(INITIAL);
-  const [selected, setSelected]   = useState(INITIAL[0]);
+  const [selected, setSelected]   = useState(INITIAL[0] || null);
   const [filter, setFilter]       = useState('all');
-  const [province, setProvince]   = useState('all');
+  const [province, setProvince]   = useState(getInitialProvince);
   const [chartMetric, setChartMetric] = useState('all');
   const [chartTab, setChartTab]   = useState('trend');
   const [firmsData, setFirmsData] = useState(null);
@@ -451,8 +480,9 @@ function App() {
 
   const dismissNotif = useCallback(id=>setNotifs(prev=>prev.filter(x=>x.id!==id)),[]);
 
-  // New alert every ~10s
+  // New alert every ~10s (only when using demo data)
   useEffect(()=>{
+    if (HAS_REAL_DATA) return;
     const id = setInterval(()=>{
       const a = genAlert(province !== 'all' ? province : null);
       a.ts = Date.now();
@@ -487,6 +517,22 @@ function App() {
   const high = filtered.filter(a=>a.severity==='high').length;
   const med  = filtered.filter(a=>a.severity==='medium').length;
   const totalHa = filtered.reduce((s,a)=>s+a.ha,0);
+  const totalSev = crit + high + med || 1;
+  const pctCrit = Math.round(crit/totalSev*100);
+  const pctHigh = Math.round(high/totalSev*100);
+  const pctMed  = Math.round(med/totalSev*100);
+
+  const fwiData = useMemo(()=>{
+    const map = {};
+    filtered.forEach(a=>{
+      if(a.frp > 0 && a.region){
+        const r = a.region.split('/')[0].trim();
+        if(!map[r] || a.frp > map[r].v)
+          map[r] = {v:a.frp, col:a.frp>=80?'#ff5533':a.frp>=60?'#ffaa44':'#ffcc44', l:a.frp>=80?'Extremo':a.frp>=60?'Alto':'Moderado'};
+      }
+    });
+    return Object.entries(map).sort((a,b)=>b[1].v-a[1].v).slice(0,4).map(([r,d])=>[r,d.l,Math.round(d.v),d.col]);
+  },[filtered]);
 
   /* ── Mini map canvas ── */
   const mapRef = useRef(); const mapCtxRef = useRef();
@@ -524,8 +570,19 @@ function App() {
         <div style={{display:'flex',alignItems:'center',gap:6}}>
           <div style={{display:'flex',alignItems:'center',gap:5,background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',borderRadius:99,padding:'4px 12px'}}>
             <div style={{width:5,height:5,borderRadius:'50%',background:'#44ffcc',animation:'pulse 2s infinite'}}/>
-            <span style={{color:'rgba(255,255,255,.5)',fontSize:'.65rem'}}>7 satélites activos</span>
+            <span style={{color:'rgba(255,255,255,.5)',fontSize:'.65rem'}}>{HAS_REAL_DATA ? `${filtered.length} focos (30d)` : '7 satélites activos'}</span>
           </div>
+          {SPIYD_CONFIG.region_nombre && (
+            <div style={{display:'flex',alignItems:'center',gap:5,background:'rgba(68,255,204,.06)',border:'1px solid rgba(68,255,204,.18)',borderRadius:99,padding:'4px 12px'}}>
+              <span style={{fontSize:'10px'}}>📍</span>
+              <span style={{color:'rgba(68,255,204,.7)',fontSize:'.63rem'}}>{SPIYD_CONFIG.region_nombre}</span>
+            </div>
+          )}
+          {SPIYD_CONFIG.pais && !SPIYD_CONFIG.region_nombre && (
+            <div style={{display:'flex',alignItems:'center',gap:5,background:'rgba(68,255,204,.06)',border:'1px solid rgba(68,255,204,.18)',borderRadius:99,padding:'4px 12px'}}>
+              <span style={{color:'rgba(68,255,204,.7)',fontSize:'.63rem'}}>🌎 {SPIYD_CONFIG.pais === 'argentina' ? 'Argentina' : 'Paraguay'}</span>
+            </div>
+          )}
           {liveCount>0 && (
             <button onClick={()=>setBellCount(0)} style={{
               position:'relative',display:'flex',alignItems:'center',justifyContent:'center',
@@ -581,12 +638,35 @@ function App() {
 
           {/* Alert count summary */}
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
-            {[['Críticas',crit,'#ff6644'],['Altas',high,'#ffaa44'],['Medias',med,'#88aaff'],['Total ha',(totalHa/1000).toFixed(0)+'k','#44ffcc']].map(([l,v,c])=>(
+            {[['Críticas',crit,'#ff6644'],['Altas',high,'#ffaa44'],['Medias',med,'#88aaff'],['Total ha',totalHa>0?(totalHa/1000).toFixed(1)+'k':'—','#44ffcc']].map(([l,v,c])=>(
               <div key={l} className="g-dark" style={{padding:'.7rem .8rem'}}>
                 <div style={{color:'rgba(255,255,255,.28)',fontSize:'.55rem',letterSpacing:'.12em',textTransform:'uppercase',marginBottom:3}}>{l}</div>
                 <div style={{color:c,fontSize:'1.2rem',fontWeight:600,letterSpacing:'-.05em'}}>{v}</div>
               </div>
             ))}
+          </div>
+
+          {/* Criticality percentages */}
+          <div className="g-dark" style={{padding:'.8rem .9rem'}}>
+            <div style={{color:'rgba(255,255,255,.3)',fontSize:'.55rem',letterSpacing:'.14em',textTransform:'uppercase',marginBottom:8}}>Distribución de criticidad</div>
+            {[['CRÍTICO',pctCrit,'#ff6644',crit],['ALTO',pctHigh,'#ffaa44',high],['MEDIO',pctMed,'#88aaff',med]].map(([label,pct,col,count])=>(
+              <div key={label} style={{marginBottom:6}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+                  <span style={{color:'rgba(255,255,255,.45)',fontSize:'.58rem',fontWeight:500}}>{label}</span>
+                  <span style={{color:col,fontSize:'.6rem',fontFamily:'JetBrains Mono,monospace'}}>
+                    {pct}% <span style={{opacity:.45}}>({count})</span>
+                  </span>
+                </div>
+                <div className="fwi-bar">
+                  <div className="fwi-fill" style={{width:`${pct}%`,background:col,boxShadow:`0 0 6px ${col}55`}}/>
+                </div>
+              </div>
+            ))}
+            {HAS_REAL_DATA && (
+              <div style={{marginTop:7,paddingTop:7,borderTop:'1px solid rgba(255,255,255,.06)',color:'rgba(255,255,255,.25)',fontSize:'.58rem'}}>
+                {filtered.length} focos · últimos 30 días
+              </div>
+            )}
           </div>
 
           {/* Alert list */}
@@ -607,7 +687,9 @@ function App() {
           <div className="g" style={{height:220,padding:'1rem',display:'flex',flexDirection:'column'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'.8rem',flexShrink:0}}>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <span style={{color:'rgba(255,255,255,.35)',fontSize:'.58rem',letterSpacing:'.16em',textTransform:'uppercase'}}>Detecciones últimas 24 h</span>
+                <span style={{color:'rgba(255,255,255,.35)',fontSize:'.58rem',letterSpacing:'.16em',textTransform:'uppercase'}}>
+                {HAS_REAL_DATA ? `Distribución temporal · ${SPIYD_CONFIG.region_nombre||SPIYD_CONFIG.pais||'Tu región'}` : 'Detecciones últimas 24 h'}
+              </span>
               </div>
               <div style={{display:'flex',gap:5}}>
                 {[['all','Todas'],['critical','Críticas'],['high','Altas'],['medium','Medias']].map(([v,l])=>(
@@ -646,18 +728,36 @@ function App() {
 
           {/* FWI */}
           <div className="g" style={{padding:'.9rem'}}>
-            <div style={{color:'rgba(255,255,255,.28)',fontSize:'.56rem',letterSpacing:'.16em',textTransform:'uppercase',marginBottom:'.75rem'}}>FWI · Índice de riesgo</div>
-            {[['Chaco, AR','Extremo',92,'#ff5533'],['Corrientes, AR','Alto',77,'#ffaa44'],['Mato Grosso, BR','Alto',71,'#ffaa44'],['Beni, BO','Moderado',55,'#ffcc44']].map(([r,l,v,c])=>(
+            <div style={{color:'rgba(255,255,255,.28)',fontSize:'.56rem',letterSpacing:'.16em',textTransform:'uppercase',marginBottom:'.75rem'}}>FWI · Índice de riesgo por región</div>
+            {(fwiData.length > 0 ? fwiData : [['Sin datos FWI',null,0,'#444']]).map(([r,l,v,c])=>(
               <div key={r} style={{marginBottom:'.65rem'}}>
                 <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
                   <span style={{color:'rgba(255,255,255,.5)',fontSize:'.63rem'}}>{r}</span>
-                  <span style={{color:c,fontSize:'.63rem',fontWeight:500,fontFamily:'JetBrains Mono,monospace'}}>{v}</span>
+                  <span style={{color:c,fontSize:'.63rem',fontWeight:500,fontFamily:'JetBrains Mono,monospace'}}>{v||'—'}</span>
                 </div>
-                <div className="fwi-bar"><div className="fwi-fill" style={{width:`${v}%`,background:c}}/></div>
-                <div style={{color:'rgba(255,255,255,.22)',fontSize:'.56rem',marginTop:2}}>{l}</div>
+                {v > 0 && <div className="fwi-bar"><div className="fwi-fill" style={{width:`${Math.min(v,100)}%`,background:c}}/></div>}
+                {l && <div style={{color:'rgba(255,255,255,.22)',fontSize:'.56rem',marginTop:2}}>{l}</div>}
               </div>
             ))}
           </div>
+
+          {/* SMN Alertas */}
+          {SPIYD_SMN.length > 0 && (
+            <div className="g" style={{padding:'.9rem',maxHeight:180,overflowY:'auto'}}>
+              <div style={{color:'rgba(255,255,255,.28)',fontSize:'.56rem',letterSpacing:'.16em',textTransform:'uppercase',marginBottom:'.7rem'}}>
+                Alertas SMN · {SPIYD_SMN.length}
+              </div>
+              {SPIYD_SMN.slice(0,5).map((a,i)=>{
+                const col = a.severidad==='critical'?'#ff5533':a.severidad==='high'?'#ffaa44':'#88aaff';
+                return (
+                  <div key={i} style={{borderLeft:`2px solid ${col}`,paddingLeft:8,marginBottom:7}}>
+                    <div style={{color:'rgba(255,255,255,.6)',fontSize:'.62rem',fontWeight:500}}>{a.region||a.fuente}</div>
+                    {a.descripcion && <div style={{color:'rgba(255,255,255,.28)',fontSize:'.57rem',marginTop:1,lineHeight:1.4}}>{a.descripcion.slice(0,80)}{a.descripcion.length>80?'…':''}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       </div>
@@ -667,5 +767,6 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
+{% endraw %}
 </body>
 </html>

@@ -188,11 +188,80 @@ def mapa():
     }
 
 @app.route('/dashboard')
+@login_required
 def dashboard_alertas():
-    tmpl_path = os.path.join(MODULE_DIR, 'templates', 'dashboard_design.html')
-    with open(tmpl_path, 'r', encoding='utf-8') as f:
-        html = f.read()
-    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    from sqlalchemy import or_
+    from datetime import timedelta as _td
+
+    cutoff = datetime.utcnow() - _td(days=30)
+
+    def _geo(q, model):
+        u = current_user
+        if not getattr(u, 'pais', None):
+            return q
+        if u.pais == 'argentina':
+            q = q.filter(or_(model.region.is_(None), ~model.region.ilike('%paraguay%')))
+        elif u.pais == 'paraguay':
+            q = q.filter(model.region.ilike('%paraguay%'))
+        if getattr(u, 'region_tipo', None) in ('provincia', 'departamento') and getattr(u, 'region_nombre', None):
+            q = q.filter(model.region.ilike(f'%{u.region_nombre}%'))
+        return q
+
+    ai_list   = _geo(AiInforme.query.filter(AiInforme.timestamp >= cutoff).order_by(AiInforme.timestamp.desc()), AiInforme).limit(60).all()
+    focos_raw = _geo(FocoLog.query.filter(FocoLog.timestamp >= cutoff).order_by(FocoLog.timestamp.desc()), FocoLog).limit(30).all()
+    smn_list  = _geo(SmnAlerta.query.filter(SmnAlerta.timestamp >= cutoff).order_by(SmnAlerta.timestamp.desc()), SmnAlerta).limit(15).all()
+
+    focos_data = []
+    for inf in ai_list:
+        focos_data.append({
+            'id': f'IA-{inf.id:04d}',
+            'region': inf.region or 'Sin región',
+            'lat': float(inf.lat) if inf.lat else None,
+            'lon': float(inf.lon) if inf.lon else None,
+            'severity': inf.severidad or 'medium',
+            'source': inf.satellite or 'IA-SPIYD',
+            'ha': int(inf.ha) if inf.ha else 0,
+            'confidence': int(float(inf.conf)) if inf.conf else 75,
+            'frp': round(float(inf.fwi_val), 1) if inf.fwi_val else 0,
+            'temp': 400,
+            'ts': int(inf.timestamp.timestamp() * 1000),
+            'status': 'active' if inf.severidad in ('critical', 'high') else 'monitoring',
+            'daynight': 'D',
+            'analysis_text': (inf.analysis_text or '')[:600],
+            'tipo_foco': inf.tipo_foco or '',
+        })
+    for foco in focos_raw:
+        focos_data.append({
+            'id': f'FCO-{foco.id:04d}',
+            'region': foco.region or 'Sin región',
+            'lat': float(foco.lat) if foco.lat else None,
+            'lon': float(foco.lon) if foco.lon else None,
+            'severity': foco.severidad or 'medium',
+            'source': foco.fuente or 'Satelital',
+            'ha': int(foco.ha) if foco.ha else 0,
+            'confidence': 70, 'frp': 0, 'temp': 400,
+            'ts': int(foco.timestamp.timestamp() * 1000),
+            'status': 'active' if foco.severidad in ('critical', 'high') else 'monitoring',
+            'daynight': 'D', 'analysis_text': '', 'tipo_foco': '',
+        })
+
+    smn_data = [{'region': a.region or '', 'severidad': a.severidad or 'medium',
+                 'fuente': a.fuente or 'SMN', 'descripcion': (a.descripcion or '')[:200],
+                 'ts': int(a.timestamp.timestamp() * 1000)} for a in smn_list]
+
+    config = {
+        'pais': current_user.pais or '',
+        'region_tipo': getattr(current_user, 'region_tipo', '') or '',
+        'region_nombre': getattr(current_user, 'region_nombre', '') or '',
+        'username': current_user.username,
+        'institucion': getattr(current_user, 'institucion_nombre', '') or current_user.username,
+    }
+
+    return render_template('dashboard_design.html',
+        config=config,
+        focos_data=focos_data,
+        smn_data=smn_data,
+    )
 
 @app.route('/favicon.ico')
 def favicon():
