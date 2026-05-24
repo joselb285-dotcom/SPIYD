@@ -4,6 +4,7 @@ from functools import wraps
 from sqlalchemy import func
 import math
 from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO
+from superadmin import PROVINCIAS_ARG, DEPARTAMENTOS_PRY
 from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__)
@@ -105,13 +106,20 @@ def user_new():
         elif User.query.filter_by(email=email).first():
             flash('El email ya está registrado', 'error')
         else:
-            user = User(username=username, email=email, role='user')
+            pais = request.form.get('pais', '').strip() or None
+            region_tipo = request.form.get('region_tipo', 'pais').strip()
+            region_nombre = request.form.get('region_nombre', '').strip() or None
+            if region_tipo == 'pais':
+                region_nombre = None
+            user = User(username=username, email=email, role='user',
+                        pais=pais, region_tipo=region_tipo, region_nombre=region_nombre)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
             flash(f'Usuario {username} creado exitosamente', 'success')
             return redirect(url_for('admin.users'))
-    return render_template('admin/user_form.html', user=None, action='new')
+    return render_template('admin/user_form.html', user=None, action='new',
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
 
 
 @admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -127,14 +135,23 @@ def user_edit(user_id):
         if existing:
             flash('El email ya está en uso por otro usuario', 'error')
         else:
+            pais = request.form.get('pais', '').strip() or None
+            region_tipo = request.form.get('region_tipo', 'pais').strip()
+            region_nombre = request.form.get('region_nombre', '').strip() or None
+            if region_tipo == 'pais':
+                region_nombre = None
             user.email = email
             user.active = active
+            user.pais = pais
+            user.region_tipo = region_tipo
+            user.region_nombre = region_nombre
             if new_password:
                 user.set_password(new_password)
             db.session.commit()
             flash(f'Usuario {user.username} actualizado', 'success')
             return redirect(url_for('admin.users'))
-    return render_template('admin/user_form.html', user=user, action='edit')
+    return render_template('admin/user_form.html', user=user, action='edit',
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
 
 
 @admin_bp.route('/recursos')

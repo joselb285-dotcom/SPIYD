@@ -164,6 +164,14 @@ def mapa():
     with open(os.path.join(BASE_DIR, 'mapa.html'), 'r', encoding='utf-8') as f:
         html = f.read()
     html = html.replace('__MAPTILER_KEY__', maptiler_key)
+    import json as _json
+    region_cfg = _json.dumps({
+        'pais':         getattr(current_user, 'pais', None),
+        'region_tipo':  getattr(current_user, 'region_tipo', None),
+        'region_nombre':getattr(current_user, 'region_nombre', None),
+        'role':         current_user.role,
+    })
+    html = html.replace('__USER_REGION__', region_cfg)
     build_ts = datetime.utcnow().strftime('%Y%m%d%H%M%S')
     html = html.replace('</head>', f'<!-- build:{build_ts} -->\n</head>', 1)
     return html, 200, {

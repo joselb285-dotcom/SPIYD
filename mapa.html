@@ -564,8 +564,77 @@
       "Santa Cruz","Santa Fe","Santiago del Estero","Tierra del Fuego","Tucumán"
     ];
 
+    // ── Región del usuario ───────────────────────────────────────────────────
+    const USER_REGION = __USER_REGION__;
+
+    const BOUNDS_ARG_PROVINCIAS = {
+      'Buenos Aires':                    [[-41.0,-63.5],[-33.3,-56.7]],
+      'Catamarca':                       [[-29.1,-69.6],[-25.1,-65.2]],
+      'Chaco':                           [[-27.8,-62.7],[-24.0,-59.4]],
+      'Chubut':                          [[-46.9,-71.9],[-41.0,-63.7]],
+      'Ciudad Autónoma de Buenos Aires': [[-34.71,-58.53],[-34.52,-58.33]],
+      'Córdoba':                         [[-39.3,-66.3],[-29.0,-62.3]],
+      'Corrientes':                      [[-30.4,-59.5],[-27.2,-55.7]],
+      'Entre Ríos':                      [[-33.1,-60.0],[-30.0,-57.5]],
+      'Formosa':                         [[-26.5,-62.7],[-22.0,-57.9]],
+      'Jujuy':                           [[-23.8,-66.4],[-21.8,-64.2]],
+      'La Pampa':                        [[-40.1,-68.6],[-35.0,-63.6]],
+      'La Rioja':                        [[-33.5,-69.1],[-27.6,-65.4]],
+      'Mendoza':                         [[-37.6,-70.6],[-32.0,-67.3]],
+      'Misiones':                        [[-28.2,-56.1],[-25.5,-53.6]],
+      'Neuquén':                         [[-40.8,-71.9],[-36.1,-68.5]],
+      'Río Negro':                       [[-42.1,-70.9],[-38.4,-62.9]],
+      'Salta':                           [[-26.4,-68.6],[-21.9,-62.3]],
+      'San Juan':                        [[-32.9,-70.6],[-28.3,-67.4]],
+      'San Luis':                        [[-35.7,-67.6],[-32.3,-65.1]],
+      'Santa Cruz':                      [[-52.4,-72.8],[-46.4,-65.8]],
+      'Santa Fe':                        [[-34.6,-62.5],[-28.0,-59.1]],
+      'Santiago del Estero':             [[-30.8,-65.0],[-25.5,-61.4]],
+      'Tierra del Fuego':                [[-55.1,-74.0],[-52.3,-63.7]],
+      'Tucumán':                         [[-28.0,-66.3],[-26.1,-64.4]],
+    };
+    const BOUNDS_PRY_DEPARTAMENTOS = {
+      'Alto Paraguay':    [[-22.7,-62.7],[-19.3,-57.8]],
+      'Alto Paraná':      [[-26.6,-56.0],[-24.0,-54.3]],
+      'Amambay':          [[-23.2,-57.0],[-21.8,-55.5]],
+      'Asunción':         [[-25.45,-57.72],[-25.25,-57.50]],
+      'Boquerón':         [[-27.5,-62.7],[-19.3,-59.4]],
+      'Caaguazú':         [[-25.8,-57.4],[-24.4,-55.6]],
+      'Caazapá':          [[-26.5,-56.7],[-25.4,-55.4]],
+      'Canindeyú':        [[-24.5,-56.2],[-22.6,-54.5]],
+      'Central':          [[-25.7,-57.8],[-25.2,-57.3]],
+      'Concepción':       [[-23.8,-59.8],[-22.0,-56.9]],
+      'Cordillera':       [[-26.0,-57.6],[-24.7,-56.8]],
+      'Guairá':           [[-26.2,-56.8],[-25.4,-55.8]],
+      'Itapúa':           [[-27.6,-57.5],[-26.0,-55.0]],
+      'Misiones':         [[-27.4,-57.4],[-26.4,-56.6]],
+      'Ñeembucú':         [[-27.6,-58.7],[-26.4,-57.2]],
+      'Paraguarí':        [[-26.8,-58.0],[-25.5,-57.0]],
+      'Presidente Hayes': [[-25.4,-62.7],[-20.5,-57.9]],
+      'San Pedro':        [[-24.7,-57.5],[-22.5,-55.8]],
+    };
+    const BOUNDS_PAIS = {
+      'argentina': [[-55.1,-73.6],[-21.8,-53.6]],
+      'paraguay':  [[-27.6,-62.7],[-19.3,-54.3]],
+    };
+    function getRegionBounds(cfg) {
+      if (!cfg || !cfg.pais) return null;
+      if (cfg.region_tipo === 'provincia' && cfg.region_nombre)
+        return BOUNDS_ARG_PROVINCIAS[cfg.region_nombre] || BOUNDS_PAIS[cfg.pais];
+      if (cfg.region_tipo === 'departamento' && cfg.region_nombre)
+        return BOUNDS_PRY_DEPARTAMENTOS[cfg.region_nombre] || BOUNDS_PAIS[cfg.pais];
+      return BOUNDS_PAIS[cfg.pais] || null;
+    }
+
     // ── Mapa ────────────────────────────────────────────────────────────────
-    const mapa = L.map('mapa').setView([-38.4, -63.6], 4);
+    const regionBounds = getRegionBounds(USER_REGION);
+    const defaultCenter = regionBounds
+      ? [(regionBounds[0][0]+regionBounds[1][0])/2, (regionBounds[0][1]+regionBounds[1][1])/2]
+      : [-38.4, -63.6];
+    const mapa = L.map('mapa', regionBounds
+      ? { maxBounds: regionBounds, maxBoundsViscosity: 0.85, minZoom: 5 }
+      : {}).setView(defaultCenter, 4);
+    if (regionBounds) mapa.fitBounds(regionBounds);
 
     const MT = '__MAPTILER_KEY__';
     const basemaps = {
