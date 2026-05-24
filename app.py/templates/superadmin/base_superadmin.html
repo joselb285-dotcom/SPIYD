@@ -1,188 +1,111 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="dark" lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SPIYD SuperAdmin{% endblock %}</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@300..700&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: { extend: {
+        "colors": {
+          "secondary": "#a1d494","primary": "#b9c7e4","tertiary": "#e7bf99","error": "#ffb4ab",
+          "surface": "#131315","surface-container": "#1f1f21","surface-container-high": "#2a2a2c",
+          "surface-container-highest": "#343536","surface-container-lowest": "#0e0e10",
+          "surface-variant": "#343536","on-surface": "#e4e2e4","on-surface-variant": "#c5c6cd",
+          "outline-variant": "#44474d","primary-container": "#0a192f",
+          "secondary-container": "#23501e","on-secondary-container": "#90c283",
+          "on-primary-fixed": "#0d1c32","error-container": "#93000a","on-error-container": "#ffdad6"
+        },
+        "fontFamily": { "label-technical": ["JetBrains Mono"], "headline-lg": ["Space Grotesk"] },
+        "spacing": { "glass-padding": "20px","gutter": "16px" }
+      }}
+    }
+  </script>
   <style>
-    :root {
-      --sidebar: #0d0d1a; --card: #12122a; --border: rgba(139,92,246,0.15);
-      --purple: #7c3aed; --purple-light: #a78bfa; --green: #22c55e; --red: #ef4444;
-      --yellow: #f59e0b; --text: #e2e8f0; --muted: #94a3b8; --bg: #080814;
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
-
-    .sidebar {
-      width: 240px; background: var(--sidebar); border-right: 1px solid var(--border);
-      display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100;
-    }
-    .sidebar-logo {
-      padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
-      font-size: 1.2rem; font-weight: 800;
-      background: linear-gradient(90deg, var(--purple), var(--purple-light));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      text-decoration: none; display: block;
-    }
-    .sidebar-badge {
-      display: inline-block; background: rgba(124,58,237,0.2); color: var(--purple-light);
-      font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
-      letter-spacing: 1px; text-transform: uppercase; margin-left: 6px;
-      -webkit-text-fill-color: var(--purple-light);
-    }
-    .sidebar-section { padding: 12px 12px 4px; font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
-    .sidebar-link {
-      display: flex; align-items: center; gap: 10px;
-      padding: 9px 16px; margin: 1px 8px; border-radius: 8px;
-      color: var(--muted); text-decoration: none; font-size: 0.88rem; font-weight: 500;
-      transition: all .15s;
-    }
-    .sidebar-link:hover, .sidebar-link.active { background: rgba(124,58,237,0.1); color: var(--text); }
-    .sidebar-link.active { color: var(--purple-light); }
-    .sidebar-link i { width: 16px; text-align: center; }
-    .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border); }
-    .sidebar-user { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
-    .sidebar-user strong { color: var(--text); display: block; }
-    .sidebar-user .role-chip {
-      display: inline-block; background: rgba(124,58,237,0.2); color: var(--purple-light);
-      font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 20px; margin-top: 3px;
-    }
-    .btn-logout {
-      display: flex; align-items: center; gap: 8px;
-      color: var(--muted); text-decoration: none; font-size: 0.85rem;
-      padding: 6px 0; transition: color .15s;
-    }
-    .btn-logout:hover { color: var(--red); }
-
-    .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
-    .topbar {
-      background: var(--sidebar); border-bottom: 1px solid var(--border);
-      padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 50;
-    }
-    .topbar-title { font-size: 1.1rem; font-weight: 700; }
-    .topbar-breadcrumb { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
-    .content { padding: 28px; flex: 1; }
-
-    .stat-card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-      padding: 20px 24px;
-    }
-    .stat-card .label { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-    .stat-card .value { font-size: 2rem; font-weight: 800; line-height: 1; }
-    .stat-card .sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
-
-    .data-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .data-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .data-card-header h6 { margin: 0; font-weight: 700; font-size: 0.95rem; }
-    .table { color: var(--text); margin: 0; }
-    .table th { color: var(--muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border-color: var(--border); padding: 10px 16px; background: rgba(124,58,237,0.04); }
-    .table td { border-color: var(--border); padding: 12px 16px; vertical-align: middle; font-size: 0.88rem; }
-    .table tbody tr:hover { background: rgba(124,58,237,0.04); }
-
-    .badge-role { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
-    .badge-superadmin { background: rgba(124,58,237,0.2); color: var(--purple-light); }
-    .badge-admin { background: rgba(249,115,22,0.15); color: #fb923c; }
-    .badge-user { background: rgba(148,163,184,0.15); color: var(--muted); }
-    .badge-plan { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
-    .badge-basic { background: rgba(148,163,184,0.15); color: var(--muted); }
-    .badge-pro { background: rgba(59,130,246,0.15); color: #60a5fa; }
-    .badge-enterprise { background: rgba(168,85,247,0.15); color: #c084fc; }
-    .badge-active { background: rgba(34,197,94,0.15); color: var(--green); padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
-    .badge-inactive { background: rgba(239,68,68,0.15); color: var(--red); padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
-
-    .btn-spiyd { background: var(--purple); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s; }
-    .btn-spiyd:hover { opacity: .85; color: #fff; }
-    .btn-spiyd-outline { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
-    .btn-spiyd-outline:hover { background: rgba(124,58,237,0.08); color: var(--text); }
-    .btn-icon { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; color: var(--muted); cursor: pointer; transition: all .15s; font-size: 0.82rem; }
-    .btn-icon:hover { background: rgba(124,58,237,0.08); color: var(--text); }
-    .btn-icon.danger:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.08); }
-    .btn-icon.warning:hover { border-color: var(--yellow); color: var(--yellow); background: rgba(245,158,11,0.08); }
-
-    .form-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
-    .form-label { font-size: 0.82rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    .form-control, .form-select {
-      background: rgba(124,58,237,0.05); border: 1px solid var(--border);
-      color: var(--text); border-radius: 8px; padding: 9px 13px; font-size: 0.9rem;
-    }
-    .form-control:focus, .form-select:focus { background: rgba(124,58,237,0.08); border-color: var(--purple); color: var(--text); box-shadow: 0 0 0 2px rgba(124,58,237,0.2); outline: none; }
-    .form-select option { background: #12122a; }
-    .form-control::placeholder { color: var(--muted); }
-    .form-check-input { background-color: rgba(124,58,237,0.1); border-color: var(--border); }
-    .form-check-input:checked { background-color: var(--purple); border-color: var(--purple); }
-
-    .alert-spiyd { border-radius: 8px; padding: 12px 16px; font-size: 0.88rem; border: none; margin-bottom: 20px; }
-    .alert-success { background: rgba(34,197,94,0.12); color: #4ade80; border-left: 3px solid var(--green); }
-    .alert-error { background: rgba(239,68,68,0.12); color: #f87171; border-left: 3px solid var(--red); }
-    .alert-warning { background: rgba(245,158,11,0.12); color: #fbbf24; border-left: 3px solid var(--yellow); }
-
-    .search-box { position: relative; }
-    .search-box input { padding-left: 36px; }
-    .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; }
-
-    @media (max-width: 768px) {
-      .sidebar { transform: translateX(-100%); }
-      .main { margin-left: 0; }
-    }
+    body { background-color: #020617; background-image: radial-gradient(circle at 50% 50%, #0a192f 0%, #020617 100%); color: #e4e2e4; font-family: 'Inter', sans-serif; }
+    .glass-panel { background: rgba(19,19,21,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(143,144,151,0.2); box-shadow: inset 0 1px 1px rgba(255,255,255,0.05); }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(143,144,151,0.3); border-radius: 2px; }
+    select option { background: #1f1f21; }
   </style>
+  {% block head %}{% endblock %}
 </head>
-<body>
+<body class="flex min-h-screen">
 
-<aside class="sidebar">
-  <a class="sidebar-logo" href="/superadmin/">
-    SPIYD <span class="sidebar-badge">SA</span>
-  </a>
-
-  <div class="sidebar-section">Principal</div>
-  <a href="/superadmin/" class="sidebar-link {% if request.endpoint == 'superadmin.dashboard' %}active{% endif %}">
-    <i class="fas fa-gauge-high"></i> Dashboard
-  </a>
-
-  <div class="sidebar-section">Gestión</div>
-  <a href="/superadmin/users" class="sidebar-link {% if 'user' in request.endpoint %}active{% endif %}">
-    <i class="fas fa-users-gear"></i> Usuarios
-  </a>
-
-  <div class="sidebar-section">Accesos</div>
-  <a href="/admin/" class="sidebar-link" target="_blank">
-    <i class="fas fa-shield-halved"></i> Panel Admin
-  </a>
-  <a href="/mapa?auth=1" class="sidebar-link">
-    <i class="fas fa-map"></i> Ver Mapa
-  </a>
-
-  <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <strong>{{ current_user.username }}</strong>
-      <span class="role-chip">SuperAdmin</span>
-    </div>
-    <a href="/logout" class="btn-logout">
-      <i class="fas fa-right-from-bracket"></i> Cerrar Sesión
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl">
+  <div class="px-6 mb-4">
+    <h1 class="font-headline-lg text-2xl text-primary tracking-tighter">SPIYD</h1>
+    <p class="font-label-technical text-[10px] text-on-surface-variant opacity-60 tracking-widest">SuperAdmin</p>
+  </div>
+  <nav class="flex flex-col gap-1 flex-1">
+    <div class="px-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest">Principal</div>
+    <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
+       {% if request.endpoint == 'superadmin.dashboard' %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
+       href="/superadmin/">
+      <span class="material-symbols-outlined">dashboard</span>
+      <span class="font-label-technical text-[12px]">Dashboard</span>
+    </a>
+    <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
+       {% if 'user' in request.endpoint %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
+       href="/superadmin/users">
+      <span class="material-symbols-outlined">group</span>
+      <span class="font-label-technical text-[12px]">Usuarios</span>
+    </a>
+    <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest">Accesos</div>
+    <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all"
+       href="/admin/" target="_blank">
+      <span class="material-symbols-outlined">admin_panel_settings</span>
+      <span class="font-label-technical text-[12px]">Panel Admin</span>
+    </a>
+    <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all"
+       href="/mapa?auth=1">
+      <span class="material-symbols-outlined">satellite_alt</span>
+      <span class="font-label-technical text-[12px]">Ver Mapa</span>
+    </a>
+    <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all"
+       href="/">
+      <span class="material-symbols-outlined">public</span>
+      <span class="font-label-technical text-[12px]">Sitio Web</span>
+    </a>
+  </nav>
+  <div class="px-6 pt-4 border-t border-outline-variant/20">
+    <p class="text-[12px] font-bold text-on-surface font-label-technical">{{ current_user.username }}</p>
+    <span class="text-[9px] font-label-technical uppercase tracking-widest bg-primary/20 text-primary px-2 py-0.5 rounded inline-block mt-1">SuperAdmin</span>
+    <a href="/logout" class="flex items-center gap-2 text-on-surface-variant hover:text-error transition-colors mt-3 font-label-technical text-[12px]">
+      <span class="material-symbols-outlined" style="font-size:16px">logout</span> Cerrar Sesión
     </a>
   </div>
 </aside>
 
-<div class="main">
-  <div class="topbar">
+<!-- Main -->
+<div class="ml-64 flex flex-col flex-1 min-h-screen">
+  <!-- Topbar -->
+  <div class="sticky top-0 z-30 bg-surface-container border-b border-outline-variant/20 px-7 py-3.5 flex items-center justify-between">
     <div>
-      <div class="topbar-title">{% block page_title %}SuperAdmin{% endblock %}</div>
-      <div class="topbar-breadcrumb">SPIYD SuperAdmin › {% block breadcrumb %}{% endblock %}</div>
+      <div class="text-[15px] font-bold font-headline-lg text-on-surface">{% block page_title %}SuperAdmin{% endblock %}</div>
+      <div class="text-[12px] text-on-surface-variant mt-0.5">SPIYD SuperAdmin › {% block breadcrumb %}{% endblock %}</div>
     </div>
-    <div class="d-flex align-items-center gap-3">
-      <span style="font-size:0.82rem;color:var(--muted)">
-        <i class="fas fa-circle" style="color:var(--green);font-size:8px"></i> Sistema activo
-      </span>
-    </div>
+    <span class="text-[11px] text-on-surface-variant font-label-technical flex items-center gap-1.5">
+      <span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span> Sistema activo
+    </span>
   </div>
 
-  <div class="content">
+  <!-- Content -->
+  <div class="p-7 flex-1">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}
-        <div class="alert-spiyd alert-{{ 'success' if category == 'success' else 'error' if category == 'error' else 'warning' }}">
-          <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>{{ message }}
+        <div class="mb-4 px-4 py-3 rounded-lg text-[14px] border-l-4
+          {% if category == 'success' %}bg-secondary/10 text-secondary border-secondary
+          {% elif category == 'error' %}bg-error/10 text-error border-error
+          {% else %}bg-tertiary/10 text-tertiary border-tertiary{% endif %}">
+          {{ message }}
         </div>
       {% endfor %}
     {% endwith %}
@@ -190,7 +113,6 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

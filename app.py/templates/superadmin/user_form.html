@@ -1,125 +1,163 @@
 {% extends "superadmin/base_superadmin.html" %}
 {% block title %}{{ 'Nuevo Usuario' if action == 'new' else 'Editar Usuario' }} — SPIYD SuperAdmin{% endblock %}
 {% block page_title %}{{ 'Nuevo Usuario' if action == 'new' else 'Editar: ' + user.username }}{% endblock %}
-{% block breadcrumb %}<a href="/superadmin/users" style="color:var(--muted);text-decoration:none">Usuarios</a> › {{ 'Nuevo' if action == 'new' else 'Editar' }}{% endblock %}
+{% block breadcrumb %}
+  <a href="/superadmin/users" class="text-on-surface-variant hover:text-on-surface transition-colors">Usuarios</a> ›
+  {{ 'Nuevo' if action == 'new' else 'Editar' }}
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-6">
-    <div class="form-card">
-      <form method="post" enctype="multipart/form-data">
-        {% if action == 'new' %}
-        <div class="mb-4">
-          <label class="form-label">Nombre de usuario</label>
-          <input type="text" name="username" class="form-control" placeholder="johndoe" required autofocus>
-        </div>
-        {% endif %}
+<div class="flex justify-center">
+  <div class="glass-panel rounded-xl p-7 w-full max-w-2xl">
+    <form method="post" enctype="multipart/form-data" class="space-y-5">
 
-        <div class="mb-4">
-          <label class="form-label">Email</label>
-          <input type="email" name="email" class="form-control" placeholder="usuario@email.com"
-                 value="{{ user.email if user else '' }}" required>
-        </div>
+      {% if action == 'new' %}
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Nombre de usuario
+        </label>
+        <input type="text" name="username"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
+               placeholder="johndoe" required autofocus>
+      </div>
+      {% endif %}
 
-        <div class="mb-4">
-          <label class="form-label">{{ 'Contraseña' if action == 'new' else 'Nueva contraseña (dejar vacío para no cambiar)' }}</label>
-          <input type="password" name="password" class="form-control"
-                 placeholder="{{ 'Contraseña' if action == 'new' else '••••••••' }}"
-                 {% if action == 'new' %}required{% endif %}>
-        </div>
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Email
+        </label>
+        <input type="email" name="email"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
+               placeholder="usuario@email.com" value="{{ user.email if user else '' }}" required>
+      </div>
 
-        <div class="mb-4">
-          <label class="form-label">Rol</label>
-          <select name="role" class="form-select">
-            {% for r in roles %}
-              <option value="{{ r }}" {% if user and user.role == r %}selected{% elif not user and r == 'user' %}selected{% endif %}>
-                {{ r }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          {{ 'Contraseña' if action == 'new' else 'Nueva contraseña (dejar vacío para no cambiar)' }}
+        </label>
+        <input type="password" name="password"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
+               placeholder="{{ 'Contraseña' if action == 'new' else '••••••••' }}"
+               {% if action == 'new' %}required{% endif %}>
+      </div>
 
-        <div class="mb-4">
-          <label class="form-label">País</label>
-          <select name="pais" id="selectPais" class="form-select" onchange="onPaisChange()">
-            <option value="">— Sin restricción —</option>
-            <option value="argentina" {% if user and user.pais == 'argentina' %}selected{% endif %}>Argentina</option>
-            <option value="paraguay" {% if user and user.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
-          </select>
-        </div>
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Rol
+        </label>
+        <select name="role"
+                class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:border-primary/50">
+          {% for r in roles %}
+            <option value="{{ r }}" {% if user and user.role == r %}selected{% elif not user and r == 'user' %}selected{% endif %}>
+              {{ r }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
 
-        <div class="mb-4" id="divRegionTipo" style="display:none">
-          <label class="form-label">Alcance geográfico</label>
-          <select name="region_tipo" id="selectRegionTipo" class="form-select" onchange="onRegionTipoChange()">
-            <option value="pais">Todo el país</option>
-            <option value="provincia"  id="optProvincia"  style="display:none">Provincia</option>
-            <option value="departamento" id="optDepartamento" style="display:none">Departamento</option>
-          </select>
-        </div>
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          País
+        </label>
+        <select name="pais" id="selectPais"
+                class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:border-primary/50"
+                onchange="onPaisChange()">
+          <option value="">— Sin restricción —</option>
+          <option value="argentina" {% if user and user.pais == 'argentina' %}selected{% endif %}>Argentina</option>
+          <option value="paraguay" {% if user and user.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
+        </select>
+      </div>
 
-        <div class="mb-4" id="divRegionNombre" style="display:none">
-          <label class="form-label" id="labelRegionNombre">Provincia / Departamento</label>
-          <select name="region_nombre" id="selectRegionNombre" class="form-select">
-            <option value="">Seleccioná una opción</option>
-          </select>
-        </div>
+      <div id="divRegionTipo" style="display:none">
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Alcance geográfico
+        </label>
+        <select name="region_tipo" id="selectRegionTipo"
+                class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:border-primary/50"
+                onchange="onRegionTipoChange()">
+          <option value="pais">Todo el país</option>
+          <option value="provincia" id="optProvincia" style="display:none">Provincia</option>
+          <option value="departamento" id="optDepartamento" style="display:none">Departamento</option>
+        </select>
+      </div>
 
-        <hr style="border-color:var(--border);margin:8px 0 20px">
+      <div id="divRegionNombre" style="display:none">
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical"
+               id="labelRegionNombre">
+          Provincia / Departamento
+        </label>
+        <select name="region_nombre" id="selectRegionNombre"
+                class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:border-primary/50">
+          <option value="">Seleccioná una opción</option>
+        </select>
+      </div>
 
-        <div class="mb-4">
-          <label class="form-label">Institución</label>
-          <input type="text" name="institucion_nombre" class="form-control"
-                 value="{{ user.institucion_nombre if user and user.institucion_nombre else '' }}"
-                 placeholder="Defensa Civil Chaco, Bomberos Voluntarios...">
-        </div>
+      <hr class="border-outline-variant/20">
 
-        <div class="mb-4">
-          <label class="form-label">Título / Cargo</label>
-          <input type="text" name="institucion_titulo" class="form-control"
-                 value="{{ user.institucion_titulo if user and user.institucion_titulo else '' }}"
-                 placeholder="Jefe de Operaciones, Coordinador Regional...">
-        </div>
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Institución
+        </label>
+        <input type="text" name="institucion_nombre"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
+               value="{{ user.institucion_nombre if user and user.institucion_nombre else '' }}"
+               placeholder="Defensa Civil Chaco, Bomberos Voluntarios...">
+      </div>
 
-        <div class="mb-4">
-          <label class="form-label">Logo / Imagen de perfil</label>
-          {% if user and user.institucion_logo %}
-          <div class="d-flex align-items-center gap-3 mb-2">
-            <img src="{{ user.institucion_logo }}" alt="Logo actual"
-                 style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">
-            <div>
-              <div style="font-size:0.82rem;color:var(--muted)">Logo actual</div>
-              <div class="form-check mt-1">
-                <input class="form-check-input" type="checkbox" name="quitar_logo" id="quitarLogo">
-                <label class="form-check-label" for="quitarLogo" style="font-size:0.8rem;color:var(--red)">Quitar logo</label>
-              </div>
-            </div>
-          </div>
-          {% endif %}
-          <input type="file" name="institucion_logo" class="form-control" accept="image/*">
-          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">PNG, JPG o SVG · máx 300 KB</div>
-        </div>
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Título / Cargo
+        </label>
+        <input type="text" name="institucion_titulo"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
+               value="{{ user.institucion_titulo if user and user.institucion_titulo else '' }}"
+               placeholder="Jefe de Operaciones, Coordinador Regional...">
+      </div>
 
-        {% if action == 'edit' %}
-        <div class="mb-4">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="active" id="activeCheck"
-                   {{ 'checked' if user.active else '' }}>
-            <label class="form-check-label" for="activeCheck" style="font-size:0.9rem">
-              Usuario activo
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Logo / Imagen de perfil
+        </label>
+        {% if user and user.institucion_logo %}
+        <div class="flex items-center gap-3 mb-3">
+          <img src="{{ user.institucion_logo }}" alt="Logo actual"
+               class="w-14 h-14 rounded-full object-cover border border-outline-variant/30">
+          <div>
+            <div class="text-[12px] text-on-surface-variant mb-1">Logo actual</div>
+            <label class="flex items-center gap-2 cursor-pointer text-[12px] text-error">
+              <input type="checkbox" name="quitar_logo" class="rounded border-outline-variant/30 bg-surface-container-high">
+              Quitar logo
             </label>
           </div>
         </div>
         {% endif %}
+        <input type="file" name="institucion_logo" accept="image/*"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2 text-[13px] text-on-surface file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-surface-variant file:text-on-surface-variant file:text-[12px] focus:outline-none">
+        <p class="text-[11px] text-on-surface-variant mt-1">PNG, JPG o SVG · máx 300 KB</p>
+      </div>
 
-        <div class="d-flex gap-3 mt-2">
-          <button type="submit" class="btn-spiyd">
-            <i class="fas fa-{{ 'plus' if action == 'new' else 'floppy-disk' }}"></i>
-            {{ 'Crear usuario' if action == 'new' else 'Guardar cambios' }}
-          </button>
-          <a href="/superadmin/users" class="btn-spiyd-outline">Cancelar</a>
-        </div>
-      </form>
-    </div>
+      {% if action == 'edit' %}
+      <div class="flex items-center gap-3">
+        <input type="checkbox" name="active" id="activeCheck"
+               class="rounded border-outline-variant/30 bg-surface-container-high w-4 h-4"
+               {{ 'checked' if user.active else '' }}>
+        <label for="activeCheck" class="text-[14px] text-on-surface cursor-pointer">Usuario activo</label>
+      </div>
+      {% endif %}
+
+      <div class="flex gap-3 pt-2">
+        <button type="submit"
+                class="bg-secondary-container text-on-secondary-container px-5 py-2.5 rounded-lg text-[13px] font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined" style="font-size:16px">{{ 'add' if action == 'new' else 'save' }}</span>
+          {{ 'Crear usuario' if action == 'new' else 'Guardar cambios' }}
+        </button>
+        <a href="/superadmin/users"
+           class="border border-outline-variant text-on-surface-variant px-5 py-2.5 rounded-lg text-[13px] hover:text-on-surface hover:border-on-surface-variant/40 transition-all">
+          Cancelar
+        </a>
+      </div>
+
+    </form>
   </div>
 </div>
 {% endblock %}
