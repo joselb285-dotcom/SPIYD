@@ -1437,66 +1437,59 @@ def telegram_alerta():
     return jsonify({"ok": True, "enviado": True})
 
 
-# ── INPE BDQueimadas ──────────────────────────────────────────────────────────
+# ── INPE dataserver-coids (nuevo endpoint desde 2025) ─────────────────────────
 
-INPE_SATELITES = ["AQUA_M-T","TERRA_M-T","GOES-16","NPP-375","NOAA-20","METOP-B","METOP-C"]
+INPE_BASE = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv"
 
 @app.route("/inpe-focos")
 def inpe_focos():
     """
-    Proxy para INPE BDQueimadas — focos detectados en Argentina por satélites
-    distintos a NASA FIRMS (GOES-16, METOP, etc.).
+    Proxy para INPE dataserver-coids — focos diarios América del Sur,
+    filtrados por bounding box Argentina + Paraguay.
     """
-    periodo = request.args.get("periodo", "10")   # 10=24h, 20=48h, 30=72h
+    import csv, io
+    dias = int(request.args.get("dias", "1"))
+    dias = max(1, min(dias, 3))
 
-    todos   = []
-    vistos  = set()
+    todos  = []
+    vistos = set()
+    sats_vistos = set()
 
-    for sat in INPE_SATELITES:
+    for delta in range(dias):
         try:
-            url = (f"https://queimadas.dgi.inpe.br/api/focos/"
-                   f"?pais_id=33&satelite={sat}&periodo_id={periodo}")
-            r = requests.get(url, timeout=20,
-                             headers={"User-Agent": "ArgentinaFireMonitor/1.0"})
+            from datetime import timedelta
+            fecha = (datetime.utcnow() - timedelta(days=delta)).strftime("%Y%m%d")
+            url = f"{INPE_BASE}/diario/America_Sul/focos_diario_{fecha}.csv"
+            r = requests.get(url, timeout=25, headers={"User-Agent": "SPIYDFireMonitor/2.0"})
             if not r.ok:
                 continue
-            focos = r.json()
-            if not isinstance(focos, list):
-                focos = focos.get("features", []) if isinstance(focos, dict) else []
-
-            for f in focos:
-                # GeoJSON Feature o dict plano
-                if isinstance(f, dict) and "geometry" in f:
-                    coords = f["geometry"].get("coordinates", [])
-                    props  = f.get("properties", {})
-                    lat = coords[1] if len(coords) >= 2 else None
-                    lon = coords[0] if len(coords) >= 2 else None
-                    datahora = props.get("datahora") or props.get("data_hora_gmt")
-                    frp      = props.get("frp")
-                else:
-                    lat      = f.get("lat") or f.get("latitude")
-                    lon      = f.get("lon") or f.get("longitude")
-                    datahora = f.get("datahora") or f.get("data_hora_gmt")
-                    frp      = f.get("frp")
-
-                if lat is None or lon is None:
+            reader = csv.DictReader(io.StringIO(r.text))
+            for row in reader:
+                try:
+                    lat = float(row.get("lat", ""))
+                    lon = float(row.get("lon", ""))
+                except (ValueError, TypeError):
                     continue
-                # Filtrar bounding box Argentina + Paraguay
-                if not (-55.8 <= float(lat) <= -19.0 and -73.5 <= float(lon) <= -53.5):
+                if not (-55.8 <= lat <= -19.0 and -73.5 <= lon <= -53.5):
                     continue
-                clave = f"{round(float(lat),3)}|{round(float(lon),3)}"
+                clave = f"{round(lat,3)}|{round(lon,3)}"
                 if clave in vistos:
                     continue
                 vistos.add(clave)
+                sat = row.get("satelite", "INPE")
+                sats_vistos.add(sat)
                 todos.append({
-                    "lat":      float(lat),
-                    "lon":      float(lon),
+                    "lat":      lat,
+                    "lon":      lon,
                     "satelite": sat,
-                    "datahora": datahora,
-                    "frp":      frp
+                    "datahora": row.get("data_hora_gmt", ""),
+                    "frp":      row.get("frp") or None,
+                    "bioma":    row.get("bioma", ""),
+                    "pais":     row.get("pais", ""),
+                    "risco":    row.get("risco_fogo", ""),
                 })
         except Exception:
-            continue   # si un satélite falla, continúa con los demás
+            continue
 
     _guardar_focos([{
         'lat': f['lat'], 'lon': f['lon'],
@@ -1505,7 +1498,7 @@ def inpe_focos():
         'frp': f.get('frp'),
     } for f in todos])
 
-    return jsonify({"focos": todos, "total": len(todos), "satelites": INPE_SATELITES})
+    return jsonify({"focos": todos, "total": len(todos), "satelites": sorted(sats_vistos)})
 
 
 # ── FWI por grilla ────────────────────────────────────────────────────────────
