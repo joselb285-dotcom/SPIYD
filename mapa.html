@@ -890,7 +890,7 @@
       const sta = document.getElementById('radarStatus');
       if (mapa.hasLayer(capaPrecipMap)) {
         mapa.removeLayer(capaPrecipMap);
-        btn.style.opacity = '0.5';
+        btn.classList.remove('active');
         sta.textContent = 'Precipitación ocultada.';
         return;
       }
@@ -927,7 +927,7 @@
           capaPrecipMap.addLayer(c);
         });
         mapa.addLayer(capaPrecipMap);
-        btn.disabled = false; btn.textContent = '🌧 Precipit.'; btn.style.opacity = '1';
+        btn.disabled = false; btn.textContent = '🌧 Precipit.'; btn.classList.add('active');
         sta.innerHTML = `✅ <b style="color:#90caf9;">Precipitación cargada</b><br>
           <span style="font-size:10px;color:#666;">${conLluvia} zonas con lluvia · máx ${maxP} mm/h · <span style="color:#37474f;">■</span> seco <span style="color:#1565c0;">■</span> leve <span style="color:#00897b;">■</span> mod. <span style="color:#e65100;">■</span> fuerte</span>`;
       } catch(e) {
@@ -1074,7 +1074,7 @@
         document.getElementById('btnRadarAnim').textContent = '📡 Radar animado';
       }
       document.getElementById('btnGOES').style.opacity   = '0.5';
-      document.getElementById('btnPrecip').style.opacity = '0.5';
+      document.getElementById('btnPrecip').classList.remove('active');
       document.getElementById('radarStatus').textContent = 'Capas ocultadas.';
     };
 
@@ -1166,6 +1166,18 @@
     }
 
     async function cargarFocos(msg=true) {
+      const btn = document.getElementById('btnCargar');
+      if (nasaActivo) {
+        nasaActivo = false;
+        clusterAlta.clearLayers(); clusterMedia.clearLayers(); clusterBaja.clearLayers();
+        firePts = []; focoDataMap = {}; focoCounter = 0;
+        btn.classList.remove('active');
+        document.getElementById('confStrip').style.display = 'none';
+        actualizarContadores();
+        setEstado('Focos NASA desactivados.', '');
+        return;
+      }
+      nasaActivo = true;
       clusterAlta.clearLayers(); clusterMedia.clearLayers(); clusterBaja.clearLayers();
       firePts = [];
       focoDataMap = {}; focoCounter = 0;
@@ -1233,6 +1245,7 @@
         ultimoFocos = cnt;
         actualizarContadores();
         if (cnt > 0) document.getElementById('confStrip').style.display = 'flex';
+        btn.classList.add('active');
         setEstado(`Focos activos (>${dias}d): ${cnt} | ${new Date().toLocaleTimeString('es-AR')}`, cnt>0?'warn':'ok');
       } catch(e) {
         console.error(e);
@@ -1242,6 +1255,16 @@
 
     // ── SMN ─────────────────────────────────────────────────────────────────
     async function cargarAlertasSMN(msg=true) {
+      const btn = document.getElementById('btnSMN');
+      if (smnActivo) {
+        smnActivo = false;
+        capasAlertaSMN.clearLayers();
+        btn.classList.remove('active');
+        document.getElementById('resumenSMN').innerHTML = 'Alertas SMN desactivadas.';
+        actualizarContadores();
+        return;
+      }
+      smnActivo = true;
       if (msg) document.getElementById('resumenSMN').innerHTML = 'Consultando…';
       try {
         const alertas = await fetch(`${BACKEND}/smn-alertas?provincia=`).then(r => r.json());
@@ -1251,7 +1274,9 @@
         renderizarSMNPanel(alertas);
         renderizarCapasSMN(alertas);
         evaluarTelegram();
+        btn.classList.add('active');
       } catch(e) {
+        smnActivo = false;
         document.getElementById('resumenSMN').innerHTML = '<span style="color:#e53935;">Error — ¿está app.py corriendo?</span>';
       }
     }
@@ -1360,15 +1385,27 @@
     // ── Clima / 30-30-30 ────────────────────────────────────────────────────
     async function cargarClima() {
       const btn = document.getElementById('btnClima');
+      if (climaActivo) {
+        climaActivo = false;
+        capaRiesgo30.clearLayers();
+        if (mapa.hasLayer(capaRiesgo30)) mapa.removeLayer(capaRiesgo30);
+        if (capasViento) { mapa.removeLayer(capasViento); capasViento = null; }
+        btn.classList.remove('active');
+        btn.textContent='🌡 Clima y viento (Open-Meteo)'; btn.disabled=false;
+        return;
+      }
+      climaActivo = true;
       btn.disabled=true; btn.textContent='⏳ Cargando clima…';
       try {
         datosClima = await fetch(`${BACKEND}/weather-grid`).then(r=>r.json());
         renderizarZonasRiesgo(datosClima);
         actualizarIndicadores30(datosClima);
         await cargarViento();
+        btn.classList.add('active');
         btn.textContent='✅ Clima OK';
         setTimeout(()=>{btn.textContent='🌡 Clima y viento (Open-Meteo)';btn.disabled=false;},2000);
       } catch(e) {
+        climaActivo = false;
         btn.textContent='❌ Error'; setTimeout(()=>{btn.textContent='🌡 Clima y viento (Open-Meteo)';btn.disabled=false;},3000);
       }
     }
@@ -1505,8 +1542,15 @@
       return m[tipo]||tipo;
     }
 
-    let aguaActivo = false;
+    let aguaActivo   = false;
     let aguaViewportTimer = null;
+    let nasaActivo   = false;
+    let inpeActivo   = false;
+    let fwiActivo    = false;
+    let climaActivo  = false;
+    let smnActivo    = false;
+    let goesRtActivo = false;
+    let precipActivo = false;
     let ultimoBboxAgua = null;
 
     async function cargarAguaViewport() {
@@ -1550,11 +1594,11 @@
     async function cargarFuentesAgua() {
       const btn=document.getElementById('btnAgua');
       if (aguaActivo) {
-        // Toggle off
         aguaActivo = false;
         capaAgua.clearLayers();
         mapa.removeLayer(capaAgua);
         document.getElementById('togAgua').checked = false;
+        btn.classList.remove('active');
         btn.textContent='💧 Fuentes de agua';
         btn.disabled=false;
         return;
@@ -1562,6 +1606,7 @@
       aguaActivo = true;
       btn.disabled=true; btn.textContent='⏳ Consultando OSM…';
       await cargarAguaViewport();
+      btn.classList.add('active');
       btn.textContent='💧 Agua ON';
       btn.disabled=false;
 
@@ -1679,6 +1724,7 @@
         capaVeg.clearLayers();
         if (mapa.hasLayer(capaVeg)) mapa.removeLayer(capaVeg);
         document.getElementById('togVeg').checked = false;
+        btn.classList.remove('active');
         btn.textContent = '🌿 Vegetación';
         btn.disabled = false;
         return;
@@ -1692,6 +1738,7 @@
 
       // Detalle OSM al hacer zoom
       await cargarVegViewport();
+      btn.classList.add('active');
       btn.textContent = '🌿 Veg ON';
       btn.disabled = false;
 
@@ -1788,15 +1835,26 @@
 
     async function cargarFocosINPE() {
       const btn=document.getElementById('btnINPE');
+      if (inpeActivo) {
+        inpeActivo = false;
+        capaINPE.clearLayers();
+        if (mapa.hasLayer(capaINPE)) mapa.removeLayer(capaINPE);
+        btn.classList.remove('active');
+        btn.textContent='🛰 Focos INPE'; btn.disabled=false;
+        return;
+      }
+      inpeActivo = true;
       btn.disabled=true; btn.textContent='⏳ Consultando INPE…';
       try {
         const data = await fetch(`${BACKEND}/inpe-focos?periodo=10`).then(r=>r.json());
         datosINPE = data.focos || [];
         renderizarINPE(datosINPE);
         renderizarPanelINPE(datosINPE);
+        btn.classList.add('active');
         btn.textContent='✅ INPE OK';
         setTimeout(()=>{btn.textContent='🛰 Focos INPE';btn.disabled=false;},2000);
       } catch(e) {
+        inpeActivo = false;
         btn.textContent='❌ Error INPE';
         document.getElementById('inpeResumen').innerHTML='<span style="color:#e53935;">Error al conectar con INPE.</span>';
         setTimeout(()=>{btn.textContent='🛰 Focos INPE';btn.disabled=false;},3000);
@@ -1884,14 +1942,25 @@
 
     async function cargarFWI() {
       const btn=document.getElementById('btnFWI');
+      if (fwiActivo) {
+        fwiActivo = false;
+        capaFWI.clearLayers();
+        if (mapa.hasLayer(capaFWI)) mapa.removeLayer(capaFWI);
+        btn.classList.remove('active');
+        btn.textContent='🔥 Calcular FWI'; btn.disabled=false;
+        return;
+      }
+      fwiActivo = true;
       btn.disabled=true; btn.textContent='⏳ Calculando FWI…';
       try {
         datosFWI = await fetch(`${BACKEND}/fwi-grid`).then(r=>r.json());
         renderizarFWI(datosFWI);
         renderizarPanelFWI(datosFWI);
+        btn.classList.add('active');
         btn.textContent='✅ FWI calculado';
         setTimeout(()=>{btn.textContent='🔥 Calcular FWI';btn.disabled=false;},2000);
       } catch(e) {
+        fwiActivo = false;
         btn.textContent='❌ Error FWI';
         setTimeout(()=>{btn.textContent='🔥 Calcular FWI';btn.disabled=false;},3000);
       }
@@ -2220,6 +2289,16 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
 
     async function cargarGOES_RT(silencioso=false) {
       const btn = document.getElementById('btnGOES_RT');
+      if (!silencioso && goesRtActivo) {
+        goesRtActivo = false;
+        capaGOES_RT.clearLayers();
+        if (mapa.hasLayer(capaGOES_RT)) mapa.removeLayer(capaGOES_RT);
+        if (goesRtTimer) { clearInterval(goesRtTimer); goesRtTimer = null; }
+        btn.classList.remove('active');
+        btn.childNodes[0].textContent='🛰 GOES-16 Tiempo Real  '; btn.disabled=false;
+        return;
+      }
+      if (!silencioso) goesRtActivo = true;
       if (!silencioso) { btn.disabled=true; btn.childNodes[0].textContent='⏳ Consultando GOES…  '; }
       try {
         const txt = await fetch(
@@ -2258,9 +2337,10 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         const badge = document.getElementById('goesRtBadge');
         if (badge) badge.style.display = focos.length>0?'inline-block':'none';
         if (!goesRtTimer) goesRtTimer = setInterval(()=>cargarGOES_RT(true), 15*60*1000);
+        if (!silencioso) btn.classList.add('active');
         setEstado(`🛰 GOES-16 RT: ${focos.length} focos activos (actualiza c/15 min)`, focos.length>0?'warn':'ok');
       } catch(e) {
-        if (!silencioso) setEstado('Error al consultar GOES-16 RT', 'err');
+        if (!silencioso) { goesRtActivo = false; setEstado('Error al consultar GOES-16 RT', 'err'); }
       }
       if (!silencioso) { btn.childNodes[0].textContent='🛰 GOES-16 Tiempo Real  '; btn.disabled=false; }
     }
