@@ -150,7 +150,10 @@
             <div class="glass-panel p-4 rounded-xl flex items-center gap-6">
                 <div class="flex flex-col">
                     <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Sistema</span>
-                    <span class="text-lg font-bold">SPIYD Admin Panel</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg font-bold">SPIYD Admin Panel</span>
+                        <span id="alertBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.5px;animation:pulse 2s infinite"></span>
+                    </div>
                 </div>
                 <div class="w-px h-8 bg-outline-variant/30"></div>
                 <div class="flex flex-col">
@@ -374,6 +377,28 @@
 </main>
 
 <script>
+    // Notificaciones en tiempo real (polling cada 30s)
+    function fetchAlertCounts() {
+        fetch('/admin/api/alert-counts')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                const badge = document.getElementById('alertBadge');
+                const total = (data.focos_criticos || 0) + (data.smn_rojo || 0);
+                if (total > 0) {
+                    badge.textContent = total + ' ALERTA' + (total > 1 ? 'S' : '');
+                    badge.style.display = 'inline-flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+                const aiEl = document.getElementById('aiHoyCount');
+                if (aiEl) aiEl.textContent = data.ai_hoy || 0;
+            })
+            .catch(() => {});
+    }
+    fetchAlertCounts();
+    setInterval(fetchAlertCounts, 30000);
+
     function updateClock() {
         const now = new Date();
         document.getElementById('clock').textContent =

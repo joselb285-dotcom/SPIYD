@@ -1,9 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+from flask import Blueprint, render_template, redirect, url_for, request, flash, Response
 from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy import func
-import math
-from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO
+import csv, io, math
+from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog
 from superadmin import PROVINCIAS_ARG, DEPARTAMENTOS_PRY
 from datetime import datetime, timedelta
 
@@ -18,6 +18,19 @@ def admin_required(f):
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated
+
+
+def _audit(action, target_type, target_id, detail=''):
+    try:
+        db.session.add(AuditLog(
+            user_id=current_user.id,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            detail=(detail or '')[:500]
+        ))
+    except Exception:
+        pass
 
 
 @admin_bp.route('/')
@@ -147,6 +160,7 @@ def user_edit(user_id):
             user.region_nombre = region_nombre
             if new_password:
                 user.set_password(new_password)
+            _audit('edit_user', 'User', user_id, f'email={email} active={active} pais={pais}')
             db.session.commit()
             flash(f'Usuario {user.username} actualizado', 'success')
             return redirect(url_for('admin.users'))
@@ -244,6 +258,7 @@ def recurso_edit(recurso_id):
         recurso.horario = f.get('horario', '').strip() or None
         recurso.notas = f.get('notas', '').strip() or None
         recurso.activo = 'activo' in f
+        _audit('edit_recurso', 'Recurso', recurso_id, f'nombre={recurso.nombre} activo={recurso.activo}')
         db.session.commit()
         flash(f'Recurso "{recurso.nombre}" actualizado', 'success')
         return redirect(url_for('admin.recursos'))
@@ -256,6 +271,7 @@ def recurso_edit(recurso_id):
 def recurso_delete(recurso_id):
     recurso = db.get_or_404(Recurso, recurso_id)
     nombre = recurso.nombre
+    _audit('delete_recurso', 'Recurso', recurso_id, f'nombre={nombre}')
     db.session.delete(recurso)
     db.session.commit()
     flash(f'Recurso "{nombre}" eliminado', 'success')
@@ -303,6 +319,67 @@ def mapa_recursos():
                            ai_informes_json=ai_json)
 
 
+@admin_bp.route('/usuarios/export.csv')
+@login_required
+@admin_required
+def export_usuarios_csv():
+    usuarios = User.query.filter_by(role='user').order_by(User.created_at.desc()).all()
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['id', 'username', 'email', 'activo', 'pais', 'region_tipo', 'region_nombre', 'creado', 'ultimo_acceso'])
+    for u in usuarios:
+        cw.writerow([u.id, u.username, u.email, u.active, u.pais or '', u.region_tipo or '',
+                     u.region_nombre or '',
+                     u.created_at.strftime('%Y-%m-%d %H:%M') if u.created_at else '',
+                     u.last_login.strftime('%Y-%m-%d %H:%M') if u.last_login else ''])
+    return Response(si.getvalue().encode('utf-8-sig'), mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment;filename=usuarios.csv'})
+
+
+@admin_bp.route('/recursos/export.csv')
+@login_required
+@admin_required
+def export_recursos_csv():
+    recursos = Recurso.query.order_by(Recurso.tipo, Recurso.nombre).all()
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['id', 'tipo', 'nombre', 'pais', 'provincia_departamento', 'localidad',
+                 'direccion', 'lat', 'lon', 'telefono', 'email', 'contacto_nombre', 'horario', 'activo'])
+    for r in recursos:
+        cw.writerow([r.id, r.tipo, r.nombre, r.pais or '', r.provincia_departamento or '',
+                     r.localidad or '', r.direccion or '', r.lat or '', r.lon or '',
+                     r.telefono or '', r.email or '', r.contacto_nombre or '', r.horario or '', r.activo])
+    return Response(si.getvalue().encode('utf-8-sig'), mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment;filename=recursos.csv'})
+
+
+@admin_bp.route('/auditoria')
+@login_required
+@admin_required
+def auditoria():
+    page = request.args.get('page', 1, type=int)
+    accion = request.args.get('accion', '').strip()
+    query = AuditLog.query
+    if accion:
+        query = query.filter_by(action=accion)
+    pagination = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=30, error_out=False)
+    acciones = [a[0] for a in db.session.query(AuditLog.action).distinct().all() if a[0]]
+    return render_template('admin/auditoria.html', logs=pagination, accion_filter=accion, acciones=acciones)
+
+
+@admin_bp.route('/api/alert-counts')
+@login_required
+@admin_required
+def alert_counts():
+    from flask import jsonify
+    hoy = datetime.utcnow().date()
+    inicio_hoy = datetime.combine(hoy, datetime.min.time())
+    focos_criticos = FocoLog.query.filter_by(severidad='critical').filter(FocoLog.timestamp >= inicio_hoy).count()
+    smn_rojo = SmnAlerta.query.filter_by(severidad='rojo').filter(SmnAlerta.timestamp >= inicio_hoy).count()
+    ai_hoy = AiInforme.query.filter(AiInforme.timestamp >= inicio_hoy).count()
+    return jsonify({'focos_criticos': focos_criticos, 'smn_rojo': smn_rojo, 'ai_hoy': ai_hoy})
+
+
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 @admin_required
@@ -312,6 +389,7 @@ def user_delete(user_id):
         flash('No puedes eliminar tu propio usuario', 'error')
         return redirect(url_for('admin.users'))
     username = user.username
+    _audit('delete_user', 'User', user_id, f'username={username}')
     db.session.delete(user)
     db.session.commit()
     flash(f'Usuario {username} eliminado', 'success')

@@ -123,3 +123,13 @@ class FocoLog(db.Model):
     lat = db.Column(db.Float)
     lon = db.Column(db.Float)
     ai_analizado = db.Column(db.Boolean, default=False)
+
+
+class AuditLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    action = db.Column(db.String(50), index=True)
+    target_type = db.Column(db.String(30))
+    target_id = db.Column(db.Integer)
+    detail = db.Column(db.Text)
