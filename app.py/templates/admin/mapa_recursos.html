@@ -1,0 +1,117 @@
+{% extends "base_admin.html" %}
+{% block title %}Mapa de Recursos — SPIYD Admin{% endblock %}
+{% block page_title %}Mapa de Recursos{% endblock %}
+{% block breadcrumb %}Mapa Recursos{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 320px;gap:20px;height:calc(100vh - 140px)">
+
+  <!-- Mapa -->
+  <div class="data-card" style="padding:0;overflow:hidden;height:100%">
+    <div id="mapRecursos" style="width:100%;height:100%;min-height:500px"></div>
+  </div>
+
+  <!-- Panel lateral -->
+  <div style="display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+
+    <!-- Leyenda -->
+    <div class="data-card" style="padding:16px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Leyenda</div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:0.82rem">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#f87171;flex-shrink:0"></span> Bomberos</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#fb923c;flex-shrink:0"></span> Defensa Civil</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#4ade80;flex-shrink:0"></span> Hospital</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#60a5fa;flex-shrink:0"></span> CAPS</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#c084fc;flex-shrink:0"></span> Aeronave</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#fbbf24;flex-shrink:0"></span> Gubernamental</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:#94a3b8;flex-shrink:0"></span> Otro</div>
+        <hr style="border-color:var(--border);margin:4px 0">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:14px;height:14px;background:#ff4444;clip-path:polygon(50% 0%,100% 100%,0% 100%);flex-shrink:0"></span> Análisis IA reciente</div>
+      </div>
+    </div>
+
+    <!-- Recursos -->
+    <div class="data-card" style="padding:16px;flex:1;overflow-y:auto">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+        Recursos ({{ recursos|length }})
+      </div>
+      {% for r in recursos %}
+      <div onclick="flyTo({{ r.lat }}, {{ r.lon }})"
+           style="padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s"
+           onmouseover="this.style.background='rgba(255,255,255,.04)'"
+           onmouseout="this.style.background=''">
+        <div style="font-size:0.85rem;font-weight:600">{{ r.nombre }}</div>
+        <div style="font-size:0.75rem;color:var(--muted)">{{ r.tipo_label }} · {{ r.localidad or r.provincia_departamento or '—' }}</div>
+      </div>
+      {% else %}
+      <div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:16px 0">Sin recursos con coordenadas.</div>
+      {% endfor %}
+    </div>
+
+    <a href="/admin/recursos/new" class="btn-spiyd" style="text-align:center;justify-content:center">
+      <i class="fas fa-plus"></i> Nuevo recurso
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const tipoColor = {
+  bomberos:'#f87171', defensa_civil:'#fb923c', hospital:'#4ade80',
+  caps:'#60a5fa', avion:'#c084fc', gubernamental:'#fbbf24',
+  policia:'#94a3b8', municipio:'#64748b', otro:'#94a3b8'
+};
+
+const map = L.map('mapRecursos').setView([-34, -64], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap', maxZoom: 18
+}).addTo(map);
+
+function circleIcon(color) {
+  return L.divIcon({
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid rgba(255,255,255,.7);box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>`,
+    iconSize:[14,14], iconAnchor:[7,7], className:''
+  });
+}
+
+const recursos = {{ recursos_json | tojson }};
+recursos.forEach(r => {
+  if (!r.lat || !r.lon) return;
+  const color = tipoColor[r.tipo] || '#94a3b8';
+  L.marker([r.lat, r.lon], { icon: circleIcon(color) })
+    .bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:170px">
+      <b style="color:${color}">${r.tipo_label}</b><br>
+      <b>${r.nombre}</b><br>
+      ${r.localidad ? r.localidad + '<br>' : ''}
+      ${r.telefono ? '📞 ' + r.telefono + '<br>' : ''}
+      ${r.horario ? '🕐 ' + r.horario + '<br>' : ''}
+      <a href="/admin/recursos/${r.id}/edit" style="color:#fb923c">Editar</a>
+    </div>`)
+    .addTo(map);
+});
+
+const aiInformes = {{ ai_informes_json | tojson }};
+const triIcon = L.divIcon({
+  html: `<div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:14px solid #ff4444;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))"></div>`,
+  iconSize:[14,14], iconAnchor:[7,14], className:''
+});
+aiInformes.forEach(inf => {
+  if (!inf.lat || !inf.lon) return;
+  L.marker([inf.lat, inf.lon], { icon: triIcon })
+    .bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:170px">
+      <b style="color:#ff8888">🤖 Análisis IA</b><br>
+      Tipo: ${inf.tipo_foco || '—'}<br>
+      Severidad: ${inf.severidad || '—'}<br>
+      ${inf.timestamp ? new Date(inf.timestamp).toLocaleString('es-AR') : ''}
+    </div>`)
+    .addTo(map);
+});
+
+window.flyTo = function(lat, lon) {
+  map.flyTo([lat, lon], 12, { duration: 0.8 });
+};
+</script>
+{% endblock %}

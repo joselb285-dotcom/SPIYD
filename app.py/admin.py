@@ -160,6 +160,7 @@ def user_edit(user_id):
 def recursos():
     tipo_filter = request.args.get('tipo', '').strip()
     search = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
     query = Recurso.query
     if tipo_filter:
         query = query.filter_by(tipo=tipo_filter)
@@ -169,10 +170,10 @@ def recursos():
             Recurso.localidad.ilike(f'%{search}%') |
             Recurso.provincia_departamento.ilike(f'%{search}%')
         )
-    all_recursos = query.order_by(Recurso.tipo, Recurso.nombre).all()
+    pagination = query.order_by(Recurso.tipo, Recurso.nombre).paginate(page=page, per_page=50, error_out=False)
     return render_template('admin/recursos.html',
-                           recursos=all_recursos, tipos=TIPOS_RECURSO,
-                           tipo_filter=tipo_filter, search=search)
+                           recursos=pagination.items, pagination=pagination,
+                           tipos=TIPOS_RECURSO, tipo_filter=tipo_filter, search=search)
 
 
 @admin_bp.route('/recursos/new', methods=['GET', 'POST'])
@@ -259,6 +260,47 @@ def recurso_delete(recurso_id):
     db.session.commit()
     flash(f'Recurso "{nombre}" eliminado', 'success')
     return redirect(url_for('admin.recursos'))
+
+
+@admin_bp.route('/ai-informes')
+@login_required
+@admin_required
+def ai_informes():
+    page = request.args.get('page', 1, type=int)
+    tipo = request.args.get('tipo', '').strip()
+    query = AiInforme.query
+    if tipo:
+        query = query.filter_by(tipo_foco=tipo)
+    pagination = query.order_by(AiInforme.timestamp.desc()).paginate(page=page, per_page=20, error_out=False)
+    tipos_foco = db.session.query(AiInforme.tipo_foco).distinct().all()
+    tipos_foco = [t[0] for t in tipos_foco if t[0]]
+    return render_template('admin/ai_informes.html',
+                           informes=pagination, tipo_filter=tipo, tipos_foco=tipos_foco)
+
+
+@admin_bp.route('/mapa-recursos')
+@login_required
+@admin_required
+def mapa_recursos():
+    recursos_activos = Recurso.query.filter_by(activo=True).filter(
+        Recurso.lat.isnot(None), Recurso.lon.isnot(None)
+    ).all()
+    ai_recientes = AiInforme.query.filter(
+        AiInforme.lat.isnot(None)
+    ).order_by(AiInforme.timestamp.desc()).limit(50).all()
+
+    recursos_json = [{'id': r.id, 'tipo': r.tipo, 'tipo_label': r.tipo_label,
+                      'nombre': r.nombre, 'lat': r.lat, 'lon': r.lon,
+                      'localidad': r.localidad, 'telefono': r.telefono, 'horario': r.horario}
+                     for r in recursos_activos]
+    ai_json = [{'lat': a.lat, 'lon': a.lon, 'tipo_foco': a.tipo_foco,
+                'severidad': a.severidad,
+                'timestamp': a.timestamp.isoformat() if a.timestamp else None}
+               for a in ai_recientes]
+
+    return render_template('admin/mapa_recursos.html',
+                           recursos=recursos_activos, recursos_json=recursos_json,
+                           ai_informes_json=ai_json)
 
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])

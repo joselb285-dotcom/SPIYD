@@ -1,0 +1,126 @@
+{% extends "base_admin.html" %}
+{% block title %}Historial IA — SPIYD Admin{% endblock %}
+{% block page_title %}Historial de Análisis IA{% endblock %}
+{% block breadcrumb %}IA{% endblock %}
+
+{% block content %}
+<div class="data-card">
+  <div class="data-card-header">
+    <h6><i class="fas fa-robot me-2" style="color:var(--orange)"></i>
+      Análisis IA <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ informes.total }} total)</span>
+    </h6>
+    <div class="d-flex gap-2 align-items-center">
+      <form method="GET" class="d-flex gap-2">
+        <select name="tipo" class="form-select" style="width:180px" onchange="this.form.submit()">
+          <option value="">Todos los tipos</option>
+          {% for t in tipos_foco %}
+            <option value="{{ t }}" {% if tipo_filter == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+        {% if tipo_filter %}
+          <a href="/admin/ai-informes" class="btn-spiyd-outline"><i class="fas fa-times"></i></a>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  {% if informes.items %}
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Región</th>
+          <th>Severidad</th>
+          <th>Coords</th>
+          <th>Satélite</th>
+          <th>FWI</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inf in informes.items %}
+        <tr>
+          <td style="font-size:0.82rem;color:var(--muted);white-space:nowrap">
+            {{ inf.timestamp.strftime('%d/%m/%Y %H:%M') if inf.timestamp else '—' }}
+          </td>
+          <td>
+            <span class="badge-role" style="
+              background:{{ {'foco':'rgba(239,68,68,.15)','zona':'rgba(249,115,22,.15)','general':'rgba(34,197,94,.15)'}.get(inf.tipo_foco,'rgba(100,116,139,.15)') }};
+              color:{{ {'foco':'#f87171','zona':'#fb923c','general':'#4ade80'}.get(inf.tipo_foco,'#94a3b8') }}">
+              {{ inf.tipo_foco or '—' }}
+            </span>
+          </td>
+          <td style="font-size:0.85rem">{{ inf.region or '—' }}</td>
+          <td>
+            {% if inf.severidad %}
+            <span class="badge-role" style="
+              background:{{ {'CRÍTICO':'rgba(239,68,68,.15)','ALTO':'rgba(249,115,22,.15)','MODERADO':'rgba(245,158,11,.15)','BAJO':'rgba(34,197,94,.15)'}.get(inf.severidad,'rgba(100,116,139,.15)') }};
+              color:{{ {'CRÍTICO':'#f87171','ALTO':'#fb923c','MODERADO':'#fbbf24','BAJO':'#4ade80'}.get(inf.severidad,'#94a3b8') }}">
+              {{ inf.severidad }}
+            </span>
+            {% else %}—{% endif %}
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--muted)">
+            {% if inf.lat and inf.lon %}{{ "%.3f"|format(inf.lat) }}, {{ "%.3f"|format(inf.lon) }}{% else %}—{% endif %}
+          </td>
+          <td style="font-size:0.82rem;color:var(--muted)">{{ inf.satellite or '—' }}</td>
+          <td style="font-size:0.85rem">{{ inf.fwi_val or '—' }}</td>
+          <td>
+            <button class="btn-icon" onclick="verAnalisis({{ loop.index0 }})" title="Ver análisis">
+              <i class="fas fa-eye"></i>
+            </button>
+          </td>
+        </tr>
+        <!-- Contenido colapsable -->
+        <tr id="ia-detail-{{ loop.index0 }}" style="display:none">
+          <td colspan="8" style="padding:0">
+            <div style="padding:16px 20px;background:rgba(255,255,255,0.02);border-top:1px solid var(--border)">
+              <pre style="white-space:pre-wrap;font-size:0.8rem;color:#ccc;margin:0;font-family:'JetBrains Mono',monospace;line-height:1.6">{{ inf.analysis_text or 'Sin texto de análisis.' }}</pre>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if informes.pages > 1 %}
+  <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;justify-content:flex-end">
+    <span style="font-size:0.8rem;color:var(--muted)">Página {{ informes.page }} de {{ informes.pages }}</span>
+    {% if informes.has_prev %}
+      <a href="?page={{ informes.prev_num }}&tipo={{ tipo_filter }}" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
+    {% endif %}
+    {% for p in informes.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <a href="?page={{ p }}&tipo={{ tipo_filter }}"
+           class="btn-icon{% if p == informes.page %} active{% endif %}"
+           style="{% if p == informes.page %}background:rgba(249,115,22,.15);color:var(--orange);border-color:var(--orange);{% endif %}">{{ p }}</a>
+      {% else %}
+        <span style="color:var(--muted);padding:0 4px">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if informes.has_next %}
+      <a href="?page={{ informes.next_num }}&tipo={{ tipo_filter }}" class="btn-icon"><i class="fas fa-chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div style="padding:48px;text-align:center;color:var(--muted)">
+    <i class="fas fa-robot" style="font-size:2rem;margin-bottom:12px;display:block;opacity:.3"></i>
+    No hay análisis IA registrados{% if tipo_filter %} de tipo "{{ tipo_filter }}"{% endif %}.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function verAnalisis(idx) {
+  const row = document.getElementById('ia-detail-' + idx);
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+</script>
+{% endblock %}

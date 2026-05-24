@@ -172,6 +172,12 @@
   <a href="/admin/recursos" class="sidebar-link {% if 'recurso' in request.endpoint %}active{% endif %}">
     <i class="fas fa-database"></i> Recursos
   </a>
+  <a href="/admin/mapa-recursos" class="sidebar-link {% if 'mapa_recurso' in request.endpoint %}active{% endif %}">
+    <i class="fas fa-map-marked-alt"></i> Mapa Recursos
+  </a>
+  <a href="/admin/ai-informes" class="sidebar-link {% if 'ai_informe' in request.endpoint %}active{% endif %}">
+    <i class="fas fa-robot"></i> Historial IA
+  </a>
 
   <div class="sidebar-section">Aplicación</div>
   <a href="/mapa?auth=1" class="sidebar-link">
