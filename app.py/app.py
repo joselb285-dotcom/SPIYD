@@ -211,20 +211,38 @@ def dashboard_alertas():
     focos_raw = _geo(FocoLog.query.filter(FocoLog.timestamp >= cutoff).order_by(FocoLog.timestamp.desc()), FocoLog).limit(30).all()
     smn_list  = _geo(SmnAlerta.query.filter(SmnAlerta.timestamp >= cutoff).order_by(SmnAlerta.timestamp.desc()), SmnAlerta).limit(15).all()
 
+    def _safe_float(v, default=0.0):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return default
+
+    def _safe_int(v, default=0):
+        try:
+            return int(float(str(v).replace('%', '').strip()))
+        except (TypeError, ValueError):
+            return default
+
+    def _safe_ts(dt):
+        try:
+            return int(dt.timestamp() * 1000)
+        except Exception:
+            return 0
+
     focos_data = []
     for inf in ai_list:
         focos_data.append({
             'id': f'IA-{inf.id:04d}',
             'region': inf.region or 'Sin región',
-            'lat': float(inf.lat) if inf.lat else None,
-            'lon': float(inf.lon) if inf.lon else None,
+            'lat': _safe_float(inf.lat, None),
+            'lon': _safe_float(inf.lon, None),
             'severity': inf.severidad or 'medium',
             'source': inf.satellite or 'IA-SPIYD',
-            'ha': int(inf.ha) if inf.ha else 0,
-            'confidence': int(float(inf.conf)) if inf.conf else 75,
-            'frp': round(float(inf.fwi_val), 1) if inf.fwi_val else 0,
+            'ha': _safe_int(inf.ha),
+            'confidence': _safe_int(inf.conf, 75),
+            'frp': round(_safe_float(inf.fwi_val), 1),
             'temp': 400,
-            'ts': int(inf.timestamp.timestamp() * 1000),
+            'ts': _safe_ts(inf.timestamp),
             'status': 'active' if inf.severidad in ('critical', 'high') else 'monitoring',
             'daynight': 'D',
             'analysis_text': (inf.analysis_text or '')[:600],
@@ -234,20 +252,20 @@ def dashboard_alertas():
         focos_data.append({
             'id': f'FCO-{foco.id:04d}',
             'region': foco.region or 'Sin región',
-            'lat': float(foco.lat) if foco.lat else None,
-            'lon': float(foco.lon) if foco.lon else None,
+            'lat': _safe_float(foco.lat, None),
+            'lon': _safe_float(foco.lon, None),
             'severity': foco.severidad or 'medium',
             'source': foco.fuente or 'Satelital',
-            'ha': int(foco.ha) if foco.ha else 0,
+            'ha': _safe_int(foco.ha),
             'confidence': 70, 'frp': 0, 'temp': 400,
-            'ts': int(foco.timestamp.timestamp() * 1000),
+            'ts': _safe_ts(foco.timestamp),
             'status': 'active' if foco.severidad in ('critical', 'high') else 'monitoring',
             'daynight': 'D', 'analysis_text': '', 'tipo_foco': '',
         })
 
     smn_data = [{'region': a.region or '', 'severidad': a.severidad or 'medium',
                  'fuente': a.fuente or 'SMN', 'descripcion': (a.descripcion or '')[:200],
-                 'ts': int(a.timestamp.timestamp() * 1000)} for a in smn_list]
+                 'ts': _safe_ts(a.timestamp)} for a in smn_list]
 
     config = {
         'pais': current_user.pais or '',
