@@ -24,14 +24,18 @@ DEPARTAMENTOS_PRY = [
 ]
 
 
+_ALLOWED_LOGO_MIMES = {'image/png', 'image/jpeg', 'image/webp', 'image/gif'}
+
 def _procesar_logo(file_storage):
-    """Convierte un FileStorage a data URL base64. Retorna None si no hay archivo."""
+    """Convierte un FileStorage a data URL base64. Retorna None si no hay archivo válido."""
     if not file_storage or file_storage.filename == '':
+        return None
+    mime = (file_storage.content_type or '').split(';')[0].strip().lower()
+    if mime not in _ALLOWED_LOGO_MIMES:
         return None
     data = file_storage.read()
     if len(data) > 300 * 1024:
         return None
-    mime = file_storage.content_type or 'image/png'
     return f"data:{mime};base64,{base64.b64encode(data).decode()}"
 
 
@@ -108,6 +112,8 @@ def user_new():
         plan = request.form.get('plan', 'basic')
         if not username or not email or not password:
             flash('Todos los campos son obligatorios', 'error')
+        elif role not in ROLES:
+            flash('Rol inválido', 'error')
         elif User.query.filter_by(username=username).first():
             flash('El nombre de usuario ya existe', 'error')
         elif User.query.filter_by(email=email).first():
@@ -145,6 +151,10 @@ def user_edit(user_id):
         role = request.form.get('role', user.role)
         active = 'active' in request.form
         new_password = request.form.get('password', '').strip()
+        if role not in ROLES:
+            flash('Rol inválido', 'error')
+            return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES,
+                                   provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
         existing = User.query.filter(User.email == email, User.id != user_id).first()
         if existing:
             flash('El email ya está en uso por otro usuario', 'error')

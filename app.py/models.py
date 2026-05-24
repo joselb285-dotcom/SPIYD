@@ -46,22 +46,22 @@ class UsageLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     action = db.Column(db.String(100))
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     detail = db.Column(db.String(256))
 
 
 class SmnAlerta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     region = db.Column(db.String(100))
-    severidad = db.Column(db.String(20))
+    severidad = db.Column(db.String(20), index=True)
     descripcion = db.Column(db.Text)
     fuente = db.Column(db.String(50), default='SMN')
 
 
 class AiInforme(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     region = db.Column(db.String(100))
     severidad = db.Column(db.String(20))
     ha = db.Column(db.Float)
@@ -115,9 +115,9 @@ class Recurso(db.Model):
 
 class FocoLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     region = db.Column(db.String(100))
-    severidad = db.Column(db.String(20))
+    severidad = db.Column(db.String(20), index=True)
     fuente = db.Column(db.String(50))
     ha = db.Column(db.Float)
     lat = db.Column(db.Float)

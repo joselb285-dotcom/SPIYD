@@ -7,6 +7,7 @@ import requests
 import feedparser
 import math
 import os
+import threading
 import concurrent.futures
 from datetime import datetime
 from dotenv import load_dotenv
@@ -138,6 +139,7 @@ def docs_contacto():
     return send_from_directory(DOCS_DIR, 'contacto.html')
 
 @app.route('/contacto', methods=['POST'])
+@limiter.limit("3 per hour")
 def contacto_form():
     nombre = request.form.get('nombre', '').strip()
     email = request.form.get('email', '').strip()
@@ -222,7 +224,8 @@ OVERPASS_SERVERS = [
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ]
 _overpass_cache = {}   # key -> (timestamp, data)
-OVERPASS_CACHE_TTL = 3600  # 1 hora
+OVERPASS_CACHE_TTL = 7200  # 2 horas
+_overpass_lock = threading.RLock()
 
 ultimas_alertas_enviadas = set()
 
@@ -440,17 +443,19 @@ def overpass_query(ql: str, timeout: int = 40) -> list:
         "Content-Type": "application/x-www-form-urlencoded"
     }
     cache_key = ql[:200]
-    if cache_key in _overpass_cache:
-        ts, data = _overpass_cache[cache_key]
-        if _time.time() - ts < OVERPASS_CACHE_TTL:
-            return data
+    with _overpass_lock:
+        if cache_key in _overpass_cache:
+            ts, data = _overpass_cache[cache_key]
+            if _time.time() - ts < OVERPASS_CACHE_TTL:
+                return data
     last_err = None
     for server in OVERPASS_SERVERS:
         try:
             r = requests.post(server, data={"data": ql}, headers=headers, timeout=timeout)
             r.raise_for_status()
             data = r.json().get("elements", [])
-            _overpass_cache[cache_key] = (_time.time(), data)
+            with _overpass_lock:
+                _overpass_cache[cache_key] = (_time.time(), data)
             return data
         except Exception as e:
             last_err = e
@@ -522,22 +527,25 @@ def fetch_weather_point(lat, lon):
 
 _clima_cache = {"data": None, "ts": 0}
 CLIMA_CACHE_TTL = 1800
+_clima_lock = threading.RLock()
 
 def obtener_grilla_clima():
     import time as _t
-    if _clima_cache["data"] and (_t.time() - _clima_cache["ts"]) < CLIMA_CACHE_TTL:
-        return _clima_cache["data"]
-    lats = [lat for lat in GRID_LATS for _ in GRID_LONS]
-    lons = [lon for _ in GRID_LATS for lon in GRID_LONS]
-    data = fetch_multi_points(lats, lons)
-    _clima_cache["data"] = data
-    _clima_cache["ts"]   = _t.time()
-    return data
+    with _clima_lock:
+        if _clima_cache["data"] and (_t.time() - _clima_cache["ts"]) < CLIMA_CACHE_TTL:
+            return _clima_cache["data"]
+        lats = [lat for lat in GRID_LATS for _ in GRID_LONS]
+        lons = [lon for _ in GRID_LATS for lon in GRID_LONS]
+        data = fetch_multi_points(lats, lons)
+        _clima_cache["data"] = data
+        _clima_cache["ts"]   = _t.time()
+        return data
 
 
 # ── Fuentes de agua (Overpass / OSM) ─────────────────────────────────────────
 
 @app.route("/water-sources")
+@login_required
 def water_sources():
     s = float(request.args.get("s", -55.8))
     w = float(request.args.get("w", -73.5))
@@ -605,6 +613,7 @@ out center tags;
 # ── Vegetación (Overpass / OSM) ───────────────────────────────────────────────
 
 @app.route("/vegetation")
+@login_required
 def vegetation():
     s = float(request.args.get("s", -55.8))
     w = float(request.args.get("w", -73.5))
@@ -673,6 +682,7 @@ out geom tags;
 # ── Análisis IA (Claude) ──────────────────────────────────────────────────────
 
 @app.route("/ai-risk-analysis", methods=["POST"])
+@login_required
 @limiter.limit("10 per hour")
 def ai_risk_analysis():
     try:
@@ -686,20 +696,24 @@ def ai_risk_analysis():
 
     body         = request.get_json(silent=True) or {}
     weather_data = body.get("weather", [])
-    fire_count   = int(body.get("fire_count", 0))
-    fire_pts     = body.get("fire_points", [])
+    if not isinstance(weather_data, list) or len(weather_data) > 500:
+        return jsonify({"error": "weather inválido"}), 400
+    fire_pts = body.get("fire_points", [])
+    if not isinstance(fire_pts, list) or len(fire_pts) > 5000:
+        return jsonify({"error": "fire_points inválido"}), 400
+    fire_count   = max(0, min(int(body.get("fire_count", 0)), 100000))
     agua_data    = body.get("water", [])
     veg_data     = body.get("vegetation", [])
-    inpe_count   = int(body.get("inpe_count", 0))
+    inpe_count   = max(0, min(int(body.get("inpe_count", 0)), 100000))
     inpe_sats    = body.get("inpe_satelites", [])
     fwi_max      = float(body.get("fwi_max", 0))
-    fwi_extremos = int(body.get("fwi_extremos", 0))
-    smn_amarillo = int(body.get("smn_amarillo", 0))
-    smn_naranja  = int(body.get("smn_naranja", 0))
-    smn_rojo     = int(body.get("smn_rojo", 0))
-    dias         = int(body.get("dias", 1))
-    fwi_alto     = int(body.get("fwi_alto", 0))
-    fwi_muy_alto = int(body.get("fwi_muy_alto", 0))
+    fwi_extremos = max(0, min(int(body.get("fwi_extremos", 0)), 10000))
+    smn_amarillo = max(0, min(int(body.get("smn_amarillo", 0)), 1000))
+    smn_naranja  = max(0, min(int(body.get("smn_naranja", 0)), 1000))
+    smn_rojo     = max(0, min(int(body.get("smn_rojo", 0)), 1000))
+    dias         = max(1, min(int(body.get("dias", 1)), 30))
+    fwi_alto     = max(0, min(int(body.get("fwi_alto", 0)), 10000))
+    fwi_muy_alto = max(0, min(int(body.get("fwi_muy_alto", 0)), 10000))
 
     # Calcular condiciones 30-30-30
     zonas_3 = [d for d in weather_data if d.get("factores_30") == 3]
@@ -946,6 +960,7 @@ def _recursos_para_ia(lat_ref=None, lon_ref=None, max_items=30):
 
 
 @app.route("/ai-foco-analysis", methods=["POST"])
+@login_required
 @limiter.limit("20 per hour")
 def ai_foco_analysis():
     try:
@@ -1171,6 +1186,7 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
 # ── Análisis IA de zona geográfica seleccionada por el usuario ───────────────
 
 @app.route("/ai-zona-analysis", methods=["POST"])
+@login_required
 @limiter.limit("10 per hour")
 def ai_zona_analysis():
     try:
@@ -1287,6 +1303,7 @@ Generá exactamente estas 5 secciones numeradas (español, conciso, operativo):
 # ── Precipitación grid ───────────────────────────────────────────────────────
 
 @app.route("/precipitacion")
+@login_required
 def precipitacion():
     lats = list(range(-22, -56, -2))
     lons = list(range(-74, -52, 2))
@@ -1325,18 +1342,9 @@ def precipitacion():
 
 # ── Clima grid / Wind data ────────────────────────────────────────────────────
 
-@app.route("/debug-cache")
-def debug_cache():
-    import time as _t
-    return jsonify({
-        "clima_cached": _clima_cache["ts"] > 0,
-        "clima_pts": len(_clima_cache["data"]) if _clima_cache["data"] else 0,
-        "wind_cached": _wind_cache["ts"] > 0,
-        "now": _t.time(),
-        "clima_age_s": round(_t.time() - _clima_cache["ts"], 1) if _clima_cache["ts"] else None
-    })
 
 @app.route("/weather-grid")
+@login_required
 def weather_grid():
     import time as _t; t0=_t.time()
     datos = obtener_grilla_clima()
@@ -1356,44 +1364,47 @@ SA_LATS = list(range(12, -57, -5))   # 12,7,2,-3,...,-53  → 14 filas
 SA_LONS = list(range(-82, -34, 5))   # -82,-77,...,-37    → 10 columnas
 _wind_cache = {"data": None, "ts": 0}
 WIND_CACHE_TTL = 1800  # 30 minutos
+_wind_lock = threading.RLock()
 
 def _build_wind_data():
     import time as _t
-    lats = [lat for lat in SA_LATS for _ in SA_LONS]
-    lons = [lon for _ in SA_LATS for lon in SA_LONS]
-    datos = fetch_multi_points(lats, lons)
-    nx, ny = len(SA_LONS), len(SA_LATS)
-    u_data, v_data, ref_time = [], [], None
-    for d in datos:
-        if ref_time is None: ref_time = d.get("time")
-        u, v = wind_to_uv(d.get("wind_speed") or 0, d.get("wind_dir") or 0)
-        u_data.append(u); v_data.append(v)
-    header = {
-        "parameterCategory": 2,
-        "lo1": SA_LONS[0], "la1": SA_LATS[0],
-        "lo2": SA_LONS[-1], "la2": SA_LATS[-1],
-        "dx": 5, "dy": 5, "nx": nx, "ny": ny,
-        "refTime": ref_time or datetime.now().isoformat()
-    }
-    result = [
-        {"header": {**header, "parameterNumber": 2}, "data": u_data},
-        {"header": {**header, "parameterNumber": 3}, "data": v_data}
-    ]
-    _wind_cache["data"] = result
-    _wind_cache["ts"]   = _t.time()
-    return result
+    with _wind_lock:
+        if _wind_cache["data"] and (_t.time() - _wind_cache["ts"]) < WIND_CACHE_TTL:
+            return _wind_cache["data"]
+        lats = [lat for lat in SA_LATS for _ in SA_LONS]
+        lons = [lon for _ in SA_LATS for lon in SA_LONS]
+        datos = fetch_multi_points(lats, lons)
+        nx, ny = len(SA_LONS), len(SA_LATS)
+        u_data, v_data, ref_time = [], [], None
+        for d in datos:
+            if ref_time is None: ref_time = d.get("time")
+            u, v = wind_to_uv(d.get("wind_speed") or 0, d.get("wind_dir") or 0)
+            u_data.append(u); v_data.append(v)
+        header = {
+            "parameterCategory": 2,
+            "lo1": SA_LONS[0], "la1": SA_LATS[0],
+            "lo2": SA_LONS[-1], "la2": SA_LATS[-1],
+            "dx": 5, "dy": 5, "nx": nx, "ny": ny,
+            "refTime": ref_time or datetime.now().isoformat()
+        }
+        result = [
+            {"header": {**header, "parameterNumber": 2}, "data": u_data},
+            {"header": {**header, "parameterNumber": 3}, "data": v_data}
+        ]
+        _wind_cache["data"] = result
+        _wind_cache["ts"]   = _t.time()
+        return result
 
 @app.route("/wind-data")
+@login_required
 def wind_data():
-    import time as _t
-    if _wind_cache["data"] and (_t.time() - _wind_cache["ts"]) < WIND_CACHE_TTL:
-        return jsonify(_wind_cache["data"])
     return jsonify(_build_wind_data())
 
 
 # ── SMN alertas ───────────────────────────────────────────────────────────────
 
 @app.route("/smn-alertas")
+@login_required
 def smn_alertas():
     alertas = obtener_alertas_smn(request.args.get("provincia","").strip())
     _guardar_smn(alertas)
@@ -1403,6 +1414,8 @@ def smn_alertas():
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
 @app.route("/telegram-alerta", methods=["POST"])
+@login_required
+@limiter.limit("5 per minute")
 def telegram_alerta():
     data          = request.get_json(silent=True) or {}
     provincia     = data.get("provincia","Sin provincia")
@@ -1442,6 +1455,7 @@ def telegram_alerta():
 INPE_BASE = "https://dataserver-coids.inpe.br/queimadas/queimadas/focos/csv"
 
 @app.route("/inpe-focos")
+@login_required
 def inpe_focos():
     """
     Proxy para INPE dataserver-coids — focos diarios América del Sur,
@@ -1504,6 +1518,7 @@ def inpe_focos():
 # ── FWI por grilla ────────────────────────────────────────────────────────────
 
 @app.route("/fwi-grid")
+@login_required
 def fwi_grid():
     """
     Calcula el FWI (Fire Weather Index) canadiense para cada punto de la grilla,
@@ -1548,6 +1563,7 @@ FUENTES_NASA = ['VIIRS_SNPP_NRT', 'VIIRS_NOAA20_NRT', 'VIIRS_NOAA21_NRT', 'MODIS
 BBOX_ARG = "-73.5,-55.8,-53.5,-19.0"  # Argentina + Paraguay
 
 @app.route("/nasa-focos")
+@login_required
 def nasa_focos():
     import csv, io
     fuente = request.args.get("fuente", "VIIRS_SNPP_NRT")
