@@ -46,7 +46,7 @@
 <!-- Sidebar -->
 <aside class="fixed left-0 top-0 h-full w-64 z-40 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl">
     <div class="px-6 mb-4">
-        <h1 class="font-headline-lg text-2xl text-primary tracking-tighter">SPIY</h1>
+        <h1 class="font-headline-lg text-2xl text-primary tracking-tighter">SPIYD</h1>
         <p class="font-label-technical text-[10px] text-on-surface-variant opacity-60 tracking-widest">Command Center v2.4</p>
     </div>
     <nav class="flex flex-col gap-1 flex-1">
@@ -75,12 +75,17 @@
     </nav>
     <div class="mt-auto px-2 flex flex-col gap-1">
         <div class="p-3 mx-2 rounded-lg bg-surface-container-high flex items-center gap-3 mb-2">
-            <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center border border-primary/20">
-                <span class="material-symbols-outlined text-primary">person</span>
+            {% if current_user.institucion_logo %}
+            <img src="{{ current_user.institucion_logo }}" alt="logo"
+                 class="w-10 h-10 rounded-full object-cover border border-primary/20 flex-shrink-0">
+            {% else %}
+            <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center border border-primary/20 flex-shrink-0">
+                <span class="material-symbols-outlined text-primary">domain</span>
             </div>
-            <div class="flex flex-col">
-                <span class="text-[13px] font-bold">{{ current_user.username }}</span>
-                <span class="text-[10px] text-secondary font-label-technical">{{ current_user.role_label }}</span>
+            {% endif %}
+            <div class="flex flex-col min-w-0">
+                <span class="text-[13px] font-bold truncate">{{ current_user.institucion_nombre or current_user.username }}</span>
+                <span class="text-[10px] text-secondary font-label-technical truncate">{{ current_user.institucion_titulo or current_user.role_label }}</span>
             </div>
         </div>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all" href="/logout">
@@ -133,7 +138,7 @@
             <div class="glass-panel p-4 rounded-xl flex items-center gap-6">
                 <div class="flex flex-col">
                     <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Sistema</span>
-                    <span class="text-lg font-bold">SPIY Admin Panel</span>
+                    <span class="text-lg font-bold">SPIYD Admin Panel</span>
                 </div>
                 <div class="w-px h-8 bg-outline-variant/30"></div>
                 <div class="flex flex-col">

@@ -7,7 +7,7 @@
 <div class="row justify-content-center">
   <div class="col-lg-6">
     <div class="form-card">
-      <form method="post">
+      <form method="post" enctype="multipart/form-data">
         {% if action == 'new' %}
         <div class="mb-4">
           <label class="form-label">Nombre de usuario</label>
@@ -62,6 +62,41 @@
           <select name="region_nombre" id="selectRegionNombre" class="form-select">
             <option value="">Seleccioná una opción</option>
           </select>
+        </div>
+
+        <hr style="border-color:var(--border);margin:8px 0 20px">
+
+        <div class="mb-4">
+          <label class="form-label">Institución</label>
+          <input type="text" name="institucion_nombre" class="form-control"
+                 value="{{ user.institucion_nombre if user and user.institucion_nombre else '' }}"
+                 placeholder="Defensa Civil Chaco, Bomberos Voluntarios...">
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Título / Cargo</label>
+          <input type="text" name="institucion_titulo" class="form-control"
+                 value="{{ user.institucion_titulo if user and user.institucion_titulo else '' }}"
+                 placeholder="Jefe de Operaciones, Coordinador Regional...">
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Logo / Imagen de perfil</label>
+          {% if user and user.institucion_logo %}
+          <div class="d-flex align-items-center gap-3 mb-2">
+            <img src="{{ user.institucion_logo }}" alt="Logo actual"
+                 style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">
+            <div>
+              <div style="font-size:0.82rem;color:var(--muted)">Logo actual</div>
+              <div class="form-check mt-1">
+                <input class="form-check-input" type="checkbox" name="quitar_logo" id="quitarLogo">
+                <label class="form-check-label" for="quitarLogo" style="font-size:0.8rem;color:var(--red)">Quitar logo</label>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          <input type="file" name="institucion_logo" class="form-control" accept="image/*">
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">PNG, JPG o SVG · máx 300 KB</div>
         </div>
 
         {% if action == 'edit' %}

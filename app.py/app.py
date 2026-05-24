@@ -86,9 +86,12 @@ with app.app_context():
         ("ai_informe", "conf",          "VARCHAR(20)"),
         ("ai_informe", "fwi_val",       "DOUBLE PRECISION"),
         ("ai_informe", "tipo_foco",     "VARCHAR(30)"),
-        ('"user"',      "pais",          "VARCHAR(50)"),
-        ('"user"',      "region_tipo",   "VARCHAR(30)"),
-        ('"user"',      "region_nombre", "VARCHAR(100)"),
+        ('"user"',      "pais",                "VARCHAR(50)"),
+        ('"user"',      "region_tipo",         "VARCHAR(30)"),
+        ('"user"',      "region_nombre",       "VARCHAR(100)"),
+        ('"user"',      "institucion_nombre",  "VARCHAR(150)"),
+        ('"user"',      "institucion_titulo",  "VARCHAR(150)"),
+        ('"user"',      "institucion_logo",    "TEXT"),
     ]
     for _tbl, _col, _type in _new_cols:
         try:

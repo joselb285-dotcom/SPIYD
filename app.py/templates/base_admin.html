@@ -185,9 +185,21 @@
   </a>
 
   <div class="sidebar-footer">
-    <div class="sidebar-user">
-      <strong>{{ current_user.username }}</strong>
-      {{ current_user.role_label }}
+    <div class="sidebar-user" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      {% if current_user.institucion_logo %}
+        <img src="{{ current_user.institucion_logo }}" alt="logo"
+             style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0">
+      {% else %}
+        <div style="width:40px;height:40px;border-radius:50%;background:rgba(249,115,22,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-building" style="color:var(--orange);font-size:1rem"></i>
+        </div>
+      {% endif %}
+      <div style="min-width:0">
+        <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          {{ current_user.institucion_nombre or current_user.username }}
+        </strong>
+        <span style="font-size:0.75rem">{{ current_user.institucion_titulo or current_user.role_label }}</span>
+      </div>
     </div>
     <a href="/logout" class="btn-logout">
       <i class="fas fa-right-from-bracket"></i> Cerrar Sesión

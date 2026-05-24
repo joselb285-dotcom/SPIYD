@@ -1,3 +1,4 @@
+import base64
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
@@ -21,6 +22,17 @@ DEPARTAMENTOS_PRY = [
     'Caazapá', 'Canindeyú', 'Central', 'Concepción', 'Cordillera', 'Guairá',
     'Itapúa', 'Misiones', 'Ñeembucú', 'Paraguarí', 'Presidente Hayes', 'San Pedro',
 ]
+
+
+def _procesar_logo(file_storage):
+    """Convierte un FileStorage a data URL base64. Retorna None si no hay archivo."""
+    if not file_storage or file_storage.filename == '':
+        return None
+    data = file_storage.read()
+    if len(data) > 300 * 1024:
+        return None
+    mime = file_storage.content_type or 'image/png'
+    return f"data:{mime};base64,{base64.b64encode(data).decode()}"
 
 
 def superadmin_required(f):
@@ -106,8 +118,14 @@ def user_new():
             region_nombre = request.form.get('region_nombre', '').strip() or None
             if region_tipo == 'pais':
                 region_nombre = None
-            user = User(username=username, email=email, role=role or 'user',
-                        pais=pais, region_tipo=region_tipo, region_nombre=region_nombre)
+            logo = _procesar_logo(request.files.get('institucion_logo'))
+            user = User(
+                username=username, email=email, role=role or 'user',
+                pais=pais, region_tipo=region_tipo, region_nombre=region_nombre,
+                institucion_nombre=request.form.get('institucion_nombre', '').strip() or None,
+                institucion_titulo=request.form.get('institucion_titulo', '').strip() or None,
+                institucion_logo=logo,
+            )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -136,12 +154,19 @@ def user_edit(user_id):
             region_nombre = request.form.get('region_nombre', '').strip() or None
             if region_tipo == 'pais':
                 region_nombre = None
+            nuevo_logo = _procesar_logo(request.files.get('institucion_logo'))
             user.email = email
             user.role = role
             user.active = active
             user.pais = pais
             user.region_tipo = region_tipo
             user.region_nombre = region_nombre
+            user.institucion_nombre = request.form.get('institucion_nombre', '').strip() or None
+            user.institucion_titulo = request.form.get('institucion_titulo', '').strip() or None
+            if nuevo_logo:
+                user.institucion_logo = nuevo_logo
+            elif 'quitar_logo' in request.form:
+                user.institucion_logo = None
             if new_password:
                 user.set_password(new_password)
             db.session.commit()

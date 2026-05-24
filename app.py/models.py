@@ -15,9 +15,12 @@ class User(UserMixin, db.Model):
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
-    pais = db.Column(db.String(50))            # 'argentina' | 'paraguay' | None (todo)
-    region_tipo = db.Column(db.String(30))     # 'pais' | 'provincia' | 'departamento'
-    region_nombre = db.Column(db.String(100))  # nombre específico o None
+    pais = db.Column(db.String(50))
+    region_tipo = db.Column(db.String(30))
+    region_nombre = db.Column(db.String(100))
+    institucion_nombre = db.Column(db.String(150))
+    institucion_titulo = db.Column(db.String(150))
+    institucion_logo = db.Column(db.Text)
     usage_logs = db.relationship('UsageLog', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
