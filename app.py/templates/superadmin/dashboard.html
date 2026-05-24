@@ -42,11 +42,18 @@
 </head>
 <body class="min-h-screen">
 
+<div id="sidebarOverlay" onclick="closeSidebar()"
+     class="fixed inset-0 bg-black/60 z-40 hidden md:hidden"></div>
+
 <!-- Top Navigation -->
 <header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/20 shadow-sm">
-    <div class="flex justify-between items-center px-container-padding h-20">
-        <div class="flex items-center gap-gutter">
-            <span class="text-2xl font-bold text-primary tracking-tighter font-headline-lg">SPIYD</span>
+    <div class="flex justify-between items-center px-4 md:px-container-padding h-16 md:h-20">
+        <div class="flex items-center gap-3 md:gap-gutter">
+            <button onclick="toggleSidebar()"
+                    class="md:hidden p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-on-surface transition-colors inline-flex">
+                <span class="material-symbols-outlined" style="font-size:20px">menu</span>
+            </button>
+            <span class="text-xl md:text-2xl font-bold text-primary tracking-tighter font-headline-lg">SPIYD</span>
             <nav class="hidden md:flex gap-6 ml-10">
                 <a class="text-primary font-bold border-b-2 border-primary pb-1 text-[14px]" href="#">Dashboard</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors text-[14px]" href="/superadmin/users">Usuarios</a>
@@ -54,15 +61,15 @@
                 <a class="text-on-surface-variant hover:text-primary transition-colors text-[14px]" href="/admin/" target="_blank">Panel Admin</a>
             </nav>
         </div>
-        <div class="flex items-center gap-4">
-            <span class="text-[13px] text-on-surface-variant">{{ current_user.username }}</span>
-            <a href="/logout" class="px-4 py-2 rounded-lg text-error hover:bg-error/10 transition-all text-[13px]">Cerrar Sesión</a>
+        <div class="flex items-center gap-2 md:gap-4">
+            <span class="hidden sm:block text-[13px] text-on-surface-variant">{{ current_user.username }}</span>
+            <a href="/logout" class="px-3 md:px-4 py-2 rounded-lg text-error hover:bg-error/10 transition-all text-[13px]">Salir</a>
         </div>
     </div>
 </header>
 
 <!-- Sidebar -->
-<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-surface-container border-r border-outline-variant/20 shadow-xl flex flex-col py-6 gap-4 mt-20">
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 z-50 bg-surface-container border-r border-outline-variant/20 shadow-xl flex flex-col py-6 gap-4 mt-16 md:mt-20 transition-transform duration-300 -translate-x-full md:translate-x-0">
     <div class="px-6 mb-6">
         <h2 class="font-headline-lg text-primary text-xl">Command Center</h2>
         <p class="font-label-technical text-[10px] text-on-surface-variant tracking-widest">Orbital Sentinel v2.4</p>
@@ -98,9 +105,9 @@
 </aside>
 
 <!-- Main Content -->
-<main class="ml-64 pt-20 pb-12 px-container-padding">
+<main class="ml-0 md:ml-64 pt-16 md:pt-20 pb-12 px-4 md:px-container-padding">
     <!-- Dashboard Header -->
-    <div class="flex justify-between items-end mb-section-gap pt-8">
+    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 md:mb-section-gap pt-6 md:pt-8">
         <div>
             <h1 class="font-headline-lg text-3xl text-on-surface">Super Admin Panel</h1>
             <p class="text-on-surface-variant text-[14px] max-w-2xl mt-2">Visión global de infraestructura, usuarios y salud del sistema SPIYD Orbital Sentinel.</p>
@@ -118,9 +125,9 @@
     </div>
 
     <!-- Top Grid: Global Activity + Service Health -->
-    <div class="grid grid-cols-12 gap-gutter mb-section-gap">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-8 md:mb-section-gap">
         <!-- Global Activity -->
-        <div class="col-span-12 lg:col-span-8 glass-panel rounded-xl overflow-hidden min-h-[300px] relative">
+        <div class="lg:col-span-8 glass-panel rounded-xl overflow-hidden min-h-[300px] relative">
             <div class="absolute inset-0 opacity-20"
                  style="background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDMZeoKFvU4BdSiRv5EmkIUU-gwjTYp0Dqs1vkbk49n-BCCVoRmFKuqLxNajsA3LmIJ4WbcL1OVJAVaxmuPGaHtrdUUgM1Gya3HRdc3Ig90VpY6HjaPxRDSxzUah_W87qFThFswHRvDo9YB9x-6Gn4OB8N89dOf833r9AIsap0jN7KsjHHVD0_SRLVZPg3VdvHSALPsYMlq6wOjXrOSxQIvGaFfyIJ9jztwtizWYoNfTzaXCHPr6k7x40lomoOy-LkL5k5LNTpbsfR_);background-size:cover;background-position:center;mask-image:linear-gradient(to bottom,black,transparent)">
             </div>
@@ -160,7 +167,7 @@
         </div>
 
         <!-- Service Health -->
-        <div class="col-span-12 lg:col-span-4 glass-panel rounded-xl p-6 flex flex-col gap-6">
+        <div class="lg:col-span-4 glass-panel rounded-xl p-6 flex flex-col gap-6">
             <h3 class="font-headline-lg text-on-surface text-lg">Salud del Sistema</h3>
             <div class="space-y-4">
                 <div class="flex items-center justify-between p-3 rounded-lg bg-surface-container-high/50 border border-outline-variant/10">
@@ -368,7 +375,7 @@
     </div>
 </main>
 
-<footer class="ml-64 border-t border-outline-variant/20 bg-surface-container-lowest flex flex-col md:flex-row justify-between items-center p-container-padding gap-gutter mt-section-gap">
+<footer class="ml-0 md:ml-64 border-t border-outline-variant/20 bg-surface-container-lowest flex flex-col md:flex-row justify-between items-center p-4 md:p-container-padding gap-gutter mt-8 md:mt-section-gap">
     <div>
         <span class="font-headline-lg text-primary text-lg">SPIYD</span>
         <p class="text-on-surface-variant text-[13px] mt-1">© 2025 SPIYD Orbital Sentinel. Advanced Fire Prevention Systems.</p>
@@ -389,5 +396,17 @@
         document.body.appendChild(glow);
         setTimeout(() => glow.remove(), 300);
     });
+
+    function toggleSidebar() {
+        const s = document.getElementById('sidebar');
+        const o = document.getElementById('sidebarOverlay');
+        const isOpen = s.style.transform === 'translateX(0px)' || s.style.transform === 'translateX(0)';
+        s.style.transform = isOpen ? '' : 'translateX(0)';
+        o.classList.toggle('hidden', isOpen);
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').style.transform = '';
+        document.getElementById('sidebarOverlay').classList.add('hidden');
+    }
 </script>
 </body></html>

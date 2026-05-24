@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
 <style>
     :root { --glass-bg: rgba(19,19,21,0.6); --glass-border: rgba(143,144,151,0.2); }
-    body { background-color: #020617; background-image: radial-gradient(circle at 50% 50%, #0a192f 0%, #020617 100%); color: #e4e2e4; overflow: hidden; font-family: 'Inter', sans-serif; }
+    body { background-color: #020617; background-image: radial-gradient(circle at 50% 50%, #0a192f 0%, #020617 100%); color: #e4e2e4; font-family: 'Inter', sans-serif; }
     .glass-panel { background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 1px rgba(255,255,255,0.05); }
     .glow-orange { box-shadow: 0 0 25px rgba(249,115,22,0.4); }
     .glow-red { box-shadow: 0 0 30px rgba(239,68,68,0.5); }
@@ -41,10 +41,13 @@
     }
 </script>
 </head>
-<body class="flex h-screen w-full overflow-hidden">
+<body class="flex min-h-screen w-full">
+
+<div id="sidebarOverlay" onclick="closeSidebar()"
+     class="fixed inset-0 bg-black/60 z-40 hidden md:hidden"></div>
 
 <!-- Sidebar -->
-<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl">
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 z-50 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl transition-transform duration-300 -translate-x-full md:translate-x-0">
     <div class="px-6 mb-4">
         <h1 class="font-headline-lg text-2xl text-primary tracking-tighter">SPIYD</h1>
         <p class="font-label-technical text-[10px] text-on-surface-variant opacity-60 tracking-widest">Command Center v2.4</p>
@@ -112,7 +115,7 @@
 </aside>
 
 <!-- Main Content -->
-<main class="ml-64 flex-1 h-full relative overflow-hidden flex flex-col">
+<main class="ml-0 md:ml-64 flex-1 min-h-screen relative flex flex-col">
     <!-- Map Background -->
     <div class="absolute inset-0 z-0 map-grid">
         <img alt="Sentinel View" class="w-full h-full object-cover opacity-40 saturate-[0.1] contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUhI6B-TpVmHVenDgunMBwKa1OzOppG_q2hodpw9enzHAGB69uhllgKsv9dAmrYYXXelvAFuYrat_6SiROi52SXm_3hBhU5wIiN6fJQTSrYzkMTYdzwIa-dhNWx4dwmFRvqvyUZoNJImZwSAlvDKJWTcTs8KqmDSQZDSjhaRiBWa-JIgzDfhPTDufVjmiw3g3DtA241IZGEu14nmxfhALsxeBh95YTVnCPiTfqkTTso-ijuXi_4hLZ_ea-mtxvPmq5ZekJqSQax1Ew">
@@ -148,10 +151,16 @@
     </div>
 
     <!-- HUD Layer -->
-    <div class="relative z-10 flex flex-col h-full p-6 gap-6 pointer-events-none">
+    <div class="relative z-10 flex flex-col min-h-screen p-4 md:p-6 gap-4 md:gap-6 pointer-events-none">
         <!-- Top Bar -->
-        <header class="flex justify-between items-start pointer-events-auto">
-            <div class="glass-panel p-4 rounded-xl flex items-center gap-6">
+        <header class="flex flex-wrap justify-between items-start gap-3 pointer-events-auto">
+            <div class="flex items-center gap-2">
+              <button onclick="toggleSidebar()"
+                      class="md:hidden glass-panel p-2 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors inline-flex pointer-events-auto">
+                <span class="material-symbols-outlined" style="font-size:22px">menu</span>
+              </button>
+            </div>
+            <div class="glass-panel p-3 md:p-4 rounded-xl flex flex-wrap items-center gap-3 md:gap-6 flex-1">
                 <div class="flex flex-col">
                     <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Sistema</span>
                     <div class="flex items-center gap-2">
@@ -190,9 +199,9 @@
         </header>
 
         <!-- Main Layout -->
-        <div class="flex-1 flex gap-6 overflow-hidden">
+        <div class="flex-1 flex flex-col lg:flex-row gap-4 md:gap-6">
             <!-- Left: IA Reports + Quick Stats -->
-            <div class="w-80 flex flex-col gap-6 pointer-events-auto overflow-y-auto pr-2 custom-scrollbar">
+            <div class="w-full lg:w-80 flex flex-col gap-4 md:gap-6 pointer-events-auto lg:overflow-y-auto lg:pr-2 custom-scrollbar">
                 <!-- Stat Cards -->
                 <div class="grid grid-cols-2 gap-3">
                     <a href="/admin/users" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent">
@@ -291,11 +300,11 @@
                 </section>
             </div>
 
-            <!-- Center: Map Spacer -->
-            <div class="flex-1"></div>
+            <!-- Center: Map Spacer (desktop only) -->
+            <div class="hidden lg:block flex-1"></div>
 
             <!-- Right: Alerts + Severity -->
-            <div class="w-96 flex flex-col gap-6 pointer-events-auto">
+            <div class="w-full lg:w-96 flex flex-col gap-4 md:gap-6 pointer-events-auto">
                 <!-- Severity Metrics -->
                 <div class="glass-panel p-glass-padding rounded-2xl">
                     <h4 class="font-label-technical text-on-surface-variant uppercase mb-4 tracking-widest text-[10px]">Focos por Severidad</h4>
@@ -361,8 +370,8 @@
         </div>
 
         <!-- Bottom Toolbar -->
-        <footer class="flex justify-center mt-auto pointer-events-auto">
-            <div class="glass-panel p-2 rounded-full flex items-center gap-1">
+        <footer class="flex justify-center mt-4 pointer-events-auto">
+            <div class="glass-panel p-2 rounded-full flex flex-wrap items-center gap-1 justify-center">
                 <a href="/admin/users" class="px-4 py-2 hover:bg-surface-variant/30 rounded-full transition-colors text-on-surface-variant hover:text-primary font-label-technical text-[11px] flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">group</span> Gestionar Usuarios
                 </a>
@@ -418,5 +427,16 @@
         });
     }, 1000);
 
+    function toggleSidebar() {
+        const s = document.getElementById('sidebar');
+        const o = document.getElementById('sidebarOverlay');
+        const isOpen = s.style.transform === 'translateX(0px)' || s.style.transform === 'translateX(0)';
+        s.style.transform = isOpen ? '' : 'translateX(0)';
+        o.classList.toggle('hidden', isOpen);
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').style.transform = '';
+        document.getElementById('sidebarOverlay').classList.add('hidden');
+    }
 </script>
 </body></html>

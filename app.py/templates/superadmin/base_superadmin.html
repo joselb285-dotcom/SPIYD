@@ -38,8 +38,11 @@
 </head>
 <body class="flex min-h-screen">
 
+<div id="sidebarOverlay" onclick="closeSidebar()"
+     class="fixed inset-0 bg-black/60 z-40 hidden md:hidden"></div>
+
 <!-- Sidebar -->
-<aside class="fixed left-0 top-0 h-full w-64 z-40 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl">
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 z-50 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl transition-transform duration-300 -translate-x-full md:translate-x-0">
   <div class="px-6 mb-4">
     <h1 class="font-headline-lg text-2xl text-primary tracking-tighter">SPIYD</h1>
     <p class="font-label-technical text-[10px] text-on-surface-variant opacity-60 tracking-widest">SuperAdmin</p>
@@ -85,14 +88,20 @@
 </aside>
 
 <!-- Main -->
-<div class="ml-64 flex flex-col flex-1 min-h-screen">
+<div class="ml-0 md:ml-64 flex flex-col flex-1 min-h-screen">
   <!-- Topbar -->
-  <div class="sticky top-0 z-30 bg-surface-container border-b border-outline-variant/20 px-7 py-3.5 flex items-center justify-between">
-    <div>
-      <div class="text-[15px] font-bold font-headline-lg text-on-surface">{% block page_title %}SuperAdmin{% endblock %}</div>
-      <div class="text-[12px] text-on-surface-variant mt-0.5">SPIYD SuperAdmin › {% block breadcrumb %}{% endblock %}</div>
+  <div class="sticky top-0 z-30 bg-surface-container border-b border-outline-variant/20 px-4 md:px-7 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleSidebar()"
+              class="md:hidden p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-on-surface transition-colors inline-flex">
+        <span class="material-symbols-outlined" style="font-size:20px">menu</span>
+      </button>
+      <div>
+        <div class="text-[15px] font-bold font-headline-lg text-on-surface">{% block page_title %}SuperAdmin{% endblock %}</div>
+        <div class="text-[12px] text-on-surface-variant mt-0.5">SPIYD SuperAdmin › {% block breadcrumb %}{% endblock %}</div>
+      </div>
     </div>
-    <span class="text-[11px] text-on-surface-variant font-label-technical flex items-center gap-1.5">
+    <span class="text-[11px] text-on-surface-variant font-label-technical hidden sm:flex items-center gap-1.5">
       <span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span> Sistema activo
     </span>
   </div>
@@ -114,5 +123,18 @@
 </div>
 
 {% block scripts %}{% endblock %}
+<script>
+function toggleSidebar() {
+    const s = document.getElementById('sidebar');
+    const o = document.getElementById('sidebarOverlay');
+    const isOpen = s.style.transform === 'translateX(0px)' || s.style.transform === 'translateX(0)';
+    s.style.transform = isOpen ? '' : 'translateX(0)';
+    o.classList.toggle('hidden', isOpen);
+}
+function closeSidebar() {
+    document.getElementById('sidebar').style.transform = '';
+    document.getElementById('sidebarOverlay').classList.add('hidden');
+}
+</script>
 </body>
 </html>

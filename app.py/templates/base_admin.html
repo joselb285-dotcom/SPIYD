@@ -29,7 +29,9 @@
     .sidebar {
       width: 240px; background: var(--sidebar); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100;
+      transition: transform 0.3s ease;
     }
+    .sidebar.is-open { transform: translateX(0) !important; }
     .sidebar-logo {
       padding: 18px 20px 16px; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; gap: 10px;
@@ -142,15 +144,19 @@
     .search-box input { padding-left: 36px; }
     .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; }
 
+    #menuBtn { display: none; }
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
       .main { margin-left: 0; }
+      #menuBtn { display: flex; }
     }
   </style>
 </head>
 <body>
 
-<aside class="sidebar">
+<div id="sidebarOverlay" onclick="closeSidebar()"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99"></div>
+<aside class="sidebar" id="sidebar">
   <a class="sidebar-logo" href="/admin/">
     <div class="sidebar-logo-mark">⬡</div>
     <div>
@@ -218,9 +224,15 @@
 
 <div class="main">
   <div class="topbar">
-    <div>
-      <div class="topbar-title">{% block page_title %}Panel{% endblock %}</div>
-      <div class="topbar-breadcrumb">SPIYD Admin › {% block breadcrumb %}{% endblock %}</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button id="menuBtn" onclick="toggleSidebar()"
+              style="background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--muted);cursor:pointer;align-items:center;gap:6px">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div>
+        <div class="topbar-title">{% block page_title %}Panel{% endblock %}</div>
+        <div class="topbar-breadcrumb">SPIYD Admin › {% block breadcrumb %}{% endblock %}</div>
+      </div>
     </div>
     <div class="d-flex align-items-center gap-3">
       <span style="font-size:0.82rem;color:var(--muted)">
@@ -243,5 +255,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 {% block scripts %}{% endblock %}
+<script>
+function toggleSidebar() {
+    const s = document.getElementById('sidebar');
+    const o = document.getElementById('sidebarOverlay');
+    const open = s.classList.contains('is-open');
+    s.classList.toggle('is-open');
+    o.style.display = open ? 'none' : 'block';
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('is-open');
+    document.getElementById('sidebarOverlay').style.display = 'none';
+}
+</script>
 </body>
 </html>
