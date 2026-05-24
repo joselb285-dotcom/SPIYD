@@ -463,7 +463,6 @@
           <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin:9px 0 5px;">Capas adicionales</div>
           <label class="capa-toggle"><input type="checkbox" id="togTopo"><span class="capa-dot" style="background:#bdbdbd;"></span>Topografía</label>
           <label class="capa-toggle"><input type="checkbox" id="togRoads"><span class="capa-dot" style="background:#ffb74d;"></span>Caminos</label>
-          <label class="capa-toggle"><input type="checkbox" id="togRadarEstaciones" checked><span class="capa-dot" style="background:#e1f5fe;border:1px solid #29b6f6;"></span>Estaciones radar</label>
         </div>
       </div>
     </div>
@@ -520,13 +519,6 @@
           <div class="leyenda-item"><span class="color" style="background:#558b2f;"></span>Pastizal / Pradera (ALTO)</div>
           <div class="leyenda-item"><span class="color" style="background:#795548;"></span>Agrícola / Viñedo (MOD.)</div>
           <div class="leyenda-item"><span class="color" style="background:#006064;"></span>Humedal (BAJO)</div>
-        </div>
-
-        <div class="leyenda">
-          <strong>Radares SMN/INVAP</strong>
-          <div class="leyenda-item"><span style="font-size:12px;">📡</span>Estación radar (14 en red)</div>
-          <div class="leyenda-item"><span class="cbox" style="background:rgba(41,182,246,.08);border:1px solid #29b6f6;"></span>Cobertura ~240 km</div>
-          <div class="leyenda-item"><span class="cbox" style="background:rgba(41,182,246,.5);"></span>Precipitación live</div>
         </div>
 
         <div style="margin-top:8px;font-size:9px;color:#333;text-align:center;">
@@ -682,7 +674,6 @@
     const capaVeg        = L.layerGroup();
     const capaINPE       = L.layerGroup();
     const capaFWI        = L.layerGroup();
-    const capaRadarEstaciones = L.layerGroup();
     const capaGOES_RT = L.layerGroup();
 
     // Hillshade / topografía (MapTiler — hillshade transparente sobre cualquier capa)
@@ -715,7 +706,6 @@
       "🔥 FWI":                capaFWI,
       "⛰ Topografía/Relieve": topoOverlay,
       "🛣 Caminos de acceso":  roadsOverlay,
-      "📡 Radares SMN/INVAP":  capaRadarEstaciones,
       "🔴 GOES-16 Tiempo Real": capaGOES_RT
     }, { position:'topright', collapsed:true }).addTo(mapa);
 
@@ -832,23 +822,6 @@
       });
     }
 
-    // ── Radar SMN/INVAP ──────────────────────────────────────────────────────
-    const RADAR_ESTACIONES = [
-      { nombre:'Ezeiza',              lat:-34.820, lon:-58.530, tipo:'INVAP C-band', provincia:'Buenos Aires',    km:240 },
-      { nombre:'Córdoba',             lat:-31.440, lon:-64.190, tipo:'INVAP C-band', provincia:'Córdoba',         km:240 },
-      { nombre:'Resistencia',         lat:-27.460, lon:-59.050, tipo:'INVAP C-band', provincia:'Chaco',           km:240 },
-      { nombre:'Paraná',              lat:-31.780, lon:-60.480, tipo:'INVAP C-band', provincia:'Entre Ríos',      km:240 },
-      { nombre:'Santa Rosa',          lat:-36.570, lon:-64.270, tipo:'INVAP C-band', provincia:'La Pampa',        km:240 },
-      { nombre:'Mar del Plata',       lat:-38.000, lon:-57.580, tipo:'SMN C-band',   provincia:'Buenos Aires',    km:240 },
-      { nombre:'Neuquén',             lat:-38.950, lon:-68.130, tipo:'SMN C-band',   provincia:'Neuquén',         km:240 },
-      { nombre:'Bariloche',           lat:-41.150, lon:-71.160, tipo:'INVAP C-band', provincia:'Río Negro',       km:200 },
-      { nombre:'Iguazú',              lat:-25.730, lon:-54.450, tipo:'INVAP C-band', provincia:'Misiones',        km:240 },
-      { nombre:'Comodoro Rivadavia',  lat:-45.780, lon:-67.500, tipo:'SMN C-band',   provincia:'Chubut',          km:240 },
-      { nombre:'Río Grande',          lat:-53.780, lon:-67.760, tipo:'SMN C-band',   provincia:'Tierra del Fuego',km:200 },
-      { nombre:'Salta',               lat:-24.850, lon:-65.480, tipo:'INVAP C-band', provincia:'Salta',           km:240 },
-      { nombre:'Paso de los Libres',  lat:-29.680, lon:-57.080, tipo:'SMN C-band',   provincia:'Corrientes',      km:240 },
-      { nombre:'Mendoza',             lat:-32.830, lon:-68.780, tipo:'INVAP C-band', provincia:'Mendoza',         km:240 },
-    ];
 
     // ── Capas radar: GOES-16 (NASA GIBS) + IMERG precipitación ─────────────────
     const GIBS_WMS = 'https://gibs.earthdata.nasa.gov/wms/epsg3857/best/wms.cgi';
@@ -1102,59 +1075,6 @@
       return '—';
     }
 
-    function renderRadarEstaciones() {
-      capaRadarEstaciones.clearLayers();
-      RADAR_ESTACIONES.forEach(r => {
-        const circulo = L.circle([r.lat, r.lon], {
-          radius: r.km * 1000,
-          color: '#29b6f6', weight: 1, opacity: 0.35,
-          fillColor: '#29b6f6', fillOpacity: 0.04
-        });
-        const icon = L.divIcon({
-          html: `<div style="width:22px;height:22px;border-radius:50%;background:rgba(1,87,155,0.88);border:2px solid #29b6f6;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 0 8px #29b6f688;">📡</div>`,
-          iconSize:[22,22], iconAnchor:[11,11], popupAnchor:[0,-13], className:''
-        });
-        const mk = L.marker([r.lat, r.lon], { icon });
-
-        mk.on('click', async function() {
-          const popup = L.popup({ maxWidth: 220 })
-            .setLatLng([r.lat, r.lon])
-            .setContent(`<div style="font-family:monospace;font-size:11px;min-width:185px;">
-              <b style="color:#29b6f6;">📡 ${r.nombre}</b><br>
-              <span style="color:#aaa;">Cargando datos meteorológicos…</span>
-            </div>`)
-            .openOn(mapa);
-
-          const c = await fetchClimaEstacion(r.lat, r.lon);
-          let climaHtml = '<span style="color:#f44;">Sin datos</span>';
-          if (c) {
-            const dir = ['N','NE','E','SE','S','SO','O','NO'][Math.round(c.winddirection_10m/45)%8];
-            climaHtml = `
-              ${wmoDesc(c.weathercode)}<br>
-              🌡️ <b>${c.temperature_2m}°C</b> &nbsp; 💧 ${c.relative_humidity_2m}%<br>
-              🌧️ Lluvia: <b>${c.precipitation ?? 0} mm/h</b><br>
-              💨 Viento: <b>${c.windspeed_10m} km/h ${dir}</b><br>
-              ☁️ Nubosidad: ${c.cloudcover}%`;
-          }
-          popup.setContent(`<div style="font-family:monospace;font-size:11px;min-width:200px;">
-            <b style="color:#29b6f6;font-size:12px;">📡 ${r.nombre}</b><br>
-            <span style="color:#aaa;">${r.tipo} · ${r.provincia} · ${r.km} km</span><br>
-            <hr style="border-color:#333;margin:4px 0;">
-            ${climaHtml}
-            <hr style="border-color:#333;margin:4px 0;">
-            <button onclick="
-              mapa.setView([${r.lat},${r.lon}], 7);
-              if(!radarTileLayer||!mapa.hasLayer(radarTileLayer)) cargarRadarRainViewer();
-            " style="width:100%;padding:4px;background:#01579b;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:10px;margin-top:2px;">
-              🌧 Ver radar en esta zona
-            </button>
-          </div>`);
-        });
-
-        capaRadarEstaciones.addLayer(circulo);
-        capaRadarEstaciones.addLayer(mk);
-      });
-    }
 
 
     // ── Focos NASA ──────────────────────────────────────────────────────────
@@ -2262,7 +2182,6 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     document.getElementById('togFWI')  .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaFWI);        else mapa.removeLayer(capaFWI);        });
     document.getElementById('togTopo') .addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(topoOverlay);    else mapa.removeLayer(topoOverlay);    });
     document.getElementById('togRoads').addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(roadsOverlay);   else mapa.removeLayer(roadsOverlay);   });
-    document.getElementById('togRadarEstaciones').addEventListener('change',e=>{ if(e.target.checked) mapa.addLayer(capaRadarEstaciones); else mapa.removeLayer(capaRadarEstaciones); });
     document.getElementById('togViento').addEventListener('change', async e => {
       if (e.target.checked) { if (!capasViento) await cargarViento(); else mapa.addLayer(capasViento); }
       else { if (capasViento) mapa.removeLayer(capasViento); }
@@ -2535,8 +2454,6 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     // ── Inicio ────────────────────────────────────────────────────────────────
     actualizarAutoRefresh();
     actualizarContadores();
-    renderRadarEstaciones();
-    mapa.addLayer(capaRadarEstaciones);
     cargarGeoJSON().then(()=>{ cargarFocos(true); });
   </script>
 </body>
