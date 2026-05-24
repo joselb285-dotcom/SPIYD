@@ -190,6 +190,15 @@ def mapa():
 @app.route('/dashboard')
 @login_required
 def dashboard_alertas():
+    import traceback
+    from sqlalchemy import or_
+    from datetime import timedelta as _td
+    try:
+        return _dashboard_alertas_inner()
+    except Exception as exc:
+        return jsonify({"error": "dashboard_error", "detail": traceback.format_exc()}), 500
+
+def _dashboard_alertas_inner():
     from sqlalchemy import or_
     from datetime import timedelta as _td
 
