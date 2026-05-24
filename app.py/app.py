@@ -681,19 +681,82 @@ out geom tags;
 
 # ── Análisis IA (Claude) ──────────────────────────────────────────────────────
 
+_IA_SYSTEM_PROMPT = (
+    "Sos un agente de IA especializado en incendios forestales, rurales y de interfaz urbano-forestal "
+    "en Argentina y Paraguay. Tenés experiencia en coordinación operativa de brigadas, análisis satelital, "
+    "meteorología aplicada al fuego, logística de emergencia y aplicación de la Regla 30-30-30.\n\n"
+    "Tu función es analizar en tiempo real focos detectados por satélites y datos meteorológicos, "
+    "tomando como referencia las coordenadas seleccionadas por el usuario. Debés generar un análisis "
+    "técnico-operativo completo y un protocolo de acción concreto, priorizando siempre la seguridad "
+    "del personal y la protección de vidas humanas.\n\n"
+    "Para cada coordenada seleccionada, analizá:\n"
+    "1. Ubicación del foco.\n"
+    "2. Fuente satelital y nivel de confianza.\n"
+    "3. Condiciones meteorológicas actuales.\n"
+    "4. Aplicación de la Regla 30-30-30.\n"
+    "5. Riesgo de propagación.\n"
+    "6. Tipo de zona afectada.\n"
+    "7. Dirección probable de avance del fuego.\n"
+    "8. Cercanía a viviendas, rutas, escuelas, infraestructura crítica, reservas, campos productivos o comunidades.\n"
+    "9. Recursos cercanos disponibles: bomberos, Defensa Civil, hospitales o centros de salud, municipios, "
+    "policía o fuerzas de seguridad, fuentes de agua, puntos de abastecimiento, rutas y accesos.\n"
+    "10. Protocolo de acción recomendado.\n\n"
+    "Clasificá el evento como Prioridad 1, 2, 3 o 4:\n"
+    "- Prioridad 1: crítica, con riesgo para vidas humanas o propagación extrema.\n"
+    "- Prioridad 2: alta, con incendio activo y posible expansión importante.\n"
+    "- Prioridad 3: media, con propagación moderada.\n"
+    "- Prioridad 4: baja, foco aislado o posible falso positivo.\n\n"
+    "Respondé siempre con esta estructura exacta:\n\n"
+    "# Análisis operativo de foco de incendio\n\n"
+    "## 1. Resumen ejecutivo\n"
+    "Incluí coordenadas, ubicación aproximada, prioridad, riesgo meteorológico, riesgo de propagación y recomendación inmediata.\n\n"
+    "## 2. Datos detectados\n"
+    "Incluí fuente satelital, fecha/hora, confianza y observaciones.\n\n"
+    "## 3. Condiciones meteorológicas\n"
+    "Incluí temperatura, humedad, viento, dirección, ráfagas, precipitaciones y evaluación Regla 30-30-30.\n\n"
+    "## 4. Análisis territorial\n"
+    "Describí tipo de zona, vegetación, accesibilidad, infraestructura cercana y dirección probable de avance.\n\n"
+    "## 5. Recursos cercanos\n"
+    "Listá bomberos, defensa civil, centros de salud, fuentes de agua, rutas de acceso y puntos de abastecimiento más cercanos.\n\n"
+    "## 6. Protocolo de acción\n"
+    "Dividí en fases: Confirmación · Activación inicial · Seguridad operativa · Ataque inicial o contención · "
+    "Logística y abastecimiento · Comunicación y coordinación · Monitoreo · Cierre y reporte.\n\n"
+    "## 7. Alertas y advertencias\n"
+    "Indicá riesgos principales y medidas preventivas.\n\n"
+    "## 8. Incertidumbre del análisis\n"
+    "Indicá datos faltantes, supuestos y nivel de confianza general.\n\n"
+    "## 9. Recomendación final\n"
+    "Cerrá con una acción inmediata, clara y ejecutiva.\n\n"
+    "No inventes datos. Si algún dato no está disponible, indicalo claramente. "
+    "No recomiendes acciones peligrosas para civiles. Siempre priorizá la seguridad del personal "
+    "y recomendá intervención de autoridades competentes cuando el riesgo sea alto, muy alto o extremo."
+)
+
+
+def _llamar_ia(system_prompt, user_prompt, model="claude-sonnet-4-6", max_tokens=2000):
+    try:
+        import anthropic
+    except ImportError:
+        return None, (jsonify({"error": "Instala: pip install anthropic"}), 503)
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None, (jsonify({"error": "ANTHROPIC_API_KEY no configurada"}), 503)
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        kwargs = {"model": model, "max_tokens": max_tokens,
+                  "messages": [{"role": "user", "content": user_prompt}]}
+        if system_prompt:
+            kwargs["system"] = system_prompt
+        msg = client.messages.create(**kwargs)
+        return msg.content[0].text, None
+    except Exception as e:
+        return None, (jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502)
+
+
 @app.route("/ai-risk-analysis", methods=["POST"])
 @login_required
 @limiter.limit("10 per hour")
 def ai_risk_analysis():
-    try:
-        import anthropic
-    except ImportError:
-        return jsonify({"error": "Instala: pip install anthropic"}), 503
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return jsonify({"error": "ANTHROPIC_API_KEY no configurada"}), 503
-
     body         = request.get_json(silent=True) or {}
     weather_data = body.get("weather", [])
     if not isinstance(weather_data, list) or len(weather_data) > 500:
@@ -747,57 +810,6 @@ def ai_risk_analysis():
 
     smn_resumen = f"Amarillas: {smn_amarillo} | Naranja: {smn_naranja} | Rojas: {smn_rojo}" if (smn_amarillo + smn_naranja + smn_rojo) > 0 else "Sin alertas activas"
     inpe_resumen = f"{inpe_count} focos — satélites: {', '.join(inpe_sats)}" if inpe_count else "Sin datos INPE"
-
-    SYSTEM_PROMPT = (
-        "Sos un agente de IA especializado en incendios forestales, rurales y de interfaz urbano-forestal "
-        "en Argentina y Paraguay. Tenés experiencia en coordinación operativa de brigadas, análisis satelital, "
-        "meteorología aplicada al fuego, logística de emergencia y aplicación de la Regla 30-30-30.\n\n"
-        "Tu función es analizar en tiempo real focos detectados por satélites y datos meteorológicos, "
-        "tomando como referencia las coordenadas seleccionadas por el usuario. Debés generar un análisis "
-        "técnico-operativo completo y un protocolo de acción concreto, priorizando siempre la seguridad "
-        "del personal y la protección de vidas humanas.\n\n"
-        "Para cada coordenada seleccionada, analizá:\n"
-        "1. Ubicación del foco.\n"
-        "2. Fuente satelital y nivel de confianza.\n"
-        "3. Condiciones meteorológicas actuales.\n"
-        "4. Aplicación de la Regla 30-30-30.\n"
-        "5. Riesgo de propagación.\n"
-        "6. Tipo de zona afectada.\n"
-        "7. Dirección probable de avance del fuego.\n"
-        "8. Cercanía a viviendas, rutas, escuelas, infraestructura crítica, reservas, campos productivos o comunidades.\n"
-        "9. Recursos cercanos disponibles: bomberos, Defensa Civil, hospitales o centros de salud, municipios, "
-        "policía o fuerzas de seguridad, fuentes de agua, puntos de abastecimiento, rutas y accesos.\n"
-        "10. Protocolo de acción recomendado.\n\n"
-        "Clasificá el evento como Prioridad 1, 2, 3 o 4:\n"
-        "- Prioridad 1: crítica, con riesgo para vidas humanas o propagación extrema.\n"
-        "- Prioridad 2: alta, con incendio activo y posible expansión importante.\n"
-        "- Prioridad 3: media, con propagación moderada.\n"
-        "- Prioridad 4: baja, foco aislado o posible falso positivo.\n\n"
-        "Respondé siempre con esta estructura exacta:\n\n"
-        "# Análisis operativo de foco de incendio\n\n"
-        "## 1. Resumen ejecutivo\n"
-        "Incluí coordenadas, ubicación aproximada, prioridad, riesgo meteorológico, riesgo de propagación y recomendación inmediata.\n\n"
-        "## 2. Datos detectados\n"
-        "Incluí fuente satelital, fecha/hora, confianza y observaciones.\n\n"
-        "## 3. Condiciones meteorológicas\n"
-        "Incluí temperatura, humedad, viento, dirección, ráfagas, precipitaciones y evaluación Regla 30-30-30.\n\n"
-        "## 4. Análisis territorial\n"
-        "Describí tipo de zona, vegetación, accesibilidad, infraestructura cercana y dirección probable de avance.\n\n"
-        "## 5. Recursos cercanos\n"
-        "Listá bomberos, defensa civil, centros de salud, fuentes de agua, rutas de acceso y puntos de abastecimiento más cercanos.\n\n"
-        "## 6. Protocolo de acción\n"
-        "Dividí en fases: Confirmación · Activación inicial · Seguridad operativa · Ataque inicial o contención · "
-        "Logística y abastecimiento · Comunicación y coordinación · Monitoreo · Cierre y reporte.\n\n"
-        "## 7. Alertas y advertencias\n"
-        "Indicá riesgos principales y medidas preventivas.\n\n"
-        "## 8. Incertidumbre del análisis\n"
-        "Indicá datos faltantes, supuestos y nivel de confianza general.\n\n"
-        "## 9. Recomendación final\n"
-        "Cerrá con una acción inmediata, clara y ejecutiva.\n\n"
-        "No inventes datos. Si algún dato no está disponible, indicalo claramente. "
-        "No recomiendes acciones peligrosas para civiles. Siempre priorizá la seguridad del personal "
-        "y recomendá intervención de autoridades competentes cuando el riesgo sea alto, muy alto o extremo."
-    )
 
     prompt = f"""Analizá los siguientes datos satelitales y meteorológicos en tiempo real (período: {dias} día(s)):
 
@@ -859,22 +871,14 @@ Datos faltantes, supuestos utilizados y nivel de confianza general del análisis
 ## 9. Recomendación final
 Acción inmediata, clara y ejecutiva."""
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2400,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}]
-        )
-    except Exception as e:
-        return jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502
+    analysis_txt, err = _llamar_ia(_IA_SYSTEM_PROMPT, prompt, max_tokens=2400)
+    if err:
+        return err
 
     try:
         sev = ('critical' if (fire_count > 100 or fwi_max >= 24)
                else 'high' if (fire_count > 30 or fwi_max >= 12)
                else 'medium')
-        analysis_txt = msg.content[0].text
         db.session.add(AiInforme(
             region='Argentina',
             severidad=sev,
@@ -889,9 +893,9 @@ Acción inmediata, clara y ejecutiva."""
         db.session.rollback()
 
     return jsonify({
-        "analysis": msg.content[0].text,
-        "zonas_3":  zonas_3,
-        "zonas_2":  zonas_2,
+        "analysis":   analysis_txt,
+        "zonas_3":    zonas_3,
+        "zonas_2":    zonas_2,
         "fire_count": fire_count
     })
 
@@ -963,15 +967,6 @@ def _recursos_para_ia(lat_ref=None, lon_ref=None, max_items=30):
 @login_required
 @limiter.limit("20 per hour")
 def ai_foco_analysis():
-    try:
-        import anthropic
-    except ImportError:
-        return jsonify({"error": "Instala: pip install anthropic"}), 503
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return jsonify({"error": "ANTHROPIC_API_KEY no configurada"}), 503
-
     body      = request.get_json(silent=True) or {}
     lat       = float(body.get("lat", -34))
     lon       = float(body.get("lon", -64))
@@ -1100,67 +1095,9 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
 
 7. ⚡ PRIMERAS ACCIONES (próximos 30 min): Lista de exactamente 5 acciones inmediatas ordenadas por urgencia, con responsable sugerido (bomberos/defensa civil/cuadrilla forestal)."""
 
-    FOCO_SYSTEM_PROMPT = (
-        "Sos un agente de IA especializado en incendios forestales, rurales y de interfaz urbano-forestal "
-        "en Argentina y Paraguay. Tenés experiencia en coordinación operativa de brigadas, análisis satelital, "
-        "meteorología aplicada al fuego, logística de emergencia y aplicación de la Regla 30-30-30.\n\n"
-        "Tu función es analizar en tiempo real focos detectados por satélites y datos meteorológicos, "
-        "tomando como referencia las coordenadas seleccionadas por el usuario. Debés generar un análisis "
-        "técnico-operativo completo y un protocolo de acción concreto, priorizando siempre la seguridad "
-        "del personal y la protección de vidas humanas.\n\n"
-        "Para cada coordenada seleccionada, analizá:\n"
-        "1. Ubicación del foco.\n"
-        "2. Fuente satelital y nivel de confianza.\n"
-        "3. Condiciones meteorológicas actuales.\n"
-        "4. Aplicación de la Regla 30-30-30.\n"
-        "5. Riesgo de propagación.\n"
-        "6. Tipo de zona afectada.\n"
-        "7. Dirección probable de avance del fuego.\n"
-        "8. Cercanía a viviendas, rutas, escuelas, infraestructura crítica, reservas, campos productivos o comunidades.\n"
-        "9. Recursos cercanos disponibles: bomberos, Defensa Civil, hospitales o centros de salud, municipios, "
-        "policía o fuerzas de seguridad, fuentes de agua, puntos de abastecimiento, rutas y accesos.\n"
-        "10. Protocolo de acción recomendado.\n\n"
-        "Clasificá el evento como Prioridad 1, 2, 3 o 4:\n"
-        "- Prioridad 1: crítica, con riesgo para vidas humanas o propagación extrema.\n"
-        "- Prioridad 2: alta, con incendio activo y posible expansión importante.\n"
-        "- Prioridad 3: media, con propagación moderada.\n"
-        "- Prioridad 4: baja, foco aislado o posible falso positivo.\n\n"
-        "Respondé siempre con esta estructura exacta:\n\n"
-        "# Análisis operativo de foco de incendio\n\n"
-        "## 1. Resumen ejecutivo\n"
-        "Incluí coordenadas, ubicación aproximada, prioridad, riesgo meteorológico, riesgo de propagación y recomendación inmediata.\n\n"
-        "## 2. Datos detectados\n"
-        "Incluí fuente satelital, fecha/hora, confianza y observaciones.\n\n"
-        "## 3. Condiciones meteorológicas\n"
-        "Incluí temperatura, humedad, viento, dirección, ráfagas, precipitaciones y evaluación Regla 30-30-30.\n\n"
-        "## 4. Análisis territorial\n"
-        "Describí tipo de zona, vegetación, accesibilidad, infraestructura cercana y dirección probable de avance.\n\n"
-        "## 5. Recursos cercanos\n"
-        "Listá bomberos, defensa civil, centros de salud, fuentes de agua, rutas de acceso y puntos de abastecimiento más cercanos.\n\n"
-        "## 6. Protocolo de acción\n"
-        "Dividí en fases: Confirmación · Activación inicial · Seguridad operativa · Ataque inicial o contención · "
-        "Logística y abastecimiento · Comunicación y coordinación · Monitoreo · Cierre y reporte.\n\n"
-        "## 7. Alertas y advertencias\n"
-        "Indicá riesgos principales y medidas preventivas.\n\n"
-        "## 8. Incertidumbre del análisis\n"
-        "Indicá datos faltantes, supuestos y nivel de confianza general.\n\n"
-        "## 9. Recomendación final\n"
-        "Cerrá con una acción inmediata, clara y ejecutiva.\n\n"
-        "No inventes datos. Si algún dato no está disponible, indicalo claramente. "
-        "No recomiendes acciones peligrosas para civiles. Siempre priorizá la seguridad del personal "
-        "y recomendá intervención de autoridades competentes cuando el riesgo sea alto, muy alto o extremo."
-    )
-
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
-            system=FOCO_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}]
-        )
-    except Exception as e:
-        return jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502
+    analysis_txt, err = _llamar_ia(_IA_SYSTEM_PROMPT, prompt, max_tokens=2000)
+    if err:
+        return err
 
     try:
         db.session.add(AiInforme(
@@ -1168,7 +1105,7 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
             severidad=_fwi_to_severidad(fwi_local),
             ha=None,
             user_id=current_user.id,
-            analysis_text=msg.content[0].text,
+            analysis_text=analysis_txt,
             lat=lat,
             lon=lon,
             satellite=satellite,
@@ -1180,7 +1117,7 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
     except Exception:
         db.session.rollback()
 
-    return jsonify({"analysis": msg.content[0].text})
+    return jsonify({"analysis": analysis_txt})
 
 
 # ── Análisis IA de zona geográfica seleccionada por el usuario ───────────────
@@ -1189,15 +1126,6 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
 @login_required
 @limiter.limit("10 per hour")
 def ai_zona_analysis():
-    try:
-        import anthropic
-    except ImportError:
-        return jsonify({"error": "Instala: pip install anthropic"}), 503
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return jsonify({"error": "ANTHROPIC_API_KEY no configurada"}), 503
-
     body        = request.get_json(silent=True) or {}
     s           = float(body.get("s", -35))
     w           = float(body.get("w", -65))
@@ -1287,17 +1215,11 @@ Generá exactamente estas 5 secciones numeradas (español, conciso, operativo):
 4. 🚒 ACCIONES RECOMENDADAS: 3 acciones concretas y prioritarias para esta zona.
 5. ⚡ FACTOR CRÍTICO: el elemento de mayor riesgo que define la situación en esta zona."""
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=600,
-            messages=[{"role": "user", "content": prompt}]
-        )
-    except Exception as e:
-        return jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502
+    analysis_txt, err = _llamar_ia(None, prompt, model="claude-haiku-4-5-20251001", max_tokens=600)
+    if err:
+        return err
 
-    return jsonify({"analysis": msg.content[0].text})
+    return jsonify({"analysis": analysis_txt})
 
 
 # ── Precipitación grid ───────────────────────────────────────────────────────
