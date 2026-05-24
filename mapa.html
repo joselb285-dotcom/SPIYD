@@ -636,11 +636,10 @@
       : {}).setView(defaultCenter, 4);
     if (regionBounds) mapa.fitBounds(regionBounds);
 
-    const MT = '__MAPTILER_KEY__';
     const basemaps = {
       "🛰 Satelital": L.tileLayer(
-        `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MT}`,
-        { attribution:'&copy; MapTiler &copy; OpenStreetMap', maxZoom:19, maxNativeZoom:18 }
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution:'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics', maxZoom:19, maxNativeZoom:19 }
       ),
       "🗺 Calles": L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
@@ -684,10 +683,10 @@
     const capaFWI        = L.layerGroup();
     const capaGOES_RT = L.layerGroup();
 
-    // Hillshade / topografía (MapTiler — hillshade transparente sobre cualquier capa)
+    // Hillshade / topografía (ESRI World Hillshade — transparente sobre cualquier capa)
     const topoOverlay = L.tileLayer(
-      `https://api.maptiler.com/tiles/hillshade/{z}/{x}/{y}.webp?key=${MT}`,
-      { opacity:0.4, attribution:'&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>', maxZoom:19, maxNativeZoom:14, errorTileUrl:'' }
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+      { opacity:0.35, attribution:'Tiles &copy; Esri &mdash; Source: Esri, USGS, NGA, NASA', maxZoom:16, maxNativeZoom:16, errorTileUrl:'' }
     );
 
     // Caminos (CartoDB labels — más liviano que OSM completo)
