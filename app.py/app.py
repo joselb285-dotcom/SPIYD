@@ -187,7 +187,10 @@ def mapa():
 
 @app.route('/dashboard')
 def dashboard_alertas():
-    return render_template('dashboard_design.html')
+    tmpl_path = os.path.join(MODULE_DIR, 'templates', 'dashboard_design.html')
+    with open(tmpl_path, 'r', encoding='utf-8') as f:
+        html = f.read()
+    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 @app.route('/favicon.ico')
 def favicon():
