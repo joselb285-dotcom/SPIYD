@@ -29,10 +29,19 @@
 
         <div class="mb-3">
           <label class="form-label">Contraseña {% if action == 'edit' %}(dejar vacío para no cambiar){% else %}*{% endif %}</label>
-          <input class="form-control" type="password" name="password"
+          <input class="form-control" type="password" name="password" id="fieldPassword"
                  {% if action == 'new' %}required{% endif %}
                  placeholder="••••••••" autocomplete="new-password">
         </div>
+
+        {% if action == 'new' %}
+        <div class="mb-3">
+          <label class="form-label">Confirmar contraseña *</label>
+          <input class="form-control" type="password" id="fieldConfirm"
+                 required placeholder="••••••••" autocomplete="new-password">
+          <div id="pwMatch" style="font-size:0.75rem;margin-top:4px;display:none"></div>
+        </div>
+        {% endif %}
 
         <div class="mb-3">
           <label class="form-label">Rol *</label>
@@ -44,7 +53,9 @@
         </div>
 
         <div class="mb-3">
-          <label class="form-label">País asignado</label>
+          <label class="form-label">País asignado
+            <span title="Restringe al usuario para ver solo datos del país seleccionado." style="cursor:help;color:var(--muted);font-size:0.8rem;font-weight:400"> (?)</span>
+          </label>
           <select name="pais" id="selectPais" class="form-select" onchange="onPaisChange()">
             <option value="">— Sin restricción —</option>
             <option value="argentina" {% if user and user.pais == 'argentina' %}selected{% endif %}>Argentina</option>
@@ -53,7 +64,9 @@
         </div>
 
         <div class="mb-3" id="divRegionTipo" style="display:none">
-          <label class="form-label">Alcance geográfico</label>
+          <label class="form-label">Alcance geográfico
+            <span title="'Todo el país' sin restricción adicional. 'Provincia/Departamento' limita al usuario a una región específica." style="cursor:help;color:var(--muted);font-size:0.8rem;font-weight:400"> (?)</span>
+          </label>
           <select name="region_tipo" id="selectRegionTipo" class="form-select" onchange="onRegionTipoChange()">
             <option value="pais">Todo el país</option>
             <option value="provincia"  id="optProvincia"  style="display:none">Provincia</option>
@@ -165,6 +178,22 @@ window.addEventListener('DOMContentLoaded', () => {
       onRegionTipoChange();
       if (initRegionNombre) document.getElementById('selectRegionNombre').value = initRegionNombre;
     }
+  }
+
+  const pw = document.getElementById('fieldPassword');
+  const cf = document.getElementById('fieldConfirm');
+  if (pw && cf) {
+    function checkMatch() {
+      const msg = document.getElementById('pwMatch');
+      if (!cf.value) { msg.style.display = 'none'; return; }
+      const ok = pw.value === cf.value;
+      msg.style.display = 'block';
+      msg.textContent = ok ? '✓ Las contraseñas coinciden' : '✗ Las contraseñas no coinciden';
+      msg.style.color = ok ? 'var(--green)' : 'var(--red)';
+      cf.setCustomValidity(ok ? '' : 'Las contraseñas no coinciden');
+    }
+    pw.addEventListener('input', checkMatch);
+    cf.addEventListener('input', checkMatch);
   }
 });
 </script>

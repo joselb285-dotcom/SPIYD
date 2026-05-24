@@ -10,7 +10,7 @@
       <form method="post">
 
         <div class="row g-4 mb-4">
-          <div class="col-md-6">
+          <div class="col-md-5">
             <label class="form-label">Tipo de recurso *</label>
             <select name="tipo" class="form-select" required>
               {% for val, label in tipos %}
@@ -20,10 +20,19 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-5">
             <label class="form-label">Nombre *</label>
             <input type="text" name="nombre" class="form-control" required autofocus
                    value="{{ recurso.nombre if recurso else '' }}" placeholder="Ej: Cuartel Central Resistencia">
+          </div>
+          <div class="col-md-2 d-flex align-items-end pb-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="activo" id="activoCheck"
+                     {{ 'checked' if not recurso or recurso.activo else '' }}>
+              <label class="form-check-label" for="activoCheck" style="font-size:0.85rem;white-space:nowrap">
+                Activo <span style="font-size:0.72rem;color:var(--muted);display:block">visible para IA</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -120,16 +129,6 @@
           <label class="form-label">Notas adicionales</label>
           <textarea name="notas" class="form-control" rows="3"
                     placeholder="Capacidad de respuesta, equipamiento especial, protocolos, etc.">{{ recurso.notas if recurso and recurso.notas else '' }}</textarea>
-        </div>
-
-        <div class="mb-4">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="activo" id="activoCheck"
-                   {{ 'checked' if not recurso or recurso.activo else '' }}>
-            <label class="form-check-label" for="activoCheck" style="font-size:0.9rem">
-              Recurso activo (visible para el agente IA)
-            </label>
-          </div>
         </div>
 
         <div class="d-flex gap-3 mt-2">

@@ -95,13 +95,15 @@ def dashboard():
 @admin_required
 def users():
     search = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
     query = User.query.filter_by(role='user')
     if search:
         query = query.filter(
             (User.username.ilike(f'%{search}%')) | (User.email.ilike(f'%{search}%'))
         )
-    all_users = query.order_by(User.created_at.desc()).all()
-    return render_template('admin/users.html', users=all_users, search=search)
+    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=30, error_out=False)
+    return render_template('admin/users.html', users=pagination.items,
+                           pagination=pagination, search=search)
 
 
 @admin_bp.route('/users/new', methods=['GET', 'POST'])
@@ -173,11 +175,14 @@ def user_edit(user_id):
 @admin_required
 def recursos():
     tipo_filter = request.args.get('tipo', '').strip()
+    pais_filter = request.args.get('pais', '').strip()
     search = request.args.get('q', '').strip()
     page = request.args.get('page', 1, type=int)
     query = Recurso.query
     if tipo_filter:
         query = query.filter_by(tipo=tipo_filter)
+    if pais_filter:
+        query = query.filter_by(pais=pais_filter)
     if search:
         query = query.filter(
             Recurso.nombre.ilike(f'%{search}%') |
@@ -187,7 +192,8 @@ def recursos():
     pagination = query.order_by(Recurso.tipo, Recurso.nombre).paginate(page=page, per_page=50, error_out=False)
     return render_template('admin/recursos.html',
                            recursos=pagination.items, pagination=pagination,
-                           tipos=TIPOS_RECURSO, tipo_filter=tipo_filter, search=search)
+                           tipos=TIPOS_RECURSO, tipo_filter=tipo_filter,
+                           pais_filter=pais_filter, search=search)
 
 
 @admin_bp.route('/recursos/new', methods=['GET', 'POST'])
@@ -284,14 +290,21 @@ def recurso_delete(recurso_id):
 def ai_informes():
     page = request.args.get('page', 1, type=int)
     tipo = request.args.get('tipo', '').strip()
+    severidad = request.args.get('severidad', '').strip()
+    region_q = request.args.get('region', '').strip()
     query = AiInforme.query
     if tipo:
         query = query.filter_by(tipo_foco=tipo)
+    if severidad:
+        query = query.filter_by(severidad=severidad)
+    if region_q:
+        query = query.filter(AiInforme.region.ilike(f'%{region_q}%'))
     pagination = query.order_by(AiInforme.timestamp.desc()).paginate(page=page, per_page=20, error_out=False)
-    tipos_foco = db.session.query(AiInforme.tipo_foco).distinct().all()
-    tipos_foco = [t[0] for t in tipos_foco if t[0]]
+    tipos_foco = [t[0] for t in db.session.query(AiInforme.tipo_foco).distinct().all() if t[0]]
     return render_template('admin/ai_informes.html',
-                           informes=pagination, tipo_filter=tipo, tipos_foco=tipos_foco)
+                           informes=pagination, tipo_filter=tipo,
+                           severidad_filter=severidad, region_filter=region_q,
+                           tipos_foco=tipos_foco)
 
 
 @admin_bp.route('/mapa-recursos')
@@ -359,12 +372,27 @@ def export_recursos_csv():
 def auditoria():
     page = request.args.get('page', 1, type=int)
     accion = request.args.get('accion', '').strip()
+    fecha_desde = request.args.get('desde', '').strip()
+    fecha_hasta = request.args.get('hasta', '').strip()
     query = AuditLog.query
     if accion:
         query = query.filter_by(action=accion)
+    if fecha_desde:
+        try:
+            query = query.filter(AuditLog.timestamp >= datetime.strptime(fecha_desde, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if fecha_hasta:
+        try:
+            query = query.filter(AuditLog.timestamp < datetime.strptime(fecha_hasta, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError:
+            pass
     pagination = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=30, error_out=False)
     acciones = [a[0] for a in db.session.query(AuditLog.action).distinct().all() if a[0]]
-    return render_template('admin/auditoria.html', logs=pagination, accion_filter=accion, acciones=acciones)
+    admin_ids = {log.user_id for log in pagination.items if log.user_id}
+    admin_names = {u.id: u.username for u in User.query.filter(User.id.in_(admin_ids)).all()} if admin_ids else {}
+    return render_template('admin/auditoria.html', logs=pagination, accion_filter=accion, acciones=acciones,
+                           admin_names=admin_names, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta)
 
 
 @admin_bp.route('/api/alert-counts')

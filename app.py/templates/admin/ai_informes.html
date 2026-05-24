@@ -9,15 +9,27 @@
     <h6><i class="fas fa-robot me-2" style="color:var(--orange)"></i>
       Análisis IA <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ informes.total }} total)</span>
     </h6>
-    <div class="d-flex gap-2 align-items-center">
-      <form method="GET" class="d-flex gap-2">
-        <select name="tipo" class="form-select" style="width:180px" onchange="this.form.submit()">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <form method="GET" class="d-flex gap-2 flex-wrap align-items-center">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" name="region" value="{{ region_filter }}" class="form-control"
+                 placeholder="Región..." style="width:140px">
+        </div>
+        <select name="tipo" class="form-select" style="width:140px" onchange="this.form.submit()">
           <option value="">Todos los tipos</option>
           {% for t in tipos_foco %}
             <option value="{{ t }}" {% if tipo_filter == t %}selected{% endif %}>{{ t }}</option>
           {% endfor %}
         </select>
-        {% if tipo_filter %}
+        <select name="severidad" class="form-select" style="width:130px" onchange="this.form.submit()">
+          <option value="">Toda severidad</option>
+          <option value="critical" {% if severidad_filter == 'critical' %}selected{% endif %}>Crítico</option>
+          <option value="high"     {% if severidad_filter == 'high'     %}selected{% endif %}>Alto</option>
+          <option value="medium"   {% if severidad_filter == 'medium'   %}selected{% endif %}>Medio</option>
+        </select>
+        <button type="submit" class="btn-spiyd-outline"><i class="fas fa-filter"></i></button>
+        {% if tipo_filter or severidad_filter or region_filter %}
           <a href="/admin/ai-informes" class="btn-spiyd-outline"><i class="fas fa-times"></i></a>
         {% endif %}
       </form>
@@ -56,9 +68,9 @@
           <td>
             {% if inf.severidad %}
             <span class="badge-role" style="
-              background:{{ {'CRÍTICO':'rgba(239,68,68,.15)','ALTO':'rgba(249,115,22,.15)','MODERADO':'rgba(245,158,11,.15)','BAJO':'rgba(34,197,94,.15)'}.get(inf.severidad,'rgba(100,116,139,.15)') }};
-              color:{{ {'CRÍTICO':'#f87171','ALTO':'#fb923c','MODERADO':'#fbbf24','BAJO':'#4ade80'}.get(inf.severidad,'#94a3b8') }}">
-              {{ inf.severidad }}
+              background:{{ {'critical':'rgba(239,68,68,.15)','high':'rgba(249,115,22,.15)','medium':'rgba(245,158,11,.15)'}.get(inf.severidad,'rgba(100,116,139,.15)') }};
+              color:{{ {'critical':'#f87171','high':'#fb923c','medium':'#fbbf24'}.get(inf.severidad,'#94a3b8') }}">
+              {{ {'critical':'Crítico','high':'Alto','medium':'Medio'}.get(inf.severidad, inf.severidad) }}
             </span>
             {% else %}—{% endif %}
           </td>
@@ -68,16 +80,17 @@
           <td style="font-size:0.82rem;color:var(--muted)">{{ inf.satellite or '—' }}</td>
           <td style="font-size:0.85rem">{{ inf.fwi_val or '—' }}</td>
           <td>
-            <button class="btn-icon" onclick="verAnalisis({{ loop.index0 }})" title="Ver análisis">
-              <i class="fas fa-eye"></i>
+            <button class="btn-icon" id="btn-{{ loop.index0 }}" onclick="toggleAnalisis({{ loop.index0 }})" title="Ver análisis">
+              <i class="fas fa-eye" id="icon-{{ loop.index0 }}"></i>
             </button>
           </td>
         </tr>
-        <!-- Contenido colapsable -->
         <tr id="ia-detail-{{ loop.index0 }}" style="display:none">
           <td colspan="8" style="padding:0">
-            <div style="padding:16px 20px;background:rgba(255,255,255,0.02);border-top:1px solid var(--border)">
-              <pre style="white-space:pre-wrap;font-size:0.8rem;color:#ccc;margin:0;font-family:'JetBrains Mono',monospace;line-height:1.6">{{ inf.analysis_text or 'Sin texto de análisis.' }}</pre>
+            <div style="padding:20px 24px;background:rgba(255,255,255,0.02);border-top:1px solid var(--border)">
+              <div id="md-{{ loop.index0 }}" class="ia-analysis" style="font-size:0.88rem;color:#ccc;line-height:1.7">
+                {{ inf.analysis_text or 'Sin texto de análisis.' }}
+              </div>
             </div>
           </td>
         </tr>
@@ -90,11 +103,11 @@
   <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;justify-content:flex-end">
     <span style="font-size:0.8rem;color:var(--muted)">Página {{ informes.page }} de {{ informes.pages }}</span>
     {% if informes.has_prev %}
-      <a href="?page={{ informes.prev_num }}&tipo={{ tipo_filter }}" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
+      <a href="?page={{ informes.prev_num }}&tipo={{ tipo_filter }}&severidad={{ severidad_filter }}&region={{ region_filter }}" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
     {% endif %}
     {% for p in informes.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
       {% if p %}
-        <a href="?page={{ p }}&tipo={{ tipo_filter }}"
+        <a href="?page={{ p }}&tipo={{ tipo_filter }}&severidad={{ severidad_filter }}&region={{ region_filter }}"
            class="btn-icon{% if p == informes.page %} active{% endif %}"
            style="{% if p == informes.page %}background:rgba(249,115,22,.15);color:var(--orange);border-color:var(--orange);{% endif %}">{{ p }}</a>
       {% else %}
@@ -102,7 +115,7 @@
       {% endif %}
     {% endfor %}
     {% if informes.has_next %}
-      <a href="?page={{ informes.next_num }}&tipo={{ tipo_filter }}" class="btn-icon"><i class="fas fa-chevron-right"></i></a>
+      <a href="?page={{ informes.next_num }}&tipo={{ tipo_filter }}&severidad={{ severidad_filter }}&region={{ region_filter }}" class="btn-icon"><i class="fas fa-chevron-right"></i></a>
     {% endif %}
   </div>
   {% endif %}
@@ -110,17 +123,43 @@
   {% else %}
   <div style="padding:48px;text-align:center;color:var(--muted)">
     <i class="fas fa-robot" style="font-size:2rem;margin-bottom:12px;display:block;opacity:.3"></i>
-    No hay análisis IA registrados{% if tipo_filter %} de tipo "{{ tipo_filter }}"{% endif %}.
+    No hay análisis IA registrados{% if tipo_filter or severidad_filter or region_filter %} con ese filtro{% endif %}.
   </div>
   {% endif %}
 </div>
+
+<style>
+.ia-analysis h1,.ia-analysis h2,.ia-analysis h3 { color:#f97316;margin:12px 0 6px;font-size:0.95rem;font-weight:700 }
+.ia-analysis h2 { font-size:0.88rem;color:#fb923c }
+.ia-analysis h3 { font-size:0.85rem;color:#fbbf24 }
+.ia-analysis strong { color:#fff }
+.ia-analysis ul,.ia-analysis ol { padding-left:20px;margin:4px 0 }
+.ia-analysis li { margin-bottom:2px }
+.ia-analysis p { margin:4px 0 }
+.ia-analysis hr { border-color:var(--border);margin:10px 0 }
+</style>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
-function verAnalisis(idx) {
-  const row = document.getElementById('ia-detail-' + idx);
-  row.style.display = row.style.display === 'none' ? '' : 'none';
+function toggleAnalisis(idx) {
+  const row  = document.getElementById('ia-detail-' + idx);
+  const btn  = document.getElementById('btn-' + idx);
+  const icon = document.getElementById('icon-' + idx);
+  const open = row.style.display === 'none';
+  row.style.display = open ? '' : 'none';
+  icon.className = open ? 'fas fa-eye-slash' : 'fas fa-eye';
+  btn.style.background = open ? 'rgba(249,115,22,.12)' : '';
+  btn.style.color       = open ? 'var(--orange)' : '';
+  btn.style.borderColor = open ? 'var(--orange)' : '';
+  if (open) {
+    const el = document.getElementById('md-' + idx);
+    if (!el.dataset.rendered) {
+      el.innerHTML = marked.parse(el.textContent);
+      el.dataset.rendered = '1';
+    }
+  }
 }
 </script>
 {% endblock %}

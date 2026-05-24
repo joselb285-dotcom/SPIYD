@@ -10,19 +10,24 @@
       Recursos registrados <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ pagination.total }})</span>
     </h6>
     <div class="d-flex gap-2 align-items-center flex-wrap">
-      <form method="GET" action="/admin/recursos" class="d-flex gap-2">
+      <form method="GET" action="/admin/recursos" class="d-flex gap-2 flex-wrap">
         <div class="search-box">
           <i class="fas fa-search"></i>
-          <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Buscar..." style="width:180px">
+          <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Buscar..." style="width:160px">
         </div>
-        <select name="tipo" class="form-select" style="width:180px" onchange="this.form.submit()">
+        <select name="tipo" class="form-select" style="width:160px" onchange="this.form.submit()">
           <option value="">Todos los tipos</option>
           {% for val, label in tipos %}
             <option value="{{ val }}" {% if tipo_filter == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
+        <select name="pais" class="form-select" style="width:130px" onchange="this.form.submit()">
+          <option value="">Todos los países</option>
+          <option value="argentina" {% if pais_filter == 'argentina' %}selected{% endif %}>Argentina</option>
+          <option value="paraguay" {% if pais_filter == 'paraguay' %}selected{% endif %}>Paraguay</option>
+        </select>
         <button type="submit" class="btn-spiyd-outline"><i class="fas fa-filter"></i></button>
-        {% if search or tipo_filter %}
+        {% if search or tipo_filter or pais_filter %}
           <a href="/admin/recursos" class="btn-spiyd-outline"><i class="fas fa-times"></i></a>
         {% endif %}
       </form>
@@ -77,6 +82,9 @@
           </td>
           <td>
             <div class="d-flex gap-1">
+              {% if r.lat and r.lon %}
+              <a href="/admin/mapa-recursos?foco={{ r.lat }},{{ r.lon }}" class="btn-icon" title="Ver en mapa"><i class="fas fa-map-marker-alt"></i></a>
+              {% endif %}
               <a href="/admin/recursos/{{ r.id }}/edit" class="btn-icon" title="Editar"><i class="fas fa-pen"></i></a>
               <form method="post" action="/admin/recursos/{{ r.id }}/delete" onsubmit="return confirm('¿Eliminar {{ r.nombre }}?')">
                 <button type="submit" class="btn-icon danger" title="Eliminar"><i class="fas fa-trash"></i></button>
@@ -102,11 +110,11 @@
   <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;justify-content:flex-end">
     <span style="font-size:0.8rem;color:var(--muted)">Página {{ pagination.page }} de {{ pagination.pages }} · {{ pagination.total }} recursos</span>
     {% if pagination.has_prev %}
-      <a href="?page={{ pagination.prev_num }}&q={{ search }}&tipo={{ tipo_filter }}" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
+      <a href="?page={{ pagination.prev_num }}&q={{ search }}&tipo={{ tipo_filter }}&pais={{ pais_filter }}" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
     {% endif %}
     {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
       {% if p %}
-        <a href="?page={{ p }}&q={{ search }}&tipo={{ tipo_filter }}"
+        <a href="?page={{ p }}&q={{ search }}&tipo={{ tipo_filter }}&pais={{ pais_filter }}"
            class="btn-icon{% if p == pagination.page %} active{% endif %}"
            style="{% if p == pagination.page %}background:rgba(249,115,22,.15);color:var(--orange);border-color:var(--orange);{% endif %}">{{ p }}</a>
       {% else %}
@@ -114,8 +122,12 @@
       {% endif %}
     {% endfor %}
     {% if pagination.has_next %}
-      <a href="?page={{ pagination.next_num }}&q={{ search }}&tipo={{ tipo_filter }}" class="btn-icon"><i class="fas fa-chevron-right"></i></a>
+      <a href="?page={{ pagination.next_num }}&q={{ search }}&tipo={{ tipo_filter }}&pais={{ pais_filter }}" class="btn-icon"><i class="fas fa-chevron-right"></i></a>
     {% endif %}
+  </div>
+  {% else %}
+  <div style="padding:8px 20px;border-top:1px solid var(--border);text-align:right">
+    <span style="font-size:0.78rem;color:var(--muted)">{{ pagination.total }} recurso{{ 's' if pagination.total != 1 else '' }}</span>
   </div>
   {% endif %}
 </div>

@@ -71,6 +71,10 @@
             <span class="material-symbols-outlined">smart_toy</span>
             <span class="font-label-technical text-[12px]">Historial IA</span>
         </a>
+        <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/auditoria">
+            <span class="material-symbols-outlined">shield</span>
+            <span class="font-label-technical text-[12px]">Auditoría</span>
+        </a>
         <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest">Aplicación</div>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/mapa?auth=1">
             <span class="material-symbols-outlined">satellite_alt</span>
@@ -191,26 +195,26 @@
             <div class="w-80 flex flex-col gap-6 pointer-events-auto overflow-y-auto pr-2 custom-scrollbar">
                 <!-- Stat Cards -->
                 <div class="grid grid-cols-2 gap-3">
-                    <div class="glass-panel p-4 rounded-2xl text-center">
+                    <a href="/admin/users" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Usuarios</p>
                         <p class="text-2xl font-bold">{{ active_users }}</p>
                         <p class="text-[10px] text-on-surface-variant">de {{ total_users }}</p>
-                    </div>
-                    <div class="glass-panel p-4 rounded-2xl text-center">
+                    </a>
+                    <a href="/mapa?auth=1" class="glass-panel p-4 rounded-2xl text-center hover:border-error/40 transition-all" style="text-decoration:none;border:1px solid transparent">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Focos Hoy</p>
                         <p class="text-2xl font-bold text-error">{{ focos_hoy }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ focos_mes }} este mes</p>
-                    </div>
-                    <div class="glass-panel p-4 rounded-2xl text-center">
+                    </a>
+                    <a href="/admin/auditoria" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Alertas SMN</p>
                         <p class="text-2xl font-bold text-primary">{{ smn_total }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ smn_hoy }} hoy</p>
-                    </div>
-                    <div class="glass-panel p-4 rounded-2xl text-center">
+                    </a>
+                    <a href="/admin/ai-informes" class="glass-panel p-4 rounded-2xl text-center hover:border-purple-400/40 transition-all" style="text-decoration:none;border:1px solid transparent">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Informes IA</p>
                         <p class="text-2xl font-bold" style="color:#a78bfa">{{ ai_total }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ ai_mes }} este mes</p>
-                    </div>
+                    </a>
                 </div>
 
                 <!-- IA Reports -->
@@ -334,7 +338,7 @@
                             <span class="material-symbols-outlined text-error text-sm">emergency_home</span>
                             Alertas SMN Recientes
                         </h3>
-                        <a href="/admin/" class="text-[10px] font-label-technical hover:text-primary transition-colors">VER TODO</a>
+                        <a href="/admin/auditoria" class="text-[10px] font-label-technical hover:text-primary transition-colors">VER TODO</a>
                     </div>
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
                         {% for alerta in smn_recientes[:6] %}
@@ -414,21 +418,5 @@
         });
     }, 1000);
 
-    const canvas = document.createElement('canvas');
-    canvas.classList.add('fixed', 'inset-0', 'pointer-events-none', 'opacity-[0.02]', 'z-[100]');
-    document.body.appendChild(canvas);
-    const ctx = canvas.getContext('2d');
-    function resizeNoise() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    function noise() {
-        const w = canvas.width, h = canvas.height;
-        const idata = ctx.createImageData(w, h);
-        const buf = new Uint32Array(idata.data.buffer);
-        for (let i = 0; i < buf.length; i++) { if (Math.random() < 0.5) buf[i] = 0xff000000; }
-        ctx.putImageData(idata, 0, 0);
-        requestAnimationFrame(noise);
-    }
-    window.addEventListener('resize', resizeNoise);
-    resizeNoise();
-    noise();
 </script>
 </body></html>

@@ -9,14 +9,17 @@
     <h6><i class="fas fa-shield-alt me-2" style="color:var(--orange)"></i>
       Auditoría <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ logs.total }} registros)</span>
     </h6>
-    <form method="GET" class="d-flex gap-2 align-items-center">
+    <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
       <select name="accion" class="form-select" style="width:180px" onchange="this.form.submit()">
         <option value="">Todas las acciones</option>
         {% for a in acciones %}
           <option value="{{ a }}" {% if accion_filter == a %}selected{% endif %}>{{ a }}</option>
         {% endfor %}
       </select>
-      {% if accion_filter %}
+      <input type="date" name="desde" value="{{ fecha_desde }}" class="form-control" style="width:140px" title="Desde">
+      <input type="date" name="hasta" value="{{ fecha_hasta }}" class="form-control" style="width:140px" title="Hasta">
+      <button type="submit" class="btn-spiyd-outline"><i class="fas fa-filter"></i></button>
+      {% if accion_filter or fecha_desde or fecha_hasta %}
         <a href="/admin/auditoria" class="btn-spiyd-outline"><i class="fas fa-times"></i></a>
       {% endif %}
     </form>
@@ -43,10 +46,7 @@
           </td>
           <td style="font-size:0.85rem">
             {% if log.user_id %}
-              {% set admin = namespace(name='?') %}
-              {% for u in [log.user_id] %}
-                <span style="color:var(--orange)">ID {{ log.user_id }}</span>
-              {% endfor %}
+              <span style="color:var(--orange)">{{ admin_names.get(log.user_id, 'ID ' ~ log.user_id) }}</span>
             {% else %}—{% endif %}
           </td>
           <td>
@@ -58,7 +58,14 @@
           </td>
           <td style="font-size:0.85rem;color:var(--muted)">{{ log.target_type or '—' }}</td>
           <td style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--muted)">{{ log.target_id or '—' }}</td>
-          <td style="font-size:0.8rem;color:var(--muted);max-width:300px;word-break:break-word">{{ log.detail or '—' }}</td>
+          <td style="font-size:0.8rem;color:var(--muted)">
+            {% if log.detail and log.detail|length > 60 %}
+              <span id="det-short-{{ loop.index0 }}">{{ log.detail[:60] }}<button onclick="expandDet({{ loop.index0 }})" style="background:none;border:none;color:var(--orange);cursor:pointer;font-size:0.75rem;padding:0 4px">+ver</button></span>
+              <span id="det-full-{{ loop.index0 }}" style="display:none;word-break:break-word">{{ log.detail }}<button onclick="collapseDet({{ loop.index0 }})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.75rem;padding:0 4px">−</button></span>
+            {% else %}
+              {{ log.detail or '—' }}
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -69,11 +76,11 @@
   <div style="padding:16px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;justify-content:flex-end">
     <span style="font-size:0.8rem;color:var(--muted)">Página {{ logs.page }} de {{ logs.pages }}</span>
     {% if logs.has_prev %}
-      <a href="?page={{ logs.prev_num }}&accion={{ accion_filter }}" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
+      <a href="?page={{ logs.prev_num }}&accion={{ accion_filter }}&desde={{ fecha_desde }}&hasta={{ fecha_hasta }}" class="btn-icon"><i class="fas fa-chevron-left"></i></a>
     {% endif %}
     {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
       {% if p %}
-        <a href="?page={{ p }}&accion={{ accion_filter }}"
+        <a href="?page={{ p }}&accion={{ accion_filter }}&desde={{ fecha_desde }}&hasta={{ fecha_hasta }}"
            class="btn-icon{% if p == logs.page %} active{% endif %}"
            style="{% if p == logs.page %}background:rgba(249,115,22,.15);color:var(--orange);border-color:var(--orange);{% endif %}">{{ p }}</a>
       {% else %}
@@ -81,7 +88,7 @@
       {% endif %}
     {% endfor %}
     {% if logs.has_next %}
-      <a href="?page={{ logs.next_num }}&accion={{ accion_filter }}" class="btn-icon"><i class="fas fa-chevron-right"></i></a>
+      <a href="?page={{ logs.next_num }}&accion={{ accion_filter }}&desde={{ fecha_desde }}&hasta={{ fecha_hasta }}" class="btn-icon"><i class="fas fa-chevron-right"></i></a>
     {% endif %}
   </div>
   {% endif %}
@@ -89,8 +96,21 @@
   {% else %}
   <div style="padding:48px;text-align:center;color:var(--muted)">
     <i class="fas fa-shield-alt" style="font-size:2rem;margin-bottom:12px;display:block;opacity:.3"></i>
-    No hay registros de auditoría aún.
+    No hay registros de auditoría{% if accion_filter or fecha_desde or fecha_hasta %} con ese filtro{% endif %}.
   </div>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function expandDet(idx) {
+  document.getElementById('det-short-' + idx).style.display = 'none';
+  document.getElementById('det-full-' + idx).style.display  = '';
+}
+function collapseDet(idx) {
+  document.getElementById('det-short-' + idx).style.display = '';
+  document.getElementById('det-full-' + idx).style.display  = 'none';
+}
+</script>
 {% endblock %}
