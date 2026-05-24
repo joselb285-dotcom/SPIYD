@@ -1,13 +1,30 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, Response
 from flask_login import login_required, current_user
 from functools import wraps
-from sqlalchemy import func
+from sqlalchemy import func, or_
 import csv, io, math
 from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog
 from superadmin import PROVINCIAS_ARG, DEPARTAMENTOS_PRY
 from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__)
+
+
+def _geo_filter(query, model):
+    """Filtra una query por el alcance geográfico del current_user (pais + provincia/departamento).
+    Solo se aplica cuando el admin tiene pais configurado; superadmins sin pais ven todo."""
+    u = current_user
+    if not u.pais:
+        return query  # sin restricción
+    if u.pais == 'argentina':
+        query = query.filter(
+            or_(model.region.is_(None), ~model.region.ilike('%paraguay%'))
+        )
+    elif u.pais == 'paraguay':
+        query = query.filter(model.region.ilike('%paraguay%'))
+    if u.region_tipo in ('provincia', 'departamento') and u.region_nombre:
+        query = query.filter(model.region.ilike(f'%{u.region_nombre}%'))
+    return query
 
 
 def admin_required(f):
@@ -44,22 +61,26 @@ def dashboard():
     total_users = User.query.filter_by(role='user').count()
     active_users = User.query.filter_by(role='user', active=True).count()
 
-    smn_total = SmnAlerta.query.count()
-    smn_hoy = SmnAlerta.query.filter(SmnAlerta.timestamp >= inicio_hoy).count()
-    smn_recientes = SmnAlerta.query.order_by(SmnAlerta.timestamp.desc()).limit(8).all()
+    smn_q = _geo_filter(SmnAlerta.query, SmnAlerta)
+    smn_total = smn_q.count()
+    smn_hoy = smn_q.filter(SmnAlerta.timestamp >= inicio_hoy).count()
+    smn_recientes = smn_q.order_by(SmnAlerta.timestamp.desc()).limit(8).all()
 
-    ai_total = AiInforme.query.count()
-    ai_mes = AiInforme.query.filter(AiInforme.timestamp >= inicio_mes).count()
-    ai_recientes = AiInforme.query.order_by(AiInforme.timestamp.desc()).limit(8).all()
+    ai_q = _geo_filter(AiInforme.query, AiInforme)
+    ai_total = ai_q.count()
+    ai_mes = ai_q.filter(AiInforme.timestamp >= inicio_mes).count()
+    ai_recientes = ai_q.order_by(AiInforme.timestamp.desc()).limit(8).all()
 
-    focos_hoy = FocoLog.query.filter(FocoLog.timestamp >= inicio_hoy).count()
-    focos_mes = FocoLog.query.filter(FocoLog.timestamp >= inicio_mes).count()
-    focos_criticos = FocoLog.query.filter_by(severidad='critical').count()
-    focos_altos = FocoLog.query.filter_by(severidad='high').count()
-    focos_medios = FocoLog.query.filter_by(severidad='medium').count()
+    foco_q = _geo_filter(FocoLog.query, FocoLog)
+    focos_hoy = foco_q.filter(FocoLog.timestamp >= inicio_hoy).count()
+    focos_mes = foco_q.filter(FocoLog.timestamp >= inicio_mes).count()
+    focos_criticos = foco_q.filter_by(severidad='critical').count()
+    focos_altos = foco_q.filter_by(severidad='high').count()
+    focos_medios = foco_q.filter_by(severidad='medium').count()
 
     fuente_counts = dict(
-        db.session.query(FocoLog.fuente, func.count(FocoLog.id)).group_by(FocoLog.fuente).all()
+        _geo_filter(db.session.query(FocoLog.fuente, func.count(FocoLog.id)), FocoLog)
+        .group_by(FocoLog.fuente).all()
     )
 
     logins_recientes = (
@@ -292,7 +313,7 @@ def ai_informes():
     tipo = request.args.get('tipo', '').strip()
     severidad = request.args.get('severidad', '').strip()
     region_q = request.args.get('region', '').strip()
-    query = AiInforme.query
+    query = _geo_filter(AiInforme.query, AiInforme)
     if tipo:
         query = query.filter_by(tipo_foco=tipo)
     if severidad:
@@ -402,9 +423,9 @@ def alert_counts():
     from flask import jsonify
     hoy = datetime.utcnow().date()
     inicio_hoy = datetime.combine(hoy, datetime.min.time())
-    focos_criticos = FocoLog.query.filter_by(severidad='critical').filter(FocoLog.timestamp >= inicio_hoy).count()
-    smn_rojo = SmnAlerta.query.filter_by(severidad='rojo').filter(SmnAlerta.timestamp >= inicio_hoy).count()
-    ai_hoy = AiInforme.query.filter(AiInforme.timestamp >= inicio_hoy).count()
+    focos_criticos = _geo_filter(FocoLog.query, FocoLog).filter_by(severidad='critical').filter(FocoLog.timestamp >= inicio_hoy).count()
+    smn_rojo = _geo_filter(SmnAlerta.query, SmnAlerta).filter_by(severidad='rojo').filter(SmnAlerta.timestamp >= inicio_hoy).count()
+    ai_hoy = _geo_filter(AiInforme.query, AiInforme).filter(AiInforme.timestamp >= inicio_hoy).count()
     return jsonify({'focos_criticos': focos_criticos, 'smn_rojo': smn_rojo, 'ai_hoy': ai_hoy})
 
 
