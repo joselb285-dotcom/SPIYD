@@ -183,11 +183,45 @@
     }
     .zona-crosshair, .zona-crosshair * { cursor:crosshair !important; }
     @keyframes zona-dash { to { stroke-dashoffset:-20; } }
+
+    /* ── Mobile ────────────────────────────────────────────────────── */
+    #mob-toggle {
+      display:none;
+      position:fixed; top:12px; left:12px; z-index:2000;
+      width:40px; height:40px; border-radius:10px;
+      background:rgba(10,12,18,0.92); border:1px solid rgba(255,255,255,0.12);
+      color:#e0e0e0; font-size:18px; cursor:pointer;
+      align-items:center; justify-content:center;
+      box-shadow:0 4px 16px rgba(0,0,0,0.6);
+      backdrop-filter:blur(8px);
+    }
+    #mob-overlay {
+      display:none; position:fixed; inset:0; z-index:1500;
+      background:rgba(0,0,0,0.55);
+    }
+    @media (max-width: 640px) {
+      #mob-toggle { display:flex; }
+      .panel {
+        top:0; left:0; bottom:0;
+        max-height:100vh; height:100vh;
+        border-radius:0 14px 14px 0;
+        transform:translateX(-110%);
+        transition:transform .28s cubic-bezier(.4,0,.2,1);
+        z-index:1600;
+        width:285px; min-width:unset; max-width:285px;
+      }
+      .panel.mob-open { transform:translateX(0); }
+      #mob-overlay.mob-open { display:block; }
+      .informe-popup .leaflet-popup-content { width:calc(100vw - 32px) !important; max-width:400px !important; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="panel">
+<button id="mob-toggle" onclick="toggleMobPanel()" title="Abrir panel">☰</button>
+<div id="mob-overlay" onclick="closeMobPanel()"></div>
+
+  <div class="panel" id="mainPanel">
 
     <!-- ── Header ─────────────────────────────────────── -->
     <div class="ph">
@@ -2462,6 +2496,22 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     actualizarAutoRefresh();
     actualizarContadores();
     cargarGeoJSON().then(()=>{ cargarFocos(true); });
+  </script>
+
+  <script>
+    function toggleMobPanel() {
+      const p = document.getElementById('mainPanel');
+      const o = document.getElementById('mob-overlay');
+      const btn = document.getElementById('mob-toggle');
+      const open = p.classList.toggle('mob-open');
+      o.classList.toggle('mob-open', open);
+      btn.textContent = open ? '✕' : '☰';
+    }
+    function closeMobPanel() {
+      document.getElementById('mainPanel').classList.remove('mob-open');
+      document.getElementById('mob-overlay').classList.remove('mob-open');
+      document.getElementById('mob-toggle').textContent = '☰';
+    }
   </script>
 </body>
 </html>
