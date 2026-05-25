@@ -215,42 +215,38 @@ function TrendChart({data, metric}) {
 
 /* ═══════════════ FIRMS PANEL ═══════════════ */
 function FirmsPanel({onData}) {
-  const [key,   setKey]   = useState(localStorage.getItem('firms_key')||'');
-  const [status, setStatus] = useState('idle'); // idle | loading | ok | error
-  const [msg,   setMsg]   = useState('');
-  const [count, setCount] = useState(0);
-
-  function save() { localStorage.setItem('firms_key', key); }
+  const [status, setStatus] = useState('idle');
+  const [msg,    setMsg]    = useState('');
+  const [count,  setCount]  = useState(0);
 
   async function fetchFIRMS() {
-    if (!key.trim()) return setMsg('Ingresá tu MAP_KEY de NASA FIRMS.');
-    save();
-    setStatus('loading'); setMsg('');
-    // South America bounding box: W=-82, S=-56, E=-34, N=-7
-    const url = `https://firms.modaps.eosdis.nasa.gov/api/area/json/${key.trim()}/VIIRS_SNPP_NRT/-82,-56,-34,-7/1`;
+    setStatus('loading'); setMsg('Consultando NASA FIRMS…');
     try {
-      const res  = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status} — verificá tu MAP_KEY`);
+      const res  = await fetch('/api/firms-data');
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       if (!Array.isArray(json)) throw new Error('Respuesta inesperada de FIRMS');
-      // Map FIRMS fields to SPIYD alert format
-      const alerts = json.slice(0,40).map((f,i)=>({
-        id:`FIRMS-${i.toString().padStart(4,'0')}`,
-        region: `${f.latitude?.toFixed(2)}°S, ${Math.abs(f.longitude)?.toFixed(2)}°W`,
+      const alerts = json.slice(0, 60).map((f, i) => ({
+        id: `FIRMS-${i.toString().padStart(4,'0')}`,
+        region: `${parseFloat(f.latitude).toFixed(2)}°S ${Math.abs(parseFloat(f.longitude)).toFixed(2)}°O`,
         province: 'FIRMS',
-        lat: parseFloat(f.latitude), lon: parseFloat(f.longitude),
-        severity: parseFloat(f.confidence)>=80?'critical':parseFloat(f.confidence)>=60?'high':'medium',
+        lat: parseFloat(f.latitude),
+        lon: parseFloat(f.longitude),
+        severity: parseFloat(f.confidence) >= 80 ? 'critical' : parseFloat(f.confidence) >= 60 ? 'high' : 'medium',
         source: f.satellite || 'VIIRS',
-        ha: Math.round((parseFloat(f.scan)||1)*(parseFloat(f.track)||1)*100),
-        confidence: parseFloat(f.confidence)||70,
-        frp: parseFloat(f.frp)||0,
-        temp: parseFloat(f.bright_ti4)||400,
-        ts: new Date(f.acq_date+' '+f.acq_time?.slice(0,2)+':'+f.acq_time?.slice(2)).getTime()||Date.now(),
-        status:'active', daynight: f.daynight||'D',
+        ha: Math.round((parseFloat(f.scan)||1) * (parseFloat(f.track)||1) * 100),
+        confidence: parseFloat(f.confidence) || 70,
+        frp: parseFloat(f.frp) || 0,
+        temp: parseFloat(f.bright_ti4) || 400,
+        ts: new Date((f.acq_date||'') + 'T' + ((f.acq_time||'0000').slice(0,2)+':'+( f.acq_time||'0000').slice(2)+':00') + 'Z').getTime() || Date.now(),
+        status: 'active',
+        daynight: f.daynight || 'D',
+        analysis_text: '',
+        tipo_foco: 'NASA FIRMS',
       }));
       setCount(alerts.length);
       setStatus('ok');
-      setMsg(`✓ ${alerts.length} focos detectados por VIIRS en las últimas 24 h`);
+      setMsg(`${alerts.length} focos VIIRS · últimas 24 h`);
       onData(alerts);
     } catch(e) {
       setStatus('error');
@@ -258,9 +254,11 @@ function FirmsPanel({onData}) {
     }
   }
 
+  useEffect(() => { fetchFIRMS(); }, []);
+
   return (
     <div className="g" style={{padding:'1rem 1.2rem'}}>
-      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:'.9rem'}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:'.75rem'}}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#88aaff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/>
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -268,31 +266,32 @@ function FirmsPanel({onData}) {
         </svg>
         <span style={{color:'white',fontSize:'.75rem',fontWeight:500,letterSpacing:'-.02em'}}>NASA FIRMS en vivo</span>
         {status==='ok' && <div style={{marginLeft:'auto',width:7,height:7,borderRadius:'50%',background:'#44ffcc',animation:'pulse 1.8s infinite'}}/>}
+        {status==='loading' && <svg style={{marginLeft:'auto',animation:'spin .7s linear infinite'}} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#88aaff" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>}
       </div>
 
-      <div style={{display:'flex',gap:6,marginBottom:7}}>
-        <input className="ctrl" style={{flex:1,fontFamily:'JetBrains Mono, monospace',fontSize:'.68rem',letterSpacing:'.04em'}}
-          type="text" placeholder="Tu NASA FIRMS MAP_KEY…" value={key}
-          onChange={e=>setKey(e.target.value)}
-          onKeyDown={e=>e.key==='Enter'&&fetchFIRMS()}/>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <span style={{color: status==='error'?'#ff7055': status==='ok'?'#44ffcc':'rgba(255,255,255,.4)', fontSize:'.65rem', lineHeight:1.4}}>
+          {msg || 'Iniciando…'}
+        </span>
         <button onClick={fetchFIRMS} disabled={status==='loading'} style={{
-          padding:'7px 14px',background:status==='ok'?'rgba(68,255,204,.12)':'rgba(255,255,255,.09)',
-          border:`1px solid ${status==='ok'?'rgba(68,255,204,.3)':'rgba(255,255,255,.14)'}`,
-          borderRadius:'.55rem',color:'white',fontFamily:'Poppins',fontSize:'.7rem',cursor:'pointer',
-          whiteSpace:'nowrap',transition:'all .15s',
-        }}>
-          {status==='loading'
-            ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" style={{animation:'spin .7s linear infinite'}}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            : status==='ok' ? '↻ Actualizar' : 'Conectar'
-          }
-        </button>
+          padding:'4px 10px', background:'rgba(255,255,255,.07)',
+          border:'1px solid rgba(255,255,255,.12)', borderRadius:'.45rem',
+          color:'rgba(255,255,255,.55)', fontFamily:'Poppins', fontSize:'.62rem',
+          cursor:'pointer', transition:'all .15s', flexShrink:0, marginLeft:8,
+        }}>↻ Actualizar</button>
       </div>
 
-      {msg && <div style={{color:status==='error'?'#ff7055':status==='ok'?'#44ffcc':'rgba(255,255,255,.45)',fontSize:'.65rem',lineHeight:1.4}}>{msg}</div>}
-
-      {!key && <div style={{color:'rgba(255,255,255,.28)',fontSize:'.62rem',lineHeight:1.55,marginTop:5}}>
-        Obtené tu clave gratuita en <span style={{color:'#88aaff',cursor:'pointer'}} onClick={()=>window.open('https://firms.modaps.eosdis.nasa.gov/api/','_blank')}>firms.modaps.eosdis.nasa.gov/api</span>
-      </div>}
+      {status==='ok' && count>0 && (
+        <div style={{marginTop:8,display:'flex',gap:8}}>
+          {[['Críticos', 'critical','#ff6644'], ['Altos','high','#ffaa44'], ['Medios','medium','#ffcc66']].map(([l,s,c])=>{
+            const n = count; // placeholder; real count done in App
+            return null; // stats shown in main dashboard
+          })}
+          <div style={{fontSize:'.62rem',color:'rgba(255,255,255,.3)',lineHeight:1.5}}>
+            Datos integrados al panel principal · fuente: VIIRS SNPP NRT
+          </div>
+        </div>
+      )}
     </div>
   );
 }

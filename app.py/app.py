@@ -190,15 +190,6 @@ def mapa():
 @app.route('/dashboard')
 @login_required
 def dashboard_alertas():
-    import traceback
-    from sqlalchemy import or_
-    from datetime import timedelta as _td
-    try:
-        return _dashboard_alertas_inner()
-    except Exception as exc:
-        return jsonify({"error": "dashboard_error", "detail": traceback.format_exc()}), 500
-
-def _dashboard_alertas_inner():
     from sqlalchemy import or_
     from datetime import timedelta as _td
 
@@ -289,6 +280,26 @@ def _dashboard_alertas_inner():
         focos_data=focos_data,
         smn_data=smn_data,
     )
+
+@app.route('/api/firms-data')
+@login_required
+def firms_data_proxy():
+    if not NASA_MAP_KEY:
+        return jsonify({"error": "NASA_MAP_KEY no configurada"}), 503
+    try:
+        from datetime import timedelta as _td
+        u = current_user
+        # Bbox según scope del admin
+        if getattr(u, 'pais', None) == 'paraguay':
+            bbox = '-62.6,-27.6,-54.3,-19.3'
+        else:
+            bbox = '-82,-56,-34,-7'
+        url = f"https://firms.modaps.eosdis.nasa.gov/api/area/json/{NASA_MAP_KEY}/VIIRS_SNPP_NRT/{bbox}/1"
+        resp = requests.get(url, timeout=20)
+        resp.raise_for_status()
+        return jsonify(resp.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 503
 
 @app.route('/favicon.ico')
 def favicon():
