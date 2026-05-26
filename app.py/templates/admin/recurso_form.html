@@ -140,6 +140,101 @@
         </div>
       </form>
     </div>
+
+    {% if action == 'edit' %}
+    <!-- ── Unidades del recurso ────────────────────────────── -->
+    <div class="form-card mt-4">
+      <h5 style="color:var(--text-primary);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px">
+        <i class="fas fa-truck" style="color:var(--orange)"></i> Unidades del recurso
+      </h5>
+
+      {% set unidades_list = recurso.unidades.all() %}
+      {% if unidades_list %}
+      <div class="table-responsive mb-4">
+        <table class="table table-sm" style="font-size:0.85rem">
+          <thead>
+            <tr style="color:var(--muted)">
+              <th>Tipo</th><th>Nombre</th><th>Capacidad</th>
+              <th>Recarga (min)</th><th>Respuesta (min)</th><th>Activo</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for u in unidades_list %}
+            <tr>
+              <td>{{ u.tipo_label }}</td>
+              <td>{{ u.nombre or '—' }}</td>
+              <td>{{ u.capacidad or '—' }}</td>
+              <td>{{ u.tiempo_recarga_min if u.tiempo_recarga_min is not none else '—' }}</td>
+              <td>{{ u.tiempo_respuesta_min if u.tiempo_respuesta_min is not none else '—' }}</td>
+              <td>
+                {% if u.activo %}<span style="color:var(--green)">Sí</span>
+                {% else %}<span style="color:var(--muted)">No</span>{% endif %}
+              </td>
+              <td>
+                <form method="post" action="/admin/unidades/{{ u.id }}/delete"
+                      onsubmit="return confirm('¿Eliminar esta unidad?')">
+                  <button type="submit" class="btn btn-link btn-sm p-0" style="color:var(--red)">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.2rem">Sin unidades registradas aún.</p>
+      {% endif %}
+
+      <!-- Formulario para agregar nueva unidad -->
+      <form method="post" action="/admin/recursos/{{ recurso.id }}/unidades/new">
+        <h6 style="color:var(--text-secondary);margin-bottom:1rem">Agregar unidad</h6>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Tipo de unidad *</label>
+            <select name="tipo_unidad" class="form-select" required>
+              {% for val, label in tipos_unidad %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Nombre / Identificación</label>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Unidad 03, LV-KAB">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Capacidad</label>
+            <input type="text" name="capacidad" class="form-control" placeholder="Ej: 8.000 L, 6 personas">
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-5">
+            <label class="form-label">Descripción</label>
+            <input type="text" name="descripcion" class="form-control" placeholder="Modelo, año, equipamiento...">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Tiempo de recarga (min)</label>
+            <input type="number" name="tiempo_recarga_min" class="form-control" min="0" placeholder="45">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Tiempo de respuesta (min)</label>
+            <input type="number" name="tiempo_respuesta_min" class="form-control" min="0" placeholder="15">
+          </div>
+          <div class="col-md-1 d-flex align-items-end pb-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="activo" id="unidadActivo" checked>
+              <label class="form-check-label" for="unidadActivo" style="font-size:0.8rem">Activo</label>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn-spiyd-outline">
+          <i class="fas fa-plus"></i> Agregar unidad
+        </button>
+      </form>
+    </div>
+    {% endif %}
+
   </div>
 </div>
 {% endblock %}

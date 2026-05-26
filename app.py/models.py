@@ -88,6 +88,18 @@ TIPOS_RECURSO = [
     ('otro',           'Otro'),
 ]
 
+TIPOS_UNIDAD = [
+    ('camion_tanque',          'Camión Tanque'),
+    ('camion_agua',            'Camión de Agua'),
+    ('camioneta',              'Camioneta / Pick-up'),
+    ('avion_cisterna',         'Avión Cisterna'),
+    ('avion_carga',            'Avión de Carga'),
+    ('helicoptero_extincion',  'Helicóptero de Extinción'),
+    ('helicoptero_rescate',    'Helicóptero de Rescate / Sanitario'),
+    ('motobomba',              'Motobomba'),
+    ('otro_vehiculo',          'Otro Vehículo'),
+]
+
 class Recurso(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tipo = db.Column(db.String(50), nullable=False)
@@ -107,10 +119,30 @@ class Recurso(db.Model):
     activo = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    unidades = db.relationship('UnidadRecurso', backref='recurso', lazy='dynamic',
+                               cascade='all, delete-orphan', passive_deletes=True)
 
     @property
     def tipo_label(self):
         return dict(TIPOS_RECURSO).get(self.tipo, self.tipo)
+
+
+class UnidadRecurso(db.Model):
+    __tablename__ = 'unidad_recurso'
+    id = db.Column(db.Integer, primary_key=True)
+    recurso_id = db.Column(db.Integer, db.ForeignKey('recurso.id', ondelete='CASCADE'), nullable=False)
+    tipo_unidad = db.Column(db.String(50), nullable=False)
+    nombre = db.Column(db.String(100))
+    descripcion = db.Column(db.Text)
+    capacidad = db.Column(db.String(100))
+    tiempo_recarga_min = db.Column(db.Integer)
+    tiempo_respuesta_min = db.Column(db.Integer)
+    activo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def tipo_label(self):
+        return dict(TIPOS_UNIDAD).get(self.tipo_unidad, self.tipo_unidad)
 
 
 class FocoLog(db.Model):

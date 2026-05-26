@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy import func, or_
 import csv, io, math
-from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog
+from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog, UnidadRecurso, TIPOS_UNIDAD
 from superadmin import PROVINCIAS_ARG, DEPARTAMENTOS_PRY
 from datetime import datetime, timedelta
 
@@ -269,7 +269,8 @@ def recurso_edit(recurso_id):
             lon_val = float(lon_str) if lon_str else None
         except ValueError:
             flash('Coordenadas inválidas', 'error')
-            return render_template('admin/recurso_form.html', recurso=recurso, action='edit', tipos=TIPOS_RECURSO)
+            return render_template('admin/recurso_form.html', recurso=recurso, action='edit',
+                                   tipos=TIPOS_RECURSO, tipos_unidad=TIPOS_UNIDAD)
         recurso.tipo = f.get('tipo', recurso.tipo)
         recurso.nombre = f.get('nombre', '').strip()
         recurso.descripcion = f.get('descripcion', '').strip() or None
@@ -289,7 +290,8 @@ def recurso_edit(recurso_id):
         db.session.commit()
         flash(f'Recurso "{recurso.nombre}" actualizado', 'success')
         return redirect(url_for('admin.recursos'))
-    return render_template('admin/recurso_form.html', recurso=recurso, action='edit', tipos=TIPOS_RECURSO)
+    return render_template('admin/recurso_form.html', recurso=recurso, action='edit',
+                           tipos=TIPOS_RECURSO, tipos_unidad=TIPOS_UNIDAD)
 
 
 @admin_bp.route('/recursos/<int:recurso_id>/delete', methods=['POST'])
@@ -351,6 +353,42 @@ def mapa_recursos():
     return render_template('admin/mapa_recursos.html',
                            recursos=recursos_activos, recursos_json=recursos_json,
                            ai_informes_json=ai_json)
+
+
+@admin_bp.route('/recursos/<int:recurso_id>/unidades/new', methods=['POST'])
+@login_required
+@admin_required
+def unidad_new(recurso_id):
+    recurso = db.get_or_404(Recurso, recurso_id)
+    f = request.form
+    unidad = UnidadRecurso(
+        recurso_id=recurso_id,
+        tipo_unidad=f.get('tipo_unidad', 'otro_vehiculo'),
+        nombre=f.get('nombre', '').strip() or None,
+        descripcion=f.get('descripcion', '').strip() or None,
+        capacidad=f.get('capacidad', '').strip() or None,
+        tiempo_recarga_min=int(f['tiempo_recarga_min']) if f.get('tiempo_recarga_min', '').isdigit() else None,
+        tiempo_respuesta_min=int(f['tiempo_respuesta_min']) if f.get('tiempo_respuesta_min', '').isdigit() else None,
+        activo='activo' in f,
+    )
+    db.session.add(unidad)
+    _audit('add_unidad', 'Recurso', recurso_id, f'tipo={unidad.tipo_unidad} nombre={unidad.nombre}')
+    db.session.commit()
+    flash('Unidad agregada', 'success')
+    return redirect(url_for('admin.recurso_edit', recurso_id=recurso_id))
+
+
+@admin_bp.route('/unidades/<int:unidad_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def unidad_delete(unidad_id):
+    unidad = db.get_or_404(UnidadRecurso, unidad_id)
+    recurso_id = unidad.recurso_id
+    _audit('delete_unidad', 'Recurso', recurso_id, f'tipo={unidad.tipo_unidad} nombre={unidad.nombre}')
+    db.session.delete(unidad)
+    db.session.commit()
+    flash('Unidad eliminada', 'success')
+    return redirect(url_for('admin.recurso_edit', recurso_id=recurso_id))
 
 
 @admin_bp.route('/usuarios/export.csv')
