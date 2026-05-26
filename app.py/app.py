@@ -287,17 +287,31 @@ def firms_data_proxy():
     if not NASA_MAP_KEY:
         return jsonify({"error": "NASA_MAP_KEY no configurada"}), 503
     try:
-        from datetime import timedelta as _td
-        u = current_user
-        # Bbox según scope del admin
-        if getattr(u, 'pais', None) == 'paraguay':
-            bbox = '-62.6,-27.6,-54.3,-19.3'
-        else:
-            bbox = '-82,-56,-34,-7'
-        url = f"https://firms.modaps.eosdis.nasa.gov/api/area/json/{NASA_MAP_KEY}/VIIRS_SNPP_NRT/{bbox}/1"
-        resp = requests.get(url, timeout=20)
+        import csv, io
+        _conf_map = {'l': 40, 'n': 65, 'h': 85}
+        bbox = '-73.5,-55.8,-53.5,-19.0'
+        url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{NASA_MAP_KEY}/VIIRS_SNPP_NRT/{bbox}/1"
+        resp = requests.get(url, timeout=20, headers={"User-Agent": "SPIYD/1.0"})
         resp.raise_for_status()
-        return jsonify(resp.json())
+        reader = csv.DictReader(io.StringIO(resp.text))
+        rows = []
+        for r in reader:
+            conf_raw = r.get('confidence', 'n')
+            conf = _conf_map.get(conf_raw.lower(), None) or (int(conf_raw) if conf_raw.isdigit() else 65)
+            rows.append({
+                'latitude':  r.get('latitude', ''),
+                'longitude': r.get('longitude', ''),
+                'confidence': conf,
+                'frp':       r.get('frp', '0'),
+                'bright_ti4': r.get('bright_ti4', '400'),
+                'scan':      r.get('scan', '1'),
+                'track':     r.get('track', '1'),
+                'acq_date':  r.get('acq_date', ''),
+                'acq_time':  r.get('acq_time', '0000'),
+                'satellite': r.get('satellite', 'VIIRS'),
+                'daynight':  r.get('daynight', 'D'),
+            })
+        return jsonify(rows)
     except Exception as e:
         return jsonify({"error": str(e)}), 503
 
