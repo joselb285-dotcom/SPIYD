@@ -490,7 +490,7 @@
             <option value="0">Desactivada</option>
             <option value="60000">Cada 1 minuto</option>
             <option value="300000" selected>Cada 5 minutos</option>
-            <option value="600000">Cada 10 minutos</option>
+            <option value="900000">Cada 15 minutos</option>
           </select>
           <!-- Inputs ocultos requeridos por JS -->
           <input type="checkbox" id="togFocos" checked style="display:none;">
@@ -2492,10 +2492,14 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     document.getElementById('autoRefresh').addEventListener('change',actualizarAutoRefresh);
     document.getElementById('dias')       .addEventListener('change',()=>cargarFocos(true));
 
-    // ── Inicio ────────────────────────────────────────────────────────────────
+    // ── Inicio — carga automática al abrir el mapa ───────────────────────────
     actualizarAutoRefresh();
     actualizarContadores();
-    cargarGeoJSON().then(()=>{ cargarFocos(true); });
+    // GeoJSON y datos satelitales arrancan en paralelo.
+    // estaEnArg() devuelve true si geojsonArg es null → los focos se muestran igual.
+    cargarGeoJSON();
+    cargarFocos(true);
+    cargarAlertasSMN(true);
   </script>
 
   <script>
