@@ -2296,9 +2296,9 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         document.getElementById('numGOES').textContent = focos.length;
         const badge = document.getElementById('goesRtBadge');
         if (badge) badge.style.display = focos.length>0?'inline-block':'none';
-        if (!goesRtTimer) goesRtTimer = setInterval(()=>cargarGOES_RT(true), 15*60*1000);
+        if (!goesRtTimer) goesRtTimer = setInterval(()=>cargarGOES_RT(true), 10*60*1000);
         if (!silencioso) btn.classList.add('active');
-        setEstado(`🛰 GOES-16 RT: ${focos.length} focos activos (actualiza c/15 min)`, focos.length>0?'warn':'ok');
+        setEstado(`🛰 GOES-16 RT: ${focos.length} focos activos (actualiza c/10 min)`, focos.length>0?'warn':'ok');
       } catch(e) {
         if (!silencioso) { goesRtActivo = false; setEstado('Error al consultar GOES-16 RT', 'err'); }
       }
@@ -2495,11 +2495,11 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     // ── Inicio — carga automática al abrir el mapa ───────────────────────────
     actualizarAutoRefresh();
     actualizarContadores();
-    // GeoJSON y datos satelitales arrancan en paralelo.
-    // estaEnArg() devuelve true si geojsonArg es null → los focos se muestran igual.
+    // Todo en paralelo: no esperar GeoJSON para mostrar datos
     cargarGeoJSON();
-    cargarFocos(true);
-    cargarAlertasSMN(true);
+    cargarFocos(true);        // VIIRS SNPP/NOAA-20/NOAA-21 + MODIS + GOES NRT
+    cargarAlertasSMN(true);   // Alertas SMN Argentina
+    cargarGOES_RT(false);     // GOES-16 geoestacionario — se auto-refresca c/15 min
   </script>
 
   <script>
