@@ -183,9 +183,14 @@
   </a>
   <a href="/admin/ai-informes" class="sidebar-link {% if 'ai_informe' in request.endpoint %}active{% endif %}">
     <i class="fas fa-robot"></i> Historial IA
+    <span id="badge-ai" style="display:none;margin-left:auto;background:rgba(249,115,22,0.2);color:#f97316;border-radius:99px;font-size:0.68rem;font-weight:700;padding:1px 7px;"></span>
   </a>
   <a href="/admin/auditoria" class="sidebar-link {% if 'auditoria' in request.endpoint %}active{% endif %}">
     <i class="fas fa-shield-alt"></i> Auditoría
+  </a>
+  <a href="/admin/focos/export.csv" class="sidebar-link" title="Exportar focos CSV">
+    <i class="fas fa-fire"></i> Focos
+    <span id="badge-focos" style="display:none;margin-left:auto;background:rgba(239,68,68,0.2);color:#ef4444;border-radius:99px;font-size:0.68rem;font-weight:700;padding:1px 7px;"></span>
   </a>
 
   <div class="sidebar-section">Aplicación</div>
@@ -267,6 +272,11 @@ function closeSidebar() {
     document.getElementById('sidebar').classList.remove('is-open');
     document.getElementById('sidebarOverlay').style.display = 'none';
 }
+// Badges sidebar
+fetch('/admin/api/alert-counts').then(r=>r.json()).then(d=>{
+    if(d.ai_hoy > 0){ const b=document.getElementById('badge-ai'); b.textContent=d.ai_hoy; b.style.display='inline'; }
+    if(d.focos_criticos > 0){ const b=document.getElementById('badge-focos'); b.textContent=d.focos_criticos+' críticos'; b.style.display='inline'; }
+}).catch(()=>{});
 </script>
 </body>
 </html>

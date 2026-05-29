@@ -454,6 +454,45 @@ def auditoria():
                            admin_names=admin_names, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta)
 
 
+@admin_bp.route('/ai-informes/export.csv')
+@login_required
+@admin_required
+def export_ai_informes_csv():
+    query = _geo_filter(AiInforme.query, AiInforme).order_by(AiInforme.timestamp.desc())
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['id','fecha','region','severidad','tipo_foco','satelite','confianza','fwi','hectareas','lat','lon'])
+    for r in query.all():
+        cw.writerow([
+            r.id,
+            r.timestamp.strftime('%Y-%m-%d %H:%M') if r.timestamp else '',
+            r.region or '', r.severidad or '', r.tipo_foco or '',
+            r.satellite or '', r.conf or '', r.fwi_val or '',
+            r.ha or '', r.lat or '', r.lon or '',
+        ])
+    return Response(si.getvalue().encode('utf-8-sig'), mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment;filename=ai_informes.csv'})
+
+
+@admin_bp.route('/focos/export.csv')
+@login_required
+@admin_required
+def export_focos_csv():
+    query = _geo_filter(FocoLog.query, FocoLog).order_by(FocoLog.timestamp.desc())
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['id','fecha','region','severidad','fuente','hectareas','lat','lon','analizado_ia'])
+    for r in query.all():
+        cw.writerow([
+            r.id,
+            r.timestamp.strftime('%Y-%m-%d %H:%M') if r.timestamp else '',
+            r.region or '', r.severidad or '', r.fuente or '',
+            r.ha or '', r.lat or '', r.lon or '', r.ai_analizado,
+        ])
+    return Response(si.getvalue().encode('utf-8-sig'), mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment;filename=focos.csv'})
+
+
 @admin_bp.route('/api/alert-counts')
 @login_required
 @admin_required
