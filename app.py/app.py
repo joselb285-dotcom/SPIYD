@@ -110,15 +110,6 @@ def ratelimit_handler(e):
 def internal_error(e):
     return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
 
-@app.route('/setup-superadmin')
-def setup_superadmin():
-    if User.query.count() > 0:
-        return jsonify({"error": "Ya existen usuarios. Endpoint deshabilitado."}), 403
-    u = User(username='superadmin', email='admin@spiyd.com', role='superadmin', active=True)
-    u.set_password('Spiyd2026!')
-    db.session.add(u)
-    db.session.commit()
-    return jsonify({"ok": True, "usuario": "superadmin", "password": "Spiyd2026!"})
 
 @app.route('/')
 def landing():

@@ -95,6 +95,11 @@
     .estado-box.warn { border-left:3px solid #f57c00; }
     .estado-box.err  { border-left:3px solid #e53935; }
 
+    /* ── Loading bar ─────────────────────────────────── */
+    #loadBar { position:fixed; top:0; left:0; width:100%; height:3px; z-index:9999; background:linear-gradient(90deg,#1a56a8,#ff5722,#f57c00,#1a56a8); background-size:200% 100%; animation:loadBarMove 1.4s linear infinite; display:none; }
+    #loadBar.active { display:block; }
+    @keyframes loadBarMove { 0%{background-position:200% 0} 100%{background-position:0% 0} }
+
     /* ── Regla 30-30-30 ─────────────────────────────────── */
     .regla-panel { margin-top:8px; padding:8px; background:rgba(255,87,34,0.07); border:1px solid rgba(255,87,34,0.2); border-radius:8px; }
     .regla-titulo { font-size:10px; font-weight:700; color:#ff7043; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
@@ -217,6 +222,7 @@
   </style>
 </head>
 <body>
+<div id="loadBar"></div>
 
 <button id="mob-toggle" onclick="toggleMobPanel()" title="Abrir panel">☰</button>
 <div id="mob-overlay" onclick="closeMobPanel()"></div>
@@ -335,7 +341,7 @@
     <div style="text-align:center;">
       <span class="riesgo-badge" id="riesgoBadge" style="background:#1e1e1e;color:#555;">RIESGO: —</span>
     </div>
-    <div class="estado-box" id="estado">Presioná "NASA" para cargar focos de Argentina y Paraguay.</div>
+    <div class="estado-box" id="estado">⏳ Cargando datos satelitales…</div>
 
     <!-- ── Regla 30-30-30 ────────────────────────────── -->
     <div class="regla-panel">
@@ -791,6 +797,11 @@
       el.className   = 'estado-box' + (tipo ? ' '+tipo : '');
     }
 
+    // ── Loading bar ───────────────────────────────────────────────────────────
+    const _loadPending = new Set();
+    function startLoad(name) { _loadPending.add(name); document.getElementById('loadBar').classList.add('active'); }
+    function doneLoad(name)  { _loadPending.delete(name); if (!_loadPending.size) document.getElementById('loadBar').classList.remove('active'); }
+
     function badgeNivel(n) {
       const c = { rojo:'badge-rojo', naranja:'badge-naranja', amarillo:'badge-amarillo', verde:'badge-verde' };
       const l = { rojo:'Rojo', naranja:'Naranja', amarillo:'Amarillo', verde:'Info' };
@@ -1144,6 +1155,7 @@
       focoDataMap = {}; focoCounter = 0;
       const dias = document.getElementById('dias').value;
       if (msg) setEstado('Consultando NASA FIRMS…');
+      startLoad('nasa');
       try {
         const results = await Promise.all(
           FUENTES_NASA.map(f =>
@@ -1211,7 +1223,7 @@
       } catch(e) {
         console.error(e);
         setEstado('Error al cargar focos. Verificá MAP_KEY.', 'err');
-      }
+      } finally { doneLoad('nasa'); }
     }
 
     // ── SMN ─────────────────────────────────────────────────────────────────
@@ -1227,6 +1239,7 @@
       }
       smnActivo = true;
       if (msg) document.getElementById('resumenSMN').innerHTML = 'Consultando…';
+      startLoad('smn');
       try {
         const alertas = await fetch(`${BACKEND}/smn-alertas?provincia=`).then(r => r.json());
         Object.assign(ultimoSMN, { total:0, rojo:0, naranja:0, amarillo:0, verde:0 });
@@ -1239,7 +1252,7 @@
       } catch(e) {
         smnActivo = false;
         document.getElementById('resumenSMN').innerHTML = '<span style="color:#e53935;">Error — ¿está app.py corriendo?</span>';
-      }
+      } finally { doneLoad('smn'); }
     }
 
     const REGION_PROVINCIAS = {
@@ -2260,6 +2273,7 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
       }
       if (!silencioso) goesRtActivo = true;
       if (!silencioso) { btn.disabled=true; btn.childNodes[0].textContent='⏳ Consultando GOES…  '; }
+      startLoad('goes');
       try {
         const txt = await fetch(
           `${BACKEND}/nasa-focos?fuente=GOES_NRT&dias=1`
@@ -2301,7 +2315,7 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         setEstado(`🛰 GOES-16 RT: ${focos.length} focos activos (actualiza c/10 min)`, focos.length>0?'warn':'ok');
       } catch(e) {
         if (!silencioso) { goesRtActivo = false; setEstado('Error al consultar GOES-16 RT', 'err'); }
-      }
+      } finally { doneLoad('goes'); }
       if (!silencioso) { btn.childNodes[0].textContent='🛰 GOES-16 Tiempo Real  '; btn.disabled=false; }
     }
 

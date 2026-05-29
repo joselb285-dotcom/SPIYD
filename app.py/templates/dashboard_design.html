@@ -477,6 +477,8 @@ function App() {
   const [hourly, setHourly]       = useState(HOURLY_24);
   const [notifs, setNotifs]       = useState([]);
   const [bellCount, setBellCount] = useState(0);
+  const [dateFrom, setDateFrom]   = useState('');
+  const [dateTo,   setDateTo]     = useState('');
 
   const addNotif = useCallback((alert)=>{
     const n = {id:Date.now(),region:alert.region,sev:alert.severity,source:alert.source,ha:alert.ha};
@@ -513,8 +515,11 @@ function App() {
   },[]);
 
   const base = firmsData ? alerts.filter(a=>a.province==='FIRMS'||INITIAL.some(x=>x.id===a.id)) : alerts;
+  const tsFrom = dateFrom ? new Date(dateFrom).getTime() : 0;
+  const tsTo   = dateTo   ? new Date(dateTo + 'T23:59:59').getTime() : Infinity;
   const filtered = base.filter(a=>{
     if(filter!=='all' && a.severity!==filter) return false;
+    if(a.ts && (a.ts < tsFrom || a.ts > tsTo)) return false;
     if(province==='all') return true;
     if(['AR','BR','BO'].includes(province)) return a.province?.startsWith(province);
     return a.province===province || (province==='PY'&&a.province==='PY') || (province==='UY'&&a.province==='UY');
@@ -636,6 +641,20 @@ function App() {
                 <button key={v} onClick={()=>setFilter(v)} className={`tab ${filter===v?'tab-active':'tab-inactive'}`}>{l}</button>
               ))}
             </div>
+            {/* Date range */}
+            <div style={{marginTop:8,display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
+              <div>
+                <div style={{color:'rgba(255,255,255,.28)',fontSize:'.52rem',letterSpacing:'.12em',textTransform:'uppercase',marginBottom:3}}>Desde</div>
+                <input type="date" className="ctrl" style={{width:'100%',colorScheme:'dark'}} value={dateFrom} onChange={e=>setDateFrom(e.target.value)} />
+              </div>
+              <div>
+                <div style={{color:'rgba(255,255,255,.28)',fontSize:'.52rem',letterSpacing:'.12em',textTransform:'uppercase',marginBottom:3}}>Hasta</div>
+                <input type="date" className="ctrl" style={{width:'100%',colorScheme:'dark'}} value={dateTo} onChange={e=>setDateTo(e.target.value)} />
+              </div>
+            </div>
+            {(dateFrom||dateTo) && (
+              <button onClick={()=>{setDateFrom('');setDateTo('');}} className="tab tab-inactive" style={{marginTop:5,width:'100%',textAlign:'center'}}>✕ Limpiar fechas</button>
+            )}
           </div>
 
           {/* Alert count summary */}
@@ -666,7 +685,7 @@ function App() {
             ))}
             {HAS_REAL_DATA && (
               <div style={{marginTop:7,paddingTop:7,borderTop:'1px solid rgba(255,255,255,.06)',color:'rgba(255,255,255,.25)',fontSize:'.58rem'}}>
-                {filtered.length} focos · últimos 30 días
+                {filtered.length} focos · {dateFrom||dateTo ? `${dateFrom||'…'} → ${dateTo||'hoy'}` : 'últimos 30 días'}
               </div>
             )}
           </div>
