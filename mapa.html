@@ -100,6 +100,47 @@
     #loadBar.active { display:block; }
     @keyframes loadBarMove { 0%{background-position:200% 0} 100%{background-position:0% 0} }
 
+    /* ── Light mode ──────────────────────────────────── */
+    body.light { background:#e8eaf0; }
+    body.light .panel { background:rgba(245,247,252,0.97); color:#1a1a2e; border-color:rgba(0,0,0,0.1); }
+    body.light .ph-title { color:#1a1a2e; }
+    body.light .ph-sub { color:#e65100; }
+    body.light .cs-num { color:#1a1a2e; }
+    body.light .cs-lbl { color:#888; }
+    body.light .cs-item { background:rgba(0,0,0,0.04); border-color:rgba(0,0,0,0.08); }
+    body.light .qbtn { background:linear-gradient(160deg,rgba(0,0,0,0.06) 0%,rgba(0,0,0,0.02) 100%); border-color:rgba(0,0,0,0.12); color:#555; box-shadow:0 2px 6px rgba(0,0,0,.12); }
+    body.light .qbtn:hover { background:linear-gradient(160deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.04) 100%); color:#222; }
+    body.light .estado-box { background:rgba(0,0,0,0.04); border-color:rgba(0,0,0,0.1); color:#555; }
+    body.light .btn-group-label { color:#aaa; }
+    body.light .btn-group-label::after { background:rgba(0,0,0,.08); }
+    body.light .seccion-header { background:rgba(0,0,0,0.04); border-color:rgba(0,0,0,0.1); color:#555; }
+    body.light .seccion-header:hover { background:rgba(0,0,0,0.08); color:#222; }
+    body.light .panel select { background:rgba(0,0,0,0.05); border-color:rgba(0,0,0,0.12); color:#1a1a2e; }
+    body.light .panel select option { background:#f0f2f5; color:#1a1a2e; }
+    body.light .regla-panel { background:rgba(255,87,34,0.05); }
+    body.light .alerta-titulo { color:#1a1a2e; }
+    body.light .alerta-meta { color:#888; }
+    body.light .ph-nav { background:rgba(0,0,0,0.06); border-color:rgba(0,0,0,0.12); color:#555; }
+    body.light .ph-logout { background:rgba(0,0,0,0.06); border-color:rgba(0,0,0,0.12); color:#888; }
+    body.light .capa-toggle { color:#555; }
+    body.light .leyenda-item { color:#555; }
+    body.light #mob-toggle { background:rgba(245,247,252,0.95); border-color:rgba(0,0,0,0.12); color:#1a1a2e; }
+
+    /* ── Onboarding modal ────────────────────────────── */
+    #onboardingModal { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); }
+    #onboardingModal.hidden { display:none; }
+    .ob-box { background:rgba(12,14,22,0.98); border:1px solid rgba(255,255,255,0.12); border-radius:16px; padding:28px 32px; max-width:400px; width:92%; box-shadow:0 20px 60px rgba(0,0,0,0.8); }
+    .ob-title { font-size:18px; font-weight:800; color:#fff; margin-bottom:4px; }
+    .ob-sub { font-size:11px; color:#f57c00; text-transform:uppercase; letter-spacing:.6px; margin-bottom:20px; }
+    .ob-step { display:flex; gap:12px; align-items:flex-start; margin-bottom:14px; }
+    .ob-icon { font-size:20px; flex-shrink:0; width:32px; text-align:center; margin-top:1px; }
+    .ob-text strong { display:block; font-size:13px; color:#e0e0e0; margin-bottom:2px; }
+    .ob-text span { font-size:11px; color:#888; line-height:1.45; }
+    .ob-btn { width:100%; margin-top:20px; padding:11px; border-radius:10px; border:none; background:linear-gradient(135deg,#f57c00,#e53935); color:#fff; font-size:14px; font-weight:700; cursor:pointer; transition:opacity .15s; }
+    .ob-btn:hover { opacity:.88; }
+    .ob-skip { display:block; text-align:center; margin-top:10px; font-size:11px; color:#555; cursor:pointer; }
+    .ob-skip:hover { color:#888; }
+
     /* ── Regla 30-30-30 ─────────────────────────────────── */
     .regla-panel { margin-top:8px; padding:8px; background:rgba(255,87,34,0.07); border:1px solid rgba(255,87,34,0.2); border-radius:8px; }
     .regla-titulo { font-size:10px; font-weight:700; color:#ff7043; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
@@ -224,6 +265,20 @@
 <body>
 <div id="loadBar"></div>
 
+<!-- Onboarding -->
+<div id="onboardingModal" class="hidden">
+  <div class="ob-box">
+    <div class="ob-title">🔥 Bienvenido a SPIYD</div>
+    <div class="ob-sub">Monitor de incendios · Argentina · Paraguay</div>
+    <div class="ob-step"><div class="ob-icon">🛰</div><div class="ob-text"><strong>NASA FIRMS</strong><span>Focos activos de los satélites VIIRS y MODIS. Se carga automáticamente al abrir el mapa.</span></div></div>
+    <div class="ob-step"><div class="ob-icon">📡</div><div class="ob-text"><strong>INPE / GOES-16</strong><span>Datos del satélite geoestacionario GOES-16 en tiempo real. Se actualiza cada 10 minutos.</span></div></div>
+    <div class="ob-step"><div class="ob-icon">⚡</div><div class="ob-text"><strong>Alertas SMN</strong><span>Alertas meteorológicas del Servicio Meteorológico Nacional argentino.</span></div></div>
+    <div class="ob-step"><div class="ob-icon">🤖</div><div class="ob-text"><strong>Análisis IA</strong><span>Hacé clic en cualquier foco y presioná "Analizar con IA" para obtener un informe automático.</span></div></div>
+    <button class="ob-btn" onclick="cerrarOnboarding()">Entendido, ir al mapa →</button>
+    <span class="ob-skip" onclick="cerrarOnboarding()">No mostrar de nuevo</span>
+  </div>
+</div>
+
 <button id="mob-toggle" onclick="toggleMobPanel()" title="Abrir panel">☰</button>
 <div id="mob-overlay" onclick="closeMobPanel()"></div>
 
@@ -243,6 +298,7 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           Dashboard
         </a>
+        <button id="btnTema" onclick="toggleTema()" class="ph-logout" title="Cambiar tema" style="font-size:14px;">🌙</button>
         <a href="/logout" class="ph-logout" title="Cerrar sesión">⏻</a>
       </div>
     </div>
@@ -2524,6 +2580,28 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     cargarFocos(true);        // VIIRS SNPP/NOAA-20/NOAA-21 + MODIS + GOES NRT
     cargarAlertasSMN(true);   // Alertas SMN Argentina
     cargarGOES_RT(false);     // GOES-16 geoestacionario — se auto-refresca c/15 min
+
+    // ── Tema claro/oscuro ─────────────────────────────────────────────────────
+    function toggleTema() {
+      const light = document.body.classList.toggle('light');
+      document.getElementById('btnTema').textContent = light ? '☀️' : '🌙';
+      localStorage.setItem('spiyd_tema', light ? 'light' : 'dark');
+    }
+    (function() {
+      if (localStorage.getItem('spiyd_tema') === 'light') {
+        document.body.classList.add('light');
+        document.getElementById('btnTema').textContent = '☀️';
+      }
+    })();
+
+    // ── Onboarding ────────────────────────────────────────────────────────────
+    function cerrarOnboarding() {
+      document.getElementById('onboardingModal').classList.add('hidden');
+      localStorage.setItem('spiyd_onboarded', '1');
+    }
+    if (!localStorage.getItem('spiyd_onboarded')) {
+      document.getElementById('onboardingModal').classList.remove('hidden');
+    }
   </script>
 
   <script>
