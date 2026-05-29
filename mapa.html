@@ -799,8 +799,18 @@
 
     // ── Loading bar ───────────────────────────────────────────────────────────
     const _loadPending = new Set();
-    function startLoad(name) { _loadPending.add(name); document.getElementById('loadBar').classList.add('active'); }
-    function doneLoad(name)  { _loadPending.delete(name); if (!_loadPending.size) document.getElementById('loadBar').classList.remove('active'); }
+    let _loadBarTimer = null;
+    function startLoad(name) {
+      _loadPending.add(name);
+      if (_loadBarTimer) { clearTimeout(_loadBarTimer); _loadBarTimer = null; }
+      document.getElementById('loadBar').classList.add('active');
+    }
+    function doneLoad(name) {
+      _loadPending.delete(name);
+      if (!_loadPending.size) {
+        _loadBarTimer = setTimeout(()=>{ document.getElementById('loadBar').classList.remove('active'); }, 1500);
+      }
+    }
 
     function badgeNivel(n) {
       const c = { rojo:'badge-rojo', naranja:'badge-naranja', amarillo:'badge-amarillo', verde:'badge-verde' };
