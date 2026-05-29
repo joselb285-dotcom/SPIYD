@@ -102,8 +102,6 @@ with app.app_context():
         except Exception:
             pass
 
-threading.Thread(target=_daily_summary_loop, daemon=True).start()
-
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({"error": f"Límite de uso alcanzado. Intentá en unos minutos."}), 429
@@ -1792,8 +1790,9 @@ def enviar_resumen_ahora():
         return jsonify({'error': str(ex)}), 500
 
 
+threading.Thread(target=_daily_summary_loop, daemon=True).start()
+
 if __name__ == "__main__":
-    import threading
     threading.Thread(target=_build_wind_data, daemon=True).start()
     threading.Thread(target=obtener_grilla_clima, daemon=True).start()
     app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
