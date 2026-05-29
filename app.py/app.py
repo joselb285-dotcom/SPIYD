@@ -327,15 +327,33 @@ def provincias_geojson():
     resp.headers['Cache-Control'] = 'public, max-age=86400'
     return resp
 
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "")
+BOT_TOKEN    = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+CHAT_ID      = os.environ.get("TELEGRAM_CHAT_ID", "")
 NASA_MAP_KEY = os.environ.get("NASA_MAP_KEY", "")
-SMTP_HOST = os.environ.get("SMTP_HOST", "")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
-SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER)
-SUMMARY_HOUR_UTC = int(os.environ.get("SUMMARY_HOUR_UTC", "11"))  # 8am Argentina (UTC-3)
+
+
+def get_cfg(key, default=''):
+    """Lee configuración de DB (cfg_KEY); si no existe usa env var o default."""
+    from models import SystemLog as _SL
+    try:
+        row = _SL.query.filter_by(key=f'cfg_{key}').first()
+        if row and row.value is not None:
+            return row.value
+    except Exception:
+        pass
+    return os.environ.get(key, default)
+
+
+def set_cfg(key, value):
+    """Guarda configuración en DB."""
+    from models import SystemLog as _SL
+    row = _SL.query.filter_by(key=f'cfg_{key}').first()
+    if row:
+        row.value = str(value)
+        row.updated_at = datetime.utcnow()
+    else:
+        db.session.add(_SL(key=f'cfg_{key}', value=str(value)))
+    db.session.commit()
 
 SMN_FEEDS = [
     {"tipo": "Alertas y advertencias",   "url": "https://ssl.smn.gob.ar/feeds/CAP/rss_alertaCAP_nuevo.xml",             "nivel_base": "naranja"},
@@ -866,7 +884,7 @@ def _llamar_ia(system_prompt, user_prompt, model="claude-sonnet-4-6", max_tokens
         import anthropic
     except ImportError:
         return None, (jsonify({"error": "Instala: pip install anthropic"}), 503)
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = get_cfg('ANTHROPIC_API_KEY') or os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return None, (jsonify({"error": "ANTHROPIC_API_KEY no configurada"}), 503)
     try:
@@ -1620,7 +1638,7 @@ def nasa_focos():
     dias   = request.args.get("dias", "1")
     if fuente not in FUENTES_NASA:
         return jsonify({"error": "fuente inválida"}), 400
-    key = NASA_MAP_KEY
+    key = get_cfg('NASA_MAP_KEY') or NASA_MAP_KEY
     if not key:
         return jsonify({"error": "NASA_MAP_KEY no configurada"}), 503
     url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{key}/{fuente}/{BBOX_ARG}/{dias}"
@@ -1676,7 +1694,11 @@ def _construir_datos_resumen():
 
 
 def _enviar_resumen_telegram(d):
-    if not BOT_TOKEN or not CHAT_ID:
+    if get_cfg('TELEGRAM_ENABLED', 'true') == 'false':
+        return
+    token = get_cfg('TELEGRAM_BOT_TOKEN') or BOT_TOKEN
+    chat  = get_cfg('TELEGRAM_CHAT_ID')   or CHAT_ID
+    if not token or not chat:
         return
     texto = (
         f"📊 *Resumen diario SPIYD — {d['fecha']}*\n\n"
@@ -1689,8 +1711,8 @@ def _enviar_resumen_telegram(d):
     )
     try:
         requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json={"chat_id": CHAT_ID, "text": texto, "parse_mode": "Markdown"},
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat, "text": texto, "parse_mode": "Markdown"},
             timeout=15
         )
     except Exception as ex:
@@ -1698,7 +1720,14 @@ def _enviar_resumen_telegram(d):
 
 
 def _enviar_resumen_email(d):
-    if not SMTP_HOST or not SMTP_USER or not SMTP_PASS:
+    if get_cfg('EMAIL_ENABLED', 'false') == 'false':
+        return
+    smtp_host = get_cfg('SMTP_HOST') or os.environ.get('SMTP_HOST', '')
+    smtp_port = int(get_cfg('SMTP_PORT') or os.environ.get('SMTP_PORT', '587'))
+    smtp_user = get_cfg('SMTP_USER') or os.environ.get('SMTP_USER', '')
+    smtp_pass = get_cfg('SMTP_PASS') or os.environ.get('SMTP_PASS', '')
+    smtp_from = get_cfg('SMTP_FROM') or os.environ.get('SMTP_FROM', smtp_user)
+    if not smtp_host or not smtp_user or not smtp_pass:
         return
     import smtplib
     from email.mime.multipart import MIMEMultipart
@@ -1728,13 +1757,13 @@ def _enviar_resumen_email(d):
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = asunto
-        msg['From']    = SMTP_FROM
+        msg['From']    = smtp_from
         msg['To']      = ', '.join(destinatarios)
         msg.attach(MIMEText(html, 'html'))
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+        with smtplib.SMTP(smtp_host, smtp_port) as s:
             s.starttls()
-            s.login(SMTP_USER, SMTP_PASS)
-            s.sendmail(SMTP_FROM, destinatarios, msg.as_string())
+            s.login(smtp_user, smtp_pass)
+            s.sendmail(smtp_from, destinatarios, msg.as_string())
         app.logger.info(f"[RESUMEN] Email enviado a {destinatarios}")
     except Exception as ex:
         app.logger.error(f"[RESUMEN] Email error: {ex}")
@@ -1769,7 +1798,10 @@ def _daily_summary_loop():
     while True:
         time.sleep(60)
         try:
-            if datetime.utcnow().hour == SUMMARY_HOUR_UTC:
+            if get_cfg('SUMMARY_ENABLED', 'true') == 'false':
+                continue
+            hora = int(get_cfg('SUMMARY_HOUR_UTC', '11'))
+            if datetime.utcnow().hour == hora:
                 _intentar_enviar_resumen()
         except Exception as ex:
             app.logger.error(f"[RESUMEN] Loop error: {ex}")

@@ -1,0 +1,196 @@
+{% extends "base_admin.html" %}
+{% block title %}Configuración — SPIYD Admin{% endblock %}
+{% block page_title %}Configuración del Sistema{% endblock %}
+{% block breadcrumb %}Configuración{% endblock %}
+
+{% block content %}
+<form method="POST" action="/admin/configuracion">
+
+  <!-- Resumen diario -->
+  <div class="data-card mb-4">
+    <div class="data-card-header">
+      <h6><i class="fas fa-calendar-check me-2" style="color:var(--green)"></i>Resumen Diario</h6>
+    </div>
+    <div style="padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+
+      <div>
+        <label class="form-label">Resumen activo</label>
+        <div class="form-check form-switch mt-2">
+          <input class="form-check-input" type="checkbox" name="SUMMARY_ENABLED" id="sw_summary"
+                 {% if valores.SUMMARY_ENABLED == 'true' %}checked{% endif %}>
+          <label class="form-check-label" for="sw_summary" style="color:var(--muted);font-size:.85rem">
+            Enviar resumen automáticamente
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">Hora de envío (UTC)</label>
+        <input type="number" name="SUMMARY_HOUR_UTC" class="form-control" min="0" max="23"
+               value="{{ valores.SUMMARY_HOUR_UTC }}" placeholder="11">
+        <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
+          UTC+0 — Argentina es UTC-3 (ej: 11 UTC = 8am ARG)
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Telegram -->
+  <div class="data-card mb-4">
+    <div class="data-card-header">
+      <h6><i class="fab fa-telegram me-2" style="color:#2CA5E0"></i>Telegram</h6>
+    </div>
+    <div style="padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+
+      <div>
+        <label class="form-label">Telegram activo</label>
+        <div class="form-check form-switch mt-2">
+          <input class="form-check-input" type="checkbox" name="TELEGRAM_ENABLED" id="sw_tg"
+                 {% if valores.TELEGRAM_ENABLED == 'true' %}checked{% endif %}>
+          <label class="form-check-label" for="sw_tg" style="color:var(--muted);font-size:.85rem">
+            Enviar resumen por Telegram
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">Bot Token</label>
+        <input type="password" name="TELEGRAM_BOT_TOKEN" class="form-control"
+               value="{{ valores.TELEGRAM_BOT_TOKEN }}" placeholder="Dejar vacío para usar variable de entorno"
+               autocomplete="new-password">
+      </div>
+
+      <div>
+        <label class="form-label">Chat ID</label>
+        <input type="text" name="TELEGRAM_CHAT_ID" class="form-control"
+               value="{{ valores.TELEGRAM_CHAT_ID }}" placeholder="Dejar vacío para usar variable de entorno">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Email -->
+  <div class="data-card mb-4">
+    <div class="data-card-header">
+      <h6><i class="fas fa-envelope me-2" style="color:var(--orange)"></i>Email (SMTP)</h6>
+    </div>
+    <div style="padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+
+      <div>
+        <label class="form-label">Email activo</label>
+        <div class="form-check form-switch mt-2">
+          <input class="form-check-input" type="checkbox" name="EMAIL_ENABLED" id="sw_email"
+                 {% if valores.EMAIL_ENABLED == 'true' %}checked{% endif %}>
+          <label class="form-check-label" for="sw_email" style="color:var(--muted);font-size:.85rem">
+            Enviar resumen por email a todos los admins
+          </label>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">SMTP Host</label>
+        <input type="text" name="SMTP_HOST" class="form-control"
+               value="{{ valores.SMTP_HOST }}" placeholder="smtp.gmail.com">
+      </div>
+
+      <div>
+        <label class="form-label">SMTP Puerto</label>
+        <input type="number" name="SMTP_PORT" class="form-control"
+               value="{{ valores.SMTP_PORT }}" placeholder="587">
+      </div>
+
+      <div>
+        <label class="form-label">Usuario SMTP</label>
+        <input type="text" name="SMTP_USER" class="form-control"
+               value="{{ valores.SMTP_USER }}" placeholder="tu@gmail.com">
+      </div>
+
+      <div>
+        <label class="form-label">Contraseña SMTP</label>
+        <input type="password" name="SMTP_PASS" class="form-control"
+               value="{{ valores.SMTP_PASS }}" placeholder="App password"
+               autocomplete="new-password">
+      </div>
+
+      <div>
+        <label class="form-label">Email remitente (From)</label>
+        <input type="text" name="SMTP_FROM" class="form-control"
+               value="{{ valores.SMTP_FROM }}" placeholder="noreply@spiyd.com">
+      </div>
+
+    </div>
+    <div style="padding:0 24px 16px;font-size:.8rem;color:var(--muted)">
+      <i class="fas fa-info-circle me-1"></i>
+      Gmail: usá una <a href="https://myaccount.google.com/apppasswords" target="_blank" style="color:var(--orange)">App Password</a>
+      (requiere 2FA). Outlook: <code style="background:rgba(255,255,255,.05);padding:1px 6px;border-radius:4px">smtp.office365.com</code> puerto 587.
+    </div>
+  </div>
+
+  <!-- APIs externas -->
+  <div class="data-card mb-4">
+    <div class="data-card-header">
+      <h6><i class="fas fa-key me-2" style="color:var(--gold)"></i>APIs Externas</h6>
+    </div>
+    <div style="padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+
+      <div>
+        <label class="form-label">NASA FIRMS API Key</label>
+        <input type="password" name="NASA_MAP_KEY" class="form-control"
+               value="{{ valores.NASA_MAP_KEY }}" placeholder="Dejar vacío para usar variable de entorno"
+               autocomplete="new-password">
+        <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
+          Obtené tu key en <a href="https://firms.modaps.eosdis.nasa.gov/api/area/" target="_blank" style="color:var(--orange)">firms.modaps.eosdis.nasa.gov</a>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">Anthropic API Key (Claude IA)</label>
+        <input type="password" name="ANTHROPIC_API_KEY" class="form-control"
+               value="{{ valores.ANTHROPIC_API_KEY }}" placeholder="sk-ant-..."
+               autocomplete="new-password">
+        <div style="font-size:.75rem;color:var(--muted);margin-top:4px">
+          Obtené tu key en <a href="https://console.anthropic.com" target="_blank" style="color:var(--orange)">console.anthropic.com</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Acciones -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px">
+    <button type="submit" class="btn-spiyd">
+      <i class="fas fa-save"></i> Guardar configuración
+    </button>
+    <button type="button" class="btn-spiyd-outline" onclick="probarResumen()">
+      <i class="fas fa-paper-plane"></i> Enviar resumen ahora (prueba)
+    </button>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function probarResumen() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando…';
+  try {
+    const r = await fetch('/admin/api/enviar-resumen-ahora', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) {
+      btn.innerHTML = '<i class="fas fa-check"></i> Enviado correctamente';
+      btn.style.color = 'var(--green)';
+    } else {
+      btn.innerHTML = '<i class="fas fa-times"></i> ' + (d.error || 'Error');
+      btn.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    btn.innerHTML = '<i class="fas fa-times"></i> Error de conexión';
+    btn.style.color = 'var(--red)';
+  }
+  setTimeout(()=>{ btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Enviar resumen ahora (prueba)'; btn.style.color=''; }, 5000);
+}
+</script>
+{% endblock %}

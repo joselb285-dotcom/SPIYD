@@ -6,6 +6,8 @@ import csv, io, math
 from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog, UnidadRecurso, TIPOS_UNIDAD
 from superadmin import PROVINCIAS_ARG, DEPARTAMENTOS_PRY
 from datetime import datetime, timedelta
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -504,6 +506,40 @@ def alert_counts():
     smn_rojo = _geo_filter(SmnAlerta.query, SmnAlerta).filter_by(severidad='rojo').filter(SmnAlerta.timestamp >= inicio_hoy).count()
     ai_hoy = _geo_filter(AiInforme.query, AiInforme).filter(AiInforme.timestamp >= inicio_hoy).count()
     return jsonify({'focos_criticos': focos_criticos, 'smn_rojo': smn_rojo, 'ai_hoy': ai_hoy})
+
+
+@admin_bp.route('/configuracion', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def configuracion():
+    from app import get_cfg, set_cfg
+    CAMPOS = [
+        ('SUMMARY_ENABLED',    'Resumen diario activo',          'bool',     'true'),
+        ('SUMMARY_HOUR_UTC',   'Hora de envío (UTC)',             'number',   '11'),
+        ('TELEGRAM_ENABLED',   'Telegram activo',                 'bool',     'true'),
+        ('TELEGRAM_BOT_TOKEN', 'Telegram Bot Token',              'password', ''),
+        ('TELEGRAM_CHAT_ID',   'Telegram Chat ID',                'text',     ''),
+        ('EMAIL_ENABLED',      'Email activo',                    'bool',     'false'),
+        ('SMTP_HOST',          'SMTP Host',                       'text',     ''),
+        ('SMTP_PORT',          'SMTP Puerto',                     'number',   '587'),
+        ('SMTP_USER',          'SMTP Usuario',                    'text',     ''),
+        ('SMTP_PASS',          'SMTP Contraseña',                 'password', ''),
+        ('SMTP_FROM',          'Email remitente (From)',          'text',     ''),
+        ('NASA_MAP_KEY',       'NASA FIRMS API Key',              'password', ''),
+        ('ANTHROPIC_API_KEY',  'Anthropic API Key (Claude IA)',   'password', ''),
+    ]
+    if request.method == 'POST':
+        for key, _, tipo, _ in CAMPOS:
+            if tipo == 'bool':
+                set_cfg(key, 'true' if request.form.get(key) else 'false')
+            else:
+                val = request.form.get(key, '').strip()
+                if val:
+                    set_cfg(key, val)
+        flash('Configuración guardada correctamente', 'success')
+        return redirect(url_for('admin.configuracion'))
+    valores = {key: get_cfg(key, default) for key, _, _, default in CAMPOS}
+    return render_template('admin/configuracion.html', campos=CAMPOS, valores=valores)
 
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
