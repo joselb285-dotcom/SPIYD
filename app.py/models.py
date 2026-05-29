@@ -165,3 +165,11 @@ class AuditLog(db.Model):
     target_type = db.Column(db.String(30))
     target_id = db.Column(db.Integer)
     detail = db.Column(db.Text)
+
+
+class SystemLog(db.Model):
+    __tablename__ = 'system_log'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.String(255))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)

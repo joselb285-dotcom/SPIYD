@@ -102,6 +102,8 @@ with app.app_context():
         except Exception:
             pass
 
+threading.Thread(target=_daily_summary_loop, daemon=True).start()
+
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({"error": f"Límite de uso alcanzado. Intentá en unos minutos."}), 429
@@ -330,6 +332,12 @@ def provincias_geojson():
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "")
 NASA_MAP_KEY = os.environ.get("NASA_MAP_KEY", "")
+SMTP_HOST = os.environ.get("SMTP_HOST", "")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
+SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER)
+SUMMARY_HOUR_UTC = int(os.environ.get("SUMMARY_HOUR_UTC", "11"))  # 8am Argentina (UTC-3)
 
 SMN_FEEDS = [
     {"tipo": "Alertas y advertencias",   "url": "https://ssl.smn.gob.ar/feeds/CAP/rss_alertaCAP_nuevo.xml",             "nivel_base": "naranja"},
@@ -1641,6 +1649,147 @@ def nasa_focos():
         return r.text, 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Exception as ex:
         return jsonify({"error": str(ex)}), 502
+
+
+# ── Resumen diario ────────────────────────────────────────────────────────────
+
+def _construir_datos_resumen():
+    """Retorna dict con estadísticas del día anterior."""
+    from models import SystemLog as _SL
+    hoy = datetime.utcnow().date()
+    ayer_inicio = datetime.combine(hoy - __import__('datetime').timedelta(days=1), datetime.min.time())
+    ayer_fin    = datetime.combine(hoy, datetime.min.time())
+    with app.app_context():
+        focos_total   = FocoLog.query.filter(FocoLog.timestamp >= ayer_inicio, FocoLog.timestamp < ayer_fin).count()
+        focos_criticos = FocoLog.query.filter(FocoLog.timestamp >= ayer_inicio, FocoLog.timestamp < ayer_fin, FocoLog.severidad == 'critical').count()
+        focos_altos   = FocoLog.query.filter(FocoLog.timestamp >= ayer_inicio, FocoLog.timestamp < ayer_fin, FocoLog.severidad == 'high').count()
+        ai_total      = AiInforme.query.filter(AiInforme.timestamp >= ayer_inicio, AiInforme.timestamp < ayer_fin).count()
+        smn_total     = SmnAlerta.query.filter(SmnAlerta.timestamp >= ayer_inicio, SmnAlerta.timestamp < ayer_fin).count()
+        admins        = User.query.filter(User.role.in_(['admin', 'superadmin']), User.active == True).all()
+    return {
+        'fecha': ayer_inicio.strftime('%d/%m/%Y'),
+        'focos_total': focos_total,
+        'focos_criticos': focos_criticos,
+        'focos_altos': focos_altos,
+        'ai_total': ai_total,
+        'smn_total': smn_total,
+        'admins': admins,
+    }
+
+
+def _enviar_resumen_telegram(d):
+    if not BOT_TOKEN or not CHAT_ID:
+        return
+    texto = (
+        f"📊 *Resumen diario SPIYD — {d['fecha']}*\n\n"
+        f"🔥 Focos detectados: *{d['focos_total']}*\n"
+        f"   ├ Críticos: {d['focos_criticos']}\n"
+        f"   └ Altos: {d['focos_altos']}\n\n"
+        f"🤖 Análisis IA generados: *{d['ai_total']}*\n"
+        f"⚡ Alertas SMN: *{d['smn_total']}*\n\n"
+        f"🌐 Ver mapa: https://spiyd.com/mapa"
+    )
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            json={"chat_id": CHAT_ID, "text": texto, "parse_mode": "Markdown"},
+            timeout=15
+        )
+    except Exception as ex:
+        app.logger.error(f"[RESUMEN] Telegram error: {ex}")
+
+
+def _enviar_resumen_email(d):
+    if not SMTP_HOST or not SMTP_USER or not SMTP_PASS:
+        return
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    destinatarios = [u.email for u in d['admins'] if u.email]
+    if not destinatarios:
+        return
+    asunto = f"[SPIYD] Resumen diario {d['fecha']}"
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;background:#0d0f17;color:#e0e0e0;border-radius:12px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#f97316,#dc2626);padding:20px 28px">
+        <h2 style="margin:0;color:#fff;font-size:18px">🔥 SPIYD — Resumen {d['fecha']}</h2>
+      </div>
+      <div style="padding:24px 28px">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:8px 0;color:#888;font-size:13px">Focos detectados</td><td style="text-align:right;font-weight:700;font-size:16px;color:#f97316">{d['focos_total']}</td></tr>
+          <tr><td style="padding:8px 0;color:#888;font-size:13px">— Críticos</td><td style="text-align:right;color:#ef4444">{d['focos_criticos']}</td></tr>
+          <tr><td style="padding:8px 0;color:#888;font-size:13px">— Altos</td><td style="text-align:right;color:#f59e0b">{d['focos_altos']}</td></tr>
+          <tr><td style="padding:8px 0;color:#888;font-size:13px">Análisis IA</td><td style="text-align:right;color:#a78bfa">{d['ai_total']}</td></tr>
+          <tr><td style="padding:8px 0;color:#888;font-size:13px">Alertas SMN</td><td style="text-align:right;color:#60a5fa">{d['smn_total']}</td></tr>
+        </table>
+        <div style="margin-top:20px;text-align:center">
+          <a href="https://spiyd.com/mapa" style="background:#f97316;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Ver mapa →</a>
+        </div>
+      </div>
+    </div>"""
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = asunto
+        msg['From']    = SMTP_FROM
+        msg['To']      = ', '.join(destinatarios)
+        msg.attach(MIMEText(html, 'html'))
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.sendmail(SMTP_FROM, destinatarios, msg.as_string())
+        app.logger.info(f"[RESUMEN] Email enviado a {destinatarios}")
+    except Exception as ex:
+        app.logger.error(f"[RESUMEN] Email error: {ex}")
+
+
+def _intentar_enviar_resumen():
+    """Envía el resumen del día usando DB como lock anti-duplicado entre workers."""
+    from models import SystemLog as _SL
+    hoy_str = datetime.utcnow().strftime('%Y-%m-%d')
+    with app.app_context():
+        try:
+            existente = _SL.query.filter_by(key='daily_summary_sent').with_for_update(skip_locked=True).first()
+            if existente:
+                if existente.value == hoy_str:
+                    return  # ya enviado hoy
+                existente.value = hoy_str
+                existente.updated_at = datetime.utcnow()
+            else:
+                db.session.add(_SL(key='daily_summary_sent', value=hoy_str))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return
+        d = _construir_datos_resumen()
+        _enviar_resumen_telegram(d)
+        _enviar_resumen_email(d)
+        app.logger.info(f"[RESUMEN] Enviado para {hoy_str}")
+
+
+def _daily_summary_loop():
+    import time
+    while True:
+        time.sleep(60)
+        try:
+            if datetime.utcnow().hour == SUMMARY_HOUR_UTC:
+                _intentar_enviar_resumen()
+        except Exception as ex:
+            app.logger.error(f"[RESUMEN] Loop error: {ex}")
+
+
+@app.route('/admin/api/enviar-resumen-ahora', methods=['POST'])
+@login_required
+def enviar_resumen_ahora():
+    from flask_login import current_user
+    if current_user.role not in ('admin', 'superadmin'):
+        return jsonify({'error': 'Sin permiso'}), 403
+    try:
+        d = _construir_datos_resumen()
+        _enviar_resumen_telegram(d)
+        _enviar_resumen_email(d)
+        return jsonify({'ok': True, 'focos': d['focos_total'], 'ai': d['ai_total']})
+    except Exception as ex:
+        return jsonify({'error': str(ex)}), 500
 
 
 if __name__ == "__main__":
