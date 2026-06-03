@@ -7,11 +7,11 @@
 <div class="data-card">
   <div class="data-card-header">
     <h6><i class="fas fa-shield-alt me-2" style="color:var(--orange)"></i>
-      Auditoría <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ logs.total }} registros)</span>
+      <span data-i18n="audit.title">Registro de Auditoría</span> <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ logs.total }} registros)</span>
     </h6>
     <form method="GET" class="d-flex gap-2 align-items-center flex-wrap">
       <select name="accion" class="form-select" style="width:180px" onchange="this.form.submit()">
-        <option value="">Todas las acciones</option>
+        <option value="" data-i18n="audit.allActions">Todas las acciones</option>
         {% for a in acciones %}
           <option value="{{ a }}" {% if accion_filter == a %}selected{% endif %}>{{ a }}</option>
         {% endfor %}
@@ -30,12 +30,12 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Fecha</th>
-          <th>Admin</th>
-          <th>Acción</th>
-          <th>Objeto</th>
+          <th data-i18n="audit.colDate">Fecha</th>
+          <th data-i18n="audit.colAdmin">Admin</th>
+          <th data-i18n="audit.colAction">Acción</th>
+          <th data-i18n="audit.colObject">Objeto</th>
           <th>ID</th>
-          <th>Detalle</th>
+          <th data-i18n="audit.colDetail">Detalle</th>
         </tr>
       </thead>
       <tbody>

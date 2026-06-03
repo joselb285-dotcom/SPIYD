@@ -7,26 +7,26 @@
 <div class="data-card">
   <div class="data-card-header">
     <h6><i class="fas fa-robot me-2" style="color:var(--orange)"></i>
-      Análisis IA <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ informes.total }} total)</span>
+      <span data-i18n="ai.title">Análisis IA</span> <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ informes.total }} total)</span>
     </h6>
     <div class="d-flex gap-2 align-items-center flex-wrap">
       <form method="GET" class="d-flex gap-2 flex-wrap align-items-center">
         <div class="search-box">
           <i class="fas fa-search"></i>
           <input type="text" name="region" value="{{ region_filter }}" class="form-control"
-                 placeholder="Región..." style="width:140px">
+                 placeholder="Región..." data-i18n-placeholder="ai.searchPlaceholder" style="width:140px">
         </div>
         <select name="tipo" class="form-select" style="width:140px" onchange="this.form.submit()">
-          <option value="">Todos los tipos</option>
+          <option value="" data-i18n="ai.allTypes">Todos los tipos</option>
           {% for t in tipos_foco %}
             <option value="{{ t }}" {% if tipo_filter == t %}selected{% endif %}>{{ t }}</option>
           {% endfor %}
         </select>
         <select name="severidad" class="form-select" style="width:130px" onchange="this.form.submit()">
-          <option value="">Toda severidad</option>
-          <option value="critical" {% if severidad_filter == 'critical' %}selected{% endif %}>Crítico</option>
-          <option value="high"     {% if severidad_filter == 'high'     %}selected{% endif %}>Alto</option>
-          <option value="medium"   {% if severidad_filter == 'medium'   %}selected{% endif %}>Medio</option>
+          <option value="" data-i18n="ai.allSeverity">Toda severidad</option>
+          <option value="critical" {% if severidad_filter == 'critical' %}selected{% endif %} data-i18n="ai.critical">Crítico</option>
+          <option value="high"     {% if severidad_filter == 'high'     %}selected{% endif %} data-i18n="ai.high">Alto</option>
+          <option value="medium"   {% if severidad_filter == 'medium'   %}selected{% endif %} data-i18n="ai.medium">Medio</option>
         </select>
         <button type="submit" class="btn-spiyd-outline"><i class="fas fa-filter"></i></button>
         {% if tipo_filter or severidad_filter or region_filter %}
@@ -44,12 +44,12 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Fecha</th>
-          <th>Tipo</th>
-          <th>Región</th>
-          <th>Severidad</th>
+          <th data-i18n="ai.colDate">Fecha</th>
+          <th data-i18n="ai.colType">Tipo</th>
+          <th data-i18n="ai.colRegion">Región</th>
+          <th data-i18n="ai.colSeverity">Severidad</th>
           <th>Coords</th>
-          <th>Satélite</th>
+          <th data-i18n="ai.colSatellite">Satélite</th>
           <th>FWI</th>
           <th></th>
         </tr>

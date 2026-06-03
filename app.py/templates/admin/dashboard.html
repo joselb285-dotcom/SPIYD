@@ -50,46 +50,46 @@
 <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 z-50 bg-surface-container flex flex-col py-6 gap-4 border-r border-outline-variant/20 shadow-xl transition-transform duration-300 -translate-x-full md:translate-x-0">
     <div class="px-6 mb-4">
         <h1 class="font-headline-lg text-2xl text-primary tracking-tighter">SPIYD</h1>
-        <p class="font-label-technical text-[10px] text-on-surface-variant opacity-60 tracking-widest">Command Center v2.4</p>
+        <p class="font-label-technical text-[10px] text-on-surface-variant opacity-60 tracking-widest" data-i18n="dash.commandCenter">Command Center v2.4</p>
     </div>
     <nav class="flex flex-col gap-1 flex-1">
-        <div class="px-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest">Principal</div>
+        <div class="px-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.main">Principal</div>
         <a class="flex items-center gap-3 py-3 px-4 bg-secondary-container text-on-secondary-container rounded-lg mx-2 transition-all" href="/admin/">
             <span class="material-symbols-outlined">dashboard</span>
-            <span class="font-label-technical text-[12px]">Dashboard</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Dashboard</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/users">
             <span class="material-symbols-outlined">group</span>
-            <span class="font-label-technical text-[12px]">Usuarios</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.users">Usuarios</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/recursos">
             <span class="material-symbols-outlined">database</span>
-            <span class="font-label-technical text-[12px]">Recursos</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.resources">Recursos</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/mapa-recursos">
             <span class="material-symbols-outlined">map</span>
-            <span class="font-label-technical text-[12px]">Mapa Recursos</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.resourceMap">Mapa Recursos</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/ai-informes">
             <span class="material-symbols-outlined">smart_toy</span>
-            <span class="font-label-technical text-[12px]">Historial IA</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.aiHistory">Historial IA</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/auditoria">
             <span class="material-symbols-outlined">shield</span>
-            <span class="font-label-technical text-[12px]">Auditoría</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.audit">Auditoría</span>
         </a>
-        <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest">Aplicación</div>
+        <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.application">Aplicación</div>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/mapa?auth=1">
             <span class="material-symbols-outlined">satellite_alt</span>
-            <span class="font-label-technical text-[12px]">Mapa Satelital</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.satelliteMap">Mapa Satelital</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/dashboard" target="_blank">
             <span class="material-symbols-outlined">monitoring</span>
-            <span class="font-label-technical text-[12px]">Dashboard Alertas</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.alertDashboard">Dashboard Alertas</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/">
             <span class="material-symbols-outlined">public</span>
-            <span class="font-label-technical text-[12px]">Sitio Web</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.website">Sitio Web</span>
         </a>
     </nav>
     <div class="mt-auto px-2 flex flex-col gap-1">
@@ -109,8 +109,16 @@
         </div>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg transition-all" href="/logout">
             <span class="material-symbols-outlined">logout</span>
-            <span class="font-label-technical text-[12px]">Cerrar Sesión</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.logout">Cerrar Sesión</span>
         </a>
+        <div style="display:flex;align-items:center;gap:2px;padding:4px 8px">
+          <button class="spiyd-lang-btn" data-lang="es" onclick="spiydI18n.setLang('es')"
+                  style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:#c5c6cd;padding:2px 5px;border-radius:4px;transition:all .15s">ES</button>
+          <button class="spiyd-lang-btn" data-lang="en" onclick="spiydI18n.setLang('en')"
+                  style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:#c5c6cd;padding:2px 5px;border-radius:4px;transition:all .15s">EN</button>
+          <button class="spiyd-lang-btn" data-lang="pt" onclick="spiydI18n.setLang('pt')"
+                  style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:#c5c6cd;padding:2px 5px;border-radius:4px;transition:all .15s">PT</button>
+        </div>
     </div>
 </aside>
 
@@ -162,7 +170,7 @@
             </div>
             <div class="glass-panel p-3 md:p-4 rounded-xl flex flex-wrap items-center gap-3 md:gap-6 flex-1">
                 <div class="flex flex-col">
-                    <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Sistema</span>
+                    <span class="font-label-technical text-[10px] text-on-surface-variant uppercase" data-i18n="dash.system">Sistema</span>
                     <div class="flex items-center gap-2">
                         <span class="text-lg font-bold">SPIYD Admin Panel</span>
                         <span id="alertBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.5px;animation:pulse 2s infinite"></span>
@@ -170,7 +178,7 @@
                 </div>
                 <div class="w-px h-8 bg-outline-variant/30"></div>
                 <div class="flex flex-col">
-                    <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Estado Global</span>
+                    <span class="font-label-technical text-[10px] text-on-surface-variant uppercase" data-i18n="dash.globalStatus">Estado Global</span>
                     {% if focos_criticos and focos_criticos > 0 %}
                     <span class="text-lg font-bold text-error">ALERTA NIVEL {{ focos_criticos }}</span>
                     {% else %}
@@ -181,22 +189,22 @@
                 <div class="flex items-center gap-3">
                     <a href="/admin/users/new" class="bg-primary text-on-primary-fixed font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:opacity-90 transition-all text-sm">
                         <span class="material-symbols-outlined text-sm">person_add</span>
-                        <span>Nuevo Usuario</span>
+                        <span data-i18n="dash.newUser">Nuevo Usuario</span>
                     </a>
                     <a href="/mapa?auth=1" class="bg-secondary/20 border border-secondary/30 text-secondary font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-secondary/30 transition-all text-sm">
                         <span class="material-symbols-outlined text-sm">satellite_alt</span>
-                        <span>Ver Mapa</span>
+                        <span data-i18n="dash.viewMap">Ver Mapa</span>
                     </a>
                     <button id="btnResumen" onclick="enviarResumen()" class="bg-primary/20 border border-primary/30 text-primary font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-primary/30 transition-all text-sm">
                         <span class="material-symbols-outlined text-sm">send</span>
-                        <span>Resumen</span>
+                        <span data-i18n="dash.summary">Resumen</span>
                     </button>
                 </div>
             </div>
             <div class="glass-panel p-4 rounded-xl flex items-center gap-4">
                 <div class="flex flex-col text-right">
                     <span class="font-label-technical text-[10px] text-on-surface-variant" id="clock">Cargando...</span>
-                    <span class="font-label-technical text-[10px] text-secondary">MONITOREO EN VIVO</span>
+                    <span class="font-label-technical text-[10px] text-secondary" data-i18n="dash.liveMonitor">MONITOREO EN VIVO</span>
                 </div>
                 <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
             </div>
@@ -209,22 +217,22 @@
                 <!-- Stat Cards -->
                 <div class="grid grid-cols-2 gap-3">
                     <a href="/admin/users" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent">
-                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Usuarios</p>
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.users">Usuarios</p>
                         <p class="text-2xl font-bold">{{ active_users }}</p>
                         <p class="text-[10px] text-on-surface-variant">de {{ total_users }}</p>
                     </a>
                     <a href="/mapa?auth=1" class="glass-panel p-4 rounded-2xl text-center hover:border-error/40 transition-all" style="text-decoration:none;border:1px solid transparent">
-                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Focos Hoy</p>
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.hotspotsToday">Focos Hoy</p>
                         <p class="text-2xl font-bold text-error">{{ focos_hoy }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ focos_mes }} este mes</p>
                     </a>
                     <a href="/admin/auditoria" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent">
-                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Alertas SMN</p>
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.smnAlerts">Alertas SMN</p>
                         <p class="text-2xl font-bold text-primary">{{ smn_total }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ smn_hoy }} hoy</p>
                     </a>
                     <a href="/admin/ai-informes" class="glass-panel p-4 rounded-2xl text-center hover:border-purple-400/40 transition-all" style="text-decoration:none;border:1px solid transparent">
-                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase">Informes IA</p>
+                        <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.aiReports">Informes IA</p>
                         <p class="text-2xl font-bold" style="color:#a78bfa">{{ ai_total }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ ai_mes }} este mes</p>
                     </a>
@@ -235,7 +243,7 @@
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-sm font-bold flex items-center gap-2">
                             <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings:'FILL' 1">auto_awesome</span>
-                            Últimos Informes IA
+                            <span data-i18n="dash.lastIAReports">Últimos Informes IA</span>
                         </h3>
                         <span class="text-[10px] font-label-technical text-on-surface-variant">{{ ai_mes }} ESTE MES</span>
                     </div>
@@ -279,7 +287,7 @@
                 <section class="glass-panel p-5 rounded-2xl">
                     <h3 class="text-sm font-bold mb-4 flex items-center gap-2">
                         <span class="material-symbols-outlined text-secondary text-sm">groups</span>
-                        Últimos Accesos
+                        <span data-i18n="dash.lastAccesses">Últimos Accesos</span>
                     </h3>
                     <div class="space-y-3">
                         {% for log, user in logins_recientes[:4] %}
@@ -311,12 +319,12 @@
             <div class="w-full lg:w-96 flex flex-col gap-4 md:gap-6 pointer-events-auto">
                 <!-- Severity Metrics -->
                 <div class="glass-panel p-glass-padding rounded-2xl">
-                    <h4 class="font-label-technical text-on-surface-variant uppercase mb-4 tracking-widest text-[10px]">Focos por Severidad</h4>
+                    <h4 class="font-label-technical text-on-surface-variant uppercase mb-4 tracking-widest text-[10px]" data-i18n="dash.severityByFocus">Focos por Severidad</h4>
                     {% set total_focos = (focos_criticos + focos_altos + focos_medios) or 1 %}
                     <div class="space-y-3">
                         <div>
                             <div class="flex justify-between mb-1">
-                                <span class="text-[12px]">Crítico</span>
+                                <span class="text-[12px]" data-i18n="dash.criticalLabel">Crítico</span>
                                 <span class="font-label-technical text-[11px] text-error">{{ focos_criticos }}</span>
                             </div>
                             <div class="h-1.5 bg-surface-container rounded-full overflow-hidden">
@@ -325,7 +333,7 @@
                         </div>
                         <div>
                             <div class="flex justify-between mb-1">
-                                <span class="text-[12px]">Alto</span>
+                                <span class="text-[12px]" data-i18n="dash.highLabel">Alto</span>
                                 <span class="font-label-technical text-[11px] text-tertiary">{{ focos_altos }}</span>
                             </div>
                             <div class="h-1.5 bg-surface-container rounded-full overflow-hidden">
@@ -334,7 +342,7 @@
                         </div>
                         <div>
                             <div class="flex justify-between mb-1">
-                                <span class="text-[12px]">Medio</span>
+                                <span class="text-[12px]" data-i18n="dash.mediumLabel">Medio</span>
                                 <span class="font-label-technical text-[11px] text-primary">{{ focos_medios }}</span>
                             </div>
                             <div class="h-1.5 bg-surface-container rounded-full overflow-hidden">
@@ -349,9 +357,9 @@
                     <div class="p-5 border-b border-outline-variant/10 flex items-center justify-between bg-surface-variant/10">
                         <h3 class="text-sm font-bold flex items-center gap-2">
                             <span class="material-symbols-outlined text-error text-sm">emergency_home</span>
-                            Alertas SMN Recientes
+                            <span data-i18n="dash.recentSMN">Alertas SMN Recientes</span>
                         </h3>
-                        <a href="/admin/auditoria" class="text-[10px] font-label-technical hover:text-primary transition-colors">VER TODO</a>
+                        <a href="/admin/auditoria" class="text-[10px] font-label-technical hover:text-primary transition-colors" data-i18n="dash.seeAll">VER TODO</a>
                     </div>
                     <div class="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-4">
                         {% for alerta in smn_recientes[:6] %}
@@ -377,16 +385,16 @@
         <footer class="flex justify-center mt-4 pointer-events-auto">
             <div class="glass-panel p-2 rounded-full flex flex-wrap items-center gap-1 justify-center">
                 <a href="/admin/users" class="px-4 py-2 hover:bg-surface-variant/30 rounded-full transition-colors text-on-surface-variant hover:text-primary font-label-technical text-[11px] flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">group</span> Gestionar Usuarios
+                    <span class="material-symbols-outlined text-sm">group</span> <span data-i18n="dash.manageUsers">Gestionar Usuarios</span>
                 </a>
                 <div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
                 <a href="/admin/users/new" class="px-4 py-2 hover:bg-surface-variant/30 rounded-full transition-colors text-on-surface-variant hover:text-primary font-label-technical text-[11px] flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">person_add</span> Nuevo Usuario
+                    <span class="material-symbols-outlined text-sm">person_add</span> <span data-i18n="dash.newUser">Nuevo Usuario</span>
                 </a>
                 <div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
                 <a href="/logout" class="bg-error/10 text-error px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-error/20 transition-all font-label-technical text-[11px]">
                     <span class="material-symbols-outlined text-sm">logout</span>
-                    <span>Cerrar Sesión</span>
+                    <span data-i18n="nav.logout">Cerrar Sesión</span>
                 </a>
             </div>
         </footer>
@@ -461,4 +469,5 @@
         setTimeout(()=>{ btn.disabled=false; btn.querySelector('span:last-child').textContent='Resumen'; btn.style.background=''; }, 4000);
     }
 </script>
+<script src="/i18n.js"></script>
 </body></html>

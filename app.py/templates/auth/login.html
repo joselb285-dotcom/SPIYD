@@ -178,9 +178,18 @@
 
 <canvas id="bg-canvas"></canvas>
 
+<div style="position:fixed;top:14px;right:16px;z-index:100;display:flex;align-items:center;gap:4px">
+  <button class="spiyd-lang-btn" data-lang="es" onclick="spiydI18n.setLang('es')"
+          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:0.72rem;color:rgba(255,255,255,0.5);padding:3px 7px;border-radius:5px;transition:all .15s">ES</button>
+  <button class="spiyd-lang-btn" data-lang="en" onclick="spiydI18n.setLang('en')"
+          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:0.72rem;color:rgba(255,255,255,0.5);padding:3px 7px;border-radius:5px;transition:all .15s">EN</button>
+  <button class="spiyd-lang-btn" data-lang="pt" onclick="spiydI18n.setLang('pt')"
+          style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:0.72rem;color:rgba(255,255,255,0.5);padding:3px 7px;border-radius:5px;transition:all .15s">PT</button>
+</div>
+
 <a href="/" id="back-link">
   <svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
-  Volver al inicio
+  <span data-i18n="login.backToHome">Volver al inicio</span>
 </a>
 
 <div id="login-wrap">
@@ -188,12 +197,12 @@
     <div style="display:inline-flex;flex-direction:column;align-items:center;">
       <div class="logo-mark">⬡</div>
       <div class="login-title-text">SPIYD</div>
-      <div class="login-sub">Sistema de Prevención de Incendios y Deforestación</div>
+      <div class="login-sub" data-i18n="login.subtitle">Sistema de Prevención de Incendios y Deforestación</div>
     </div>
   </div>
 
   <div class="login-card">
-    <div class="card-heading">Iniciar sesión</div>
+    <div class="card-heading" data-i18n="login.heading">Iniciar sesión</div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% for category, message in messages %}
@@ -206,20 +215,20 @@
 
     <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next', '')) }}" autocomplete="on">
       <div class="form-group">
-        <label class="form-label">Usuario o Email</label>
+        <label class="form-label" data-i18n="login.usernameLabel">Usuario o Email</label>
         <div class="input-wrap">
           <svg class="input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <input class="form-control" type="text" name="username" placeholder="usuario o correo" required autocomplete="username">
+          <input class="form-control" type="text" name="username" placeholder="usuario o correo" data-i18n-placeholder="login.usernamePlaceholder" required autocomplete="username">
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Contraseña</label>
+        <label class="form-label" data-i18n="login.passwordLabel">Contraseña</label>
         <div class="input-wrap">
           <svg class="input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <input class="form-control" type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
         </div>
       </div>
-      <button type="submit" class="btn-submit">Ingresar al Sistema →</button>
+      <button type="submit" class="btn-submit" data-i18n="login.submitBtn">Ingresar al Sistema →</button>
     </form>
   </div>
 </div>
@@ -305,5 +314,6 @@ window.addEventListener('load', function() {
   );
 });
 </script>
+<script src="/i18n.js"></script>
 </body>
 </html>

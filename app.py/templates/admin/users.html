@@ -7,22 +7,22 @@
 <div class="data-card">
   <div class="data-card-header">
     <h6><i class="fas fa-users me-2" style="color:var(--orange)"></i>
-      Usuarios registrados <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ pagination.total }})</span>
+      <span data-i18n="users.title">Usuarios registrados</span> <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ pagination.total }})</span>
     </h6>
     <div class="d-flex gap-2 align-items-center">
       <form method="GET" action="/admin/users" class="d-flex gap-2">
         <div class="search-box">
           <i class="fas fa-search"></i>
-          <input class="form-control" type="text" name="q" value="{{ search }}" placeholder="Buscar usuario..." style="width:220px">
+          <input class="form-control" type="text" name="q" value="{{ search }}" placeholder="Buscar usuario..." data-i18n-placeholder="users.searchPlaceholder" style="width:220px">
         </div>
-        <button type="submit" class="btn-spiyd-outline">Buscar</button>
+        <button type="submit" class="btn-spiyd-outline" data-i18n="users.searchBtn">Buscar</button>
         {% if search %}<a href="/admin/users" class="btn-spiyd-outline">✕</a>{% endif %}
       </form>
       <a href="/admin/usuarios/export.csv" class="btn-spiyd-outline" title="Exportar CSV">
         <i class="fas fa-file-csv"></i> CSV
       </a>
       <a href="/admin/users/new" class="btn-spiyd">
-        <i class="fas fa-plus"></i> Nuevo
+        <i class="fas fa-plus"></i> <span data-i18n="users.newBtn">Nuevo</span>
       </a>
     </div>
   </div>
@@ -31,12 +31,12 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Usuario</th>
-          <th>Rol</th>
-          <th>Estado</th>
-          <th>Registrado</th>
-          <th>Último acceso</th>
-          <th>Acciones</th>
+          <th data-i18n="users.colUser">Usuario</th>
+          <th data-i18n="users.colRole">Rol</th>
+          <th data-i18n="users.colStatus">Estado</th>
+          <th data-i18n="users.colRegistered">Registrado</th>
+          <th data-i18n="users.colLastAccess">Último acceso</th>
+          <th data-i18n="users.colActions">Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -52,9 +52,9 @@
           </td>
           <td>
             {% if user.active %}
-            <span class="badge-active">Activo</span>
+            <span class="badge-active" data-i18n="users.active">Activo</span>
             {% else %}
-            <span class="badge-inactive">Inactivo</span>
+            <span class="badge-inactive" data-i18n="users.inactive">Inactivo</span>
             {% endif %}
           </td>
           <td style="color:var(--muted);font-size:0.82rem">
@@ -64,7 +64,7 @@
             {% if user.last_login %}
               {{ user.last_login.strftime('%d/%m/%Y %H:%M') }}
             {% else %}
-              <span style="color:#4b5563">Nunca</span>
+              <span style="color:#4b5563" data-i18n="users.never">Nunca</span>
             {% endif %}
           </td>
           <td>

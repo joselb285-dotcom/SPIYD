@@ -7,22 +7,22 @@
 <div class="data-card">
   <div class="data-card-header">
     <h6><i class="fas fa-database me-2" style="color:var(--orange)"></i>
-      Recursos registrados <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ pagination.total }})</span>
+      <span data-i18n="recursos.title">Recursos registrados</span> <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ pagination.total }})</span>
     </h6>
     <div class="d-flex gap-2 align-items-center flex-wrap">
       <form method="GET" action="/admin/recursos" class="d-flex gap-2 flex-wrap">
         <div class="search-box">
           <i class="fas fa-search"></i>
-          <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Buscar..." style="width:160px">
+          <input type="text" name="q" value="{{ search }}" class="form-control" placeholder="Buscar..." data-i18n-placeholder="recursos.searchPlaceholder" style="width:160px">
         </div>
         <select name="tipo" class="form-select" style="width:160px" onchange="this.form.submit()">
-          <option value="">Todos los tipos</option>
+          <option value="" data-i18n="recursos.allTypes">Todos los tipos</option>
           {% for val, label in tipos %}
             <option value="{{ val }}" {% if tipo_filter == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
         <select name="pais" class="form-select" style="width:130px" onchange="this.form.submit()">
-          <option value="">Todos los países</option>
+          <option value="" data-i18n="recursos.allCountries">Todos los países</option>
           <option value="argentina" {% if pais_filter == 'argentina' %}selected{% endif %}>Argentina</option>
           <option value="paraguay" {% if pais_filter == 'paraguay' %}selected{% endif %}>Paraguay</option>
         </select>
@@ -34,7 +34,7 @@
       <a href="/admin/recursos/export.csv" class="btn-spiyd-outline" title="Exportar CSV">
         <i class="fas fa-file-csv"></i> CSV
       </a>
-      <a href="/admin/recursos/new" class="btn-spiyd"><i class="fas fa-plus"></i> Nuevo recurso</a>
+      <a href="/admin/recursos/new" class="btn-spiyd"><i class="fas fa-plus"></i> <span data-i18n="recursos.newBtn">Nuevo recurso</span></a>
     </div>
   </div>
 
@@ -43,13 +43,13 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Tipo</th>
-          <th>Nombre</th>
-          <th>País / Región</th>
-          <th>Localidad</th>
-          <th>Coordenadas</th>
-          <th>Teléfono</th>
-          <th>Estado</th>
+          <th data-i18n="recursos.colType">Tipo</th>
+          <th data-i18n="recursos.colName">Nombre</th>
+          <th data-i18n="recursos.colCountry">País / Región</th>
+          <th data-i18n="recursos.colLocality">Localidad</th>
+          <th data-i18n="recursos.colCoords">Coordenadas</th>
+          <th data-i18n="recursos.colPhone">Teléfono</th>
+          <th data-i18n="recursos.colStatus">Estado</th>
           <th></th>
         </tr>
       </thead>
