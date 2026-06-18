@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Monitor de Incendios - Argentina · Paraguay · Regla 30-30-30</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f97316">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SPIYD">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
@@ -240,6 +246,15 @@
     /* ── Timestamp ─────────────────────────────────────────────── */
     #ultimaActualizacion { font-size:9px; color:#3a3a3a; text-align:center; margin-top:3px; letter-spacing:.3px; }
     body.light #ultimaActualizacion { color:#aaa; }
+
+    /* ── Sparkline tendencia ─────────────────────────────────────── */
+    #sparklineWrap { display:none; margin:5px 0 7px; }
+    #sparklineWrap .spark-header { font-size:8px; color:#3a3a3a; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; }
+    body.light #sparklineWrap .spark-header { color:#888; }
+    #sparkBars { display:flex; gap:3px; align-items:flex-end; height:30px; }
+    #sparkBars .sbar { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; }
+    #sparkBars .sbar-col { width:100%; border-radius:2px 2px 0 0; transition:height .3s; }
+    #sparkBars .sbar-lbl { font-size:7px; color:#383838; }
 
     /* ── Alerta multi-satélite ──────────────────────────────────── */
     #multiSatAlerta { display:none; margin-top:6px; padding:7px 10px; background:rgba(255,23,68,0.1); border:1px solid rgba(255,23,68,0.45); border-radius:8px; cursor:pointer; }
@@ -481,6 +496,13 @@
       <span class="riesgo-badge" id="riesgoBadge" style="background:#1e1e1e;color:#555;">RIESGO: —</span>
     </div>
     <div id="ultimaActualizacion"></div>
+    <div id="sparklineWrap">
+      <div class="spark-header">
+        <span>Tendencia 5 días</span>
+        <span id="sparkTrend"></span>
+      </div>
+      <div id="sparkBars"></div>
+    </div>
     <div id="multiSatAlerta" onclick="irAFocosMultiSat()">
       <div class="multisat-titulo">
         <span style="animation:pulsarMultiSat 1.4s ease-in-out infinite;display:inline-block;width:9px;height:9px;border-radius:50%;background:#ff1744;"></span>
@@ -979,6 +1001,33 @@
       if (el) el.textContent = '📡 Actualizado: ' + t + ' hs';
     }
 
+    // ── Sparkline tendencia 5 días ─────────────────────────────────────────────
+    function renderSparkline() {
+      const byDate = {};
+      firePts.forEach(f => { if (f.fecha) byDate[f.fecha] = (byDate[f.fecha] || 0) + 1; });
+      const dates = Object.keys(byDate).sort().slice(-5);
+      if (dates.length < 2) return;
+      const vals = dates.map(d => byDate[d]);
+      const max = Math.max(...vals);
+      const bars = document.getElementById('sparkBars');
+      const trend = document.getElementById('sparkTrend');
+      if (!bars || !trend) return;
+      bars.innerHTML = vals.map((v, i) => {
+        const h = Math.max(4, Math.round((v / max) * 26));
+        const isLast = i === vals.length - 1;
+        const bg = isLast ? '#f57c00' : '#2a2a2a';
+        const lbl = dates[i].slice(5).replace('-', '/');
+        return `<div class="sbar" title="${dates[i]}: ${v} focos"><div class="sbar-col" style="height:${h}px;background:${bg};"></div><span class="sbar-lbl">${lbl}</span></div>`;
+      }).join('');
+      const last = vals[vals.length - 1];
+      const prev = vals[vals.length - 2];
+      const diff = last - prev;
+      const col = diff > 0 ? '#e53935' : diff < 0 ? '#43a047' : '#555';
+      const txt = diff > 0 ? `↑ +${diff}` : diff < 0 ? `↓ ${diff}` : '→ estable';
+      trend.innerHTML = `<span style="color:${col};font-weight:700;">${txt}</span>`;
+      document.getElementById('sparklineWrap').style.display = 'block';
+    }
+
     // ── Ir a mi ubicación ─────────────────────────────────────────────────────
     let _ubicMk = null;
     // ── Buscador de región ────────────────────────────────────────────────────
@@ -1471,7 +1520,7 @@
           else if (confNum >= 50) { if (confState.media) mapa.hasLayer(clusterMedia) || mapa.addLayer(clusterMedia); clusterMedia.addLayer(mk); }
           else                    { if (confState.baja)  mapa.hasLayer(clusterBaja)  || mapa.addLayer(clusterBaja);  clusterBaja.addLayer(mk); }
           bnds.push([lat,lng]);
-          firePts.push({ lat, lon:lng, conf });
+          firePts.push({ lat, lon:lng, conf, fecha: f.acq_date || '' });
           cnt++;
           if (lat < bS) bS=lat; if (lat > bN) bN=lat;
           if (lng < bW) bW=lng; if (lng > bE) bE=lng;
@@ -1485,6 +1534,7 @@
         _prevFocos = cnt;
         ultimoFocos = cnt;
         actualizarTimestamp();
+        renderSparkline();
         actualizarContadores();
         verificarMultiSatelite();
         if (cnt > 0) document.getElementById('confStrip').style.display = 'flex';
@@ -2913,6 +2963,13 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
       document.getElementById('mainPanel').classList.remove('mob-open');
       document.getElementById('mob-overlay').classList.remove('mob-open');
       document.getElementById('mob-toggle').textContent = '☰';
+    }
+
+    // ── PWA Service Worker ─────────────────────────────────────────────────────
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
     }
   </script>
 </body>
