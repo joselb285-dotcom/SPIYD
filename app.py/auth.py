@@ -18,7 +18,8 @@ def login():
             (User.username == identifier) | (User.email == identifier)
         ).first()
         if user and user.check_password(password) and user.active:
-            login_user(user, remember=False)
+            remember = request.form.get('remember') == 'on'
+            login_user(user, remember=remember)
             session.permanent = True
             user.last_login = datetime.utcnow()
             try:

@@ -251,6 +251,32 @@
     body.light #multiSatAlerta { background:rgba(255,23,68,0.07); }
     body.light .multisat-sub { color:#c62828; }
 
+    /* ── Buscador región ───────────────────────────────────────── */
+    .busqueda-wrap { display:flex; gap:5px; align-items:center; margin-bottom:9px; }
+    .busqueda-field { position:relative; flex:1; }
+    .busqueda-input { width:100%; padding:6px 8px 6px 24px; border-radius:7px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#e0e0e0; font-size:11px; font-family:inherit; outline:none; transition:border-color .15s; }
+    .busqueda-input:focus { border-color:rgba(245,124,0,0.45); background:rgba(255,255,255,0.07); }
+    .busqueda-input::placeholder { color:#3a3a3a; }
+    .busqueda-lupa { position:absolute; left:7px; top:50%; transform:translateY(-50%); font-size:10px; pointer-events:none; color:#555; }
+    .busqueda-drop { position:absolute; left:0; right:0; top:calc(100% + 3px); z-index:3000; background:rgba(14,16,24,0.99); border:1px solid rgba(255,255,255,0.1); border-radius:8px; max-height:170px; overflow-y:auto; display:none; box-shadow:0 8px 24px rgba(0,0,0,0.7); }
+    .busqueda-item { padding:6px 10px; font-size:11px; color:#ccc; cursor:pointer; display:flex; align-items:center; gap:6px; }
+    .busqueda-item:hover { background:rgba(245,124,0,0.12); color:#ffb74d; }
+    .busqueda-pais { font-size:9px; color:#444; margin-left:auto; text-transform:uppercase; letter-spacing:.4px; }
+    body.light .busqueda-input { background:rgba(0,0,0,0.04); border-color:rgba(0,0,0,0.12); color:#1a1a2e; }
+    body.light .busqueda-input::placeholder { color:#aaa; }
+    body.light .busqueda-drop { background:rgba(245,247,252,0.99); border-color:rgba(0,0,0,0.1); }
+    body.light .busqueda-item { color:#333; }
+
+    /* ── Modal atajos de teclado ────────────────────────────────── */
+    #kbModal { position:fixed; inset:0; z-index:99997; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.72); backdrop-filter:blur(6px); }
+    #kbModal.hidden { display:none; }
+    .kb-box { background:rgba(12,14,22,0.98); border:1px solid rgba(255,255,255,0.12); border-radius:16px; padding:20px 24px; max-width:310px; width:92%; box-shadow:0 20px 60px rgba(0,0,0,0.8); }
+    .kb-title { font-size:14px; font-weight:800; color:#fff; margin-bottom:3px; }
+    .kb-sub { font-size:10px; color:#f57c00; text-transform:uppercase; letter-spacing:.6px; margin-bottom:14px; }
+    .kb-row { display:flex; align-items:center; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:11px; color:#bbb; }
+    .kb-row:last-of-type { border:none; }
+    .kb-key { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.18); border-radius:5px; padding:2px 8px; font-family:monospace; font-size:11px; color:#fff; min-width:22px; text-align:center; }
+
     /* ── Mobile ────────────────────────────────────────────────────── */
     #mob-toggle {
       display:none;
@@ -300,6 +326,25 @@
   </div>
 </div>
 
+<!-- Modal atajos de teclado -->
+<div id="kbModal" class="hidden">
+  <div class="kb-box">
+    <div class="kb-title">⌨ Atajos de teclado</div>
+    <div class="kb-sub">SPIYD Monitor · Referencia rápida</div>
+    <div class="kb-row"><span>Cargar focos NASA</span><span class="kb-key">N</span></div>
+    <div class="kb-row"><span>Alertas SMN</span><span class="kb-key">S</span></div>
+    <div class="kb-row"><span>Clima / 30-30-30</span><span class="kb-key">C</span></div>
+    <div class="kb-row"><span>GOES-16 tiempo real</span><span class="kb-key">G</span></div>
+    <div class="kb-row"><span>Focos INPE</span><span class="kb-key">I</span></div>
+    <div class="kb-row"><span>FWI — Índice de peligro</span><span class="kb-key">F</span></div>
+    <div class="kb-row"><span>Ir a mi ubicación</span><span class="kb-key">L</span></div>
+    <div class="kb-row"><span>Zoom a todos los focos</span><span class="kb-key">Z</span></div>
+    <div class="kb-row"><span>Esta ayuda</span><span class="kb-key">?</span></div>
+    <div class="kb-row"><span>Cerrar / Cancelar zona</span><span class="kb-key">Esc</span></div>
+    <button class="ob-btn" onclick="cerrarKbModal()" style="margin-top:14px;">Cerrar</button>
+  </div>
+</div>
+
 <button id="mob-toggle" onclick="toggleMobPanel()" title="Abrir panel">☰</button>
 <div id="mob-overlay" onclick="closeMobPanel()"></div>
 <div id="toastContainer"></div>
@@ -324,6 +369,21 @@
         <button id="btnTema" onclick="toggleTema()" class="ph-logout" title="Cambiar tema" style="font-size:14px;">🌙</button>
         <a href="/logout" class="ph-logout" title="Cerrar sesión">⏻</a>
       </div>
+    </div>
+
+    <!-- ── Buscador de región ───────────────────────── -->
+    <div class="busqueda-wrap">
+      <div class="busqueda-field">
+        <span class="busqueda-lupa">🔍</span>
+        <input class="busqueda-input" id="busquedaInput" type="text"
+               placeholder="Buscar provincia o departamento…" autocomplete="off"
+               oninput="buscarRegion(this.value)"
+               onfocus="if(this.value.trim())buscarRegion(this.value)"
+               onblur="setTimeout(()=>document.getElementById('busquedaDrop').style.display='none',200)">
+        <div class="busqueda-drop" id="busquedaDrop"></div>
+      </div>
+      <button onclick="zoomAFocos()" class="ph-logout" title="Zoom a focos activos (Z)" style="padding:5px 7px;font-size:12px;font-weight:700;">⊕</button>
+      <button onclick="document.getElementById('kbModal').classList.remove('hidden')" class="ph-logout" title="Atajos de teclado (?)" style="padding:5px 7px;font-size:12px;font-weight:700;">?</button>
     </div>
 
     <!-- ── Botones acción ─────────────────────────────── -->
@@ -921,6 +981,77 @@
 
     // ── Ir a mi ubicación ─────────────────────────────────────────────────────
     let _ubicMk = null;
+    // ── Buscador de región ────────────────────────────────────────────────────
+    const TODAS_REGIONES = [
+      ...Object.keys(BOUNDS_ARG_PROVINCIAS).map(k => ({ nombre: k, pais: 'AR', bounds: BOUNDS_ARG_PROVINCIAS[k] })),
+      ...Object.keys(BOUNDS_PRY_DEPARTAMENTOS).map(k => ({ nombre: k, pais: 'PY', bounds: BOUNDS_PRY_DEPARTAMENTOS[k] })),
+    ];
+    let _busqRes = [];
+
+    window.buscarRegion = function(q) {
+      const drop = document.getElementById('busquedaDrop');
+      if (!q.trim()) { drop.style.display = 'none'; return; }
+      const ql = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      _busqRes = TODAS_REGIONES.filter(r =>
+        r.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(ql)
+      ).slice(0, 8);
+      if (!_busqRes.length) { drop.style.display = 'none'; return; }
+      drop.innerHTML = _busqRes.map((r, i) =>
+        `<div class="busqueda-item" onmousedown="irARegion(${i})">
+           ${r.nombre}<span class="busqueda-pais">${r.pais}</span>
+         </div>`
+      ).join('');
+      drop.style.display = 'block';
+    };
+
+    window.irARegion = function(idx) {
+      const r = _busqRes[idx];
+      if (!r) return;
+      mapa.fitBounds(r.bounds, { padding: [30, 30] });
+      document.getElementById('busquedaInput').value = '';
+      document.getElementById('busquedaDrop').style.display = 'none';
+    };
+
+    // ── Zoom a todos los focos activos ────────────────────────────────────────
+    window.zoomAFocos = function() {
+      const pts = [];
+      [clusterAlta, clusterMedia, clusterBaja].forEach(cl =>
+        cl.eachLayer(l => { if (l.getLatLng) pts.push(l.getLatLng()); })
+      );
+      if (inpeActivo)   capaINPE.eachLayer(l    => { if (l.getLatLng) pts.push(l.getLatLng()); });
+      if (goesRtActivo) capaGOES_RT.eachLayer(l => { if (l.getLatLng) pts.push(l.getLatLng()); });
+      if (!pts.length) { mostrarToast('No hay focos activos en el mapa.'); return; }
+      mapa.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
+    };
+
+    // ── Atajos de teclado ─────────────────────────────────────────────────────
+    window.cerrarKbModal = function() {
+      document.getElementById('kbModal').classList.add('hidden');
+    };
+
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      switch (e.key) {
+        case '?': case '/':
+          e.preventDefault();
+          document.getElementById('kbModal').classList.toggle('hidden');
+          break;
+        case 'Escape':
+          cerrarKbModal();
+          if (zonaDrawMode) toggleZonaMode();
+          break;
+        case 'n': case 'N': cargarFocos(true);       break;
+        case 's': case 'S': cargarAlertasSMN(true);  break;
+        case 'c': case 'C': cargarClima();            break;
+        case 'g': case 'G': cargarGOES_RT(false);     break;
+        case 'i': case 'I': cargarFocosINPE();        break;
+        case 'f': case 'F': cargarFWI();              break;
+        case 'l': case 'L': irAMiUbicacion();         break;
+        case 'z': case 'Z': zoomAFocos();             break;
+      }
+    });
+
     window.irAMiUbicacion = function() {
       if (!navigator.geolocation) { mostrarToast('⚠ Geolocalización no disponible en este navegador.'); return; }
       navigator.geolocation.getCurrentPosition(

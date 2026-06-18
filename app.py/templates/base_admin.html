@@ -285,11 +285,23 @@ function closeSidebar() {
     document.getElementById('sidebar').classList.remove('is-open');
     document.getElementById('sidebarOverlay').style.display = 'none';
 }
-// Badges sidebar
-fetch('/admin/api/alert-counts').then(r=>r.json()).then(d=>{
-    if(d.ai_hoy > 0){ const b=document.getElementById('badge-ai'); b.textContent=d.ai_hoy; b.style.display='inline'; }
-    if(d.focos_criticos > 0){ const b=document.getElementById('badge-focos'); b.textContent=d.focos_criticos+' críticos'; b.style.display='inline'; }
-}).catch(()=>{});
+// Badges sidebar — polling cada 5 min
+function actualizarBadgesAdmin() {
+    fetch('/admin/api/alert-counts').then(r=>r.json()).then(d=>{
+        const bAi    = document.getElementById('badge-ai');
+        const bFocos = document.getElementById('badge-focos');
+        if (bAi) { bAi.textContent = d.ai_hoy; bAi.style.display = d.ai_hoy > 0 ? 'inline' : 'none'; }
+        if (bFocos) {
+            if (d.focos_criticos > 0) {
+                bFocos.textContent = d.focos_criticos + ' críticos';
+                bFocos.style.display = 'inline';
+                bFocos.style.animation = 'pulse 2s ease-in-out infinite';
+            } else { bFocos.style.display = 'none'; }
+        }
+    }).catch(()=>{});
+}
+actualizarBadgesAdmin();
+setInterval(actualizarBadgesAdmin, 5 * 60 * 1000);
 </script>
 </body>
 </html>
