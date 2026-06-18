@@ -230,6 +230,17 @@
     .zona-crosshair, .zona-crosshair * { cursor:crosshair !important; }
     @keyframes zona-dash { to { stroke-dashoffset:-20; } }
 
+    /* ── Toast ────────────────────────────────────────────────────── */
+    #toastContainer { position:fixed; bottom:16px; right:16px; z-index:99998; display:flex; flex-direction:column; gap:6px; pointer-events:none; }
+    .toast { background:rgba(18,22,35,0.97); border:1px solid rgba(245,124,0,0.35); border-left:3px solid #f57c00; color:#e0e0e0; padding:9px 13px; border-radius:8px; font-size:11px; font-family:'Segoe UI',Arial,sans-serif; box-shadow:0 4px 18px rgba(0,0,0,0.65); backdrop-filter:blur(8px); animation:toastIn .22s ease; max-width:230px; line-height:1.4; pointer-events:auto; }
+    .toast.toast-ok { border-left-color:#388e3c; border-color:rgba(56,142,60,.3); }
+    @keyframes toastIn  { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes toastOut { to   { opacity:0; transform:translateY(6px); } }
+
+    /* ── Timestamp ─────────────────────────────────────────────── */
+    #ultimaActualizacion { font-size:9px; color:#3a3a3a; text-align:center; margin-top:3px; letter-spacing:.3px; }
+    body.light #ultimaActualizacion { color:#aaa; }
+
     /* ── Mobile ────────────────────────────────────────────────────── */
     #mob-toggle {
       display:none;
@@ -281,6 +292,7 @@
 
 <button id="mob-toggle" onclick="toggleMobPanel()" title="Abrir panel">☰</button>
 <div id="mob-overlay" onclick="closeMobPanel()"></div>
+<div id="toastContainer"></div>
 
   <div class="panel" id="mainPanel">
 
@@ -298,6 +310,7 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           Dashboard
         </a>
+        <button onclick="irAMiUbicacion()" class="ph-logout" title="Ir a mi ubicación" style="font-size:14px;">🎯</button>
         <button id="btnTema" onclick="toggleTema()" class="ph-logout" title="Cambiar tema" style="font-size:14px;">🌙</button>
         <a href="/logout" class="ph-logout" title="Cerrar sesión">⏻</a>
       </div>
@@ -397,6 +410,7 @@
     <div style="text-align:center;">
       <span class="riesgo-badge" id="riesgoBadge" style="background:#1e1e1e;color:#555;">RIESGO: —</span>
     </div>
+    <div id="ultimaActualizacion"></div>
     <div class="estado-box" id="estado">⏳ Cargando datos satelitales…</div>
 
     <!-- ── Regla 30-30-30 ────────────────────────────── -->
@@ -823,6 +837,7 @@
     let firesBBox     = null; // {s,w,n,e}
     let intervaloAR   = null;
     let ultimoFocos   = 0;
+    let _prevFocos    = 0;
     const ultimoSMN   = { total:0, rojo:0, naranja:0, amarillo:0, verde:0 };
 
     const colorAlerta = {
@@ -867,6 +882,41 @@
         _loadBarTimer = setTimeout(()=>{ document.getElementById('loadBar').classList.remove('active'); }, 1500);
       }
     }
+
+    // ── Toast ──────────────────────────────────────────────────────────────────
+    function mostrarToast(msg, tipo='') {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast' + (tipo ? ' toast-'+tipo : '');
+      t.innerHTML = msg;
+      c.appendChild(t);
+      setTimeout(() => { t.style.animation='toastOut .25s ease forwards'; setTimeout(()=>t.remove(),260); }, 4500);
+    }
+
+    // ── Timestamp última actualización ────────────────────────────────────────
+    function actualizarTimestamp() {
+      const t = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+      const el = document.getElementById('ultimaActualizacion');
+      if (el) el.textContent = '📡 Actualizado: ' + t + ' hs';
+    }
+
+    // ── Ir a mi ubicación ─────────────────────────────────────────────────────
+    let _ubicMk = null;
+    window.irAMiUbicacion = function() {
+      if (!navigator.geolocation) { mostrarToast('⚠ Geolocalización no disponible en este navegador.'); return; }
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          if (_ubicMk) mapa.removeLayer(_ubicMk);
+          _ubicMk = L.circleMarker([lat, lng], {
+            radius: 8, color: '#29b6f6', fillColor: '#29b6f6', fillOpacity: 0.85, weight: 2
+          }).bindPopup('<b style="font-family:monospace;font-size:11px;">📍 Tu ubicación</b>').addTo(mapa);
+          mapa.flyTo([lat, lng], 10, { duration: 1.4 });
+          mostrarToast('📍 Ubicación encontrada', 'ok');
+        },
+        () => { mostrarToast('⚠ No se pudo obtener la ubicación. Verificá los permisos del navegador.'); }
+      );
+    };
 
     function badgeNivel(n) {
       const c = { rojo:'badge-rojo', naranja:'badge-naranja', amarillo:'badge-amarillo', verde:'badge-verde' };
@@ -1281,7 +1331,10 @@
           mapa.fitBounds(bnds, { padding:[40,40] });
           firesBBox = { s:bS, w:bW, n:bN, e:bE };
         }
+        if (_prevFocos > 0 && cnt > _prevFocos) mostrarToast(`⚠ +${cnt - _prevFocos} focos nuevos detectados`);
+        _prevFocos = cnt;
         ultimoFocos = cnt;
+        actualizarTimestamp();
         actualizarContadores();
         if (cnt > 0) document.getElementById('confStrip').style.display = 'flex';
         btn.classList.add('active');
@@ -1314,6 +1367,7 @@
         renderizarSMNPanel(alertas);
         renderizarCapasSMN(alertas);
         evaluarTelegram();
+        actualizarTimestamp();
         btn.classList.add('active');
       } catch(e) {
         smnActivo = false;
@@ -2311,7 +2365,11 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     function actualizarAutoRefresh() {
       if (intervaloAR) { clearInterval(intervaloAR); intervaloAR=null; }
       const ms=parseInt(document.getElementById('autoRefresh').value,10);
-      if (ms>0) intervaloAR=setInterval(()=>{ cargarFocos(false); cargarAlertasSMN(false); },ms);
+      if (ms>0) intervaloAR=setInterval(()=>{
+        // Forzar recarga (no toggle): apagar antes de cargar
+        if (nasaActivo) { nasaActivo = false; cargarFocos(false); }
+        if (smnActivo)  { smnActivo  = false; cargarAlertasSMN(false); }
+      }, ms);
     }
 
     // ── GOES-16 Tiempo Real ───────────────────────────────────────────────────
