@@ -241,6 +241,16 @@
     #ultimaActualizacion { font-size:9px; color:#3a3a3a; text-align:center; margin-top:3px; letter-spacing:.3px; }
     body.light #ultimaActualizacion { color:#aaa; }
 
+    /* ── Alerta multi-satélite ──────────────────────────────────── */
+    #multiSatAlerta { display:none; margin-top:6px; padding:7px 10px; background:rgba(255,23,68,0.1); border:1px solid rgba(255,23,68,0.45); border-radius:8px; cursor:pointer; }
+    #multiSatAlerta:hover { background:rgba(255,23,68,0.16); }
+    .multisat-titulo { font-size:10px; font-weight:800; color:#ff1744; text-transform:uppercase; letter-spacing:.5px; display:flex; align-items:center; gap:6px; }
+    .multisat-sub { font-size:10px; color:#ef9a9a; margin-top:3px; line-height:1.4; }
+    @keyframes pulsarMultiSat { 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.5); opacity:.5; } }
+    .mk-multisat-ring { animation:pulsarMultiSat 1.4s ease-in-out infinite; width:28px; height:28px; border-radius:50%; border:3px solid #ff1744; background:rgba(255,23,68,0.18); box-sizing:border-box; }
+    body.light #multiSatAlerta { background:rgba(255,23,68,0.07); }
+    body.light .multisat-sub { color:#c62828; }
+
     /* ── Mobile ────────────────────────────────────────────────────── */
     #mob-toggle {
       display:none;
@@ -411,6 +421,13 @@
       <span class="riesgo-badge" id="riesgoBadge" style="background:#1e1e1e;color:#555;">RIESGO: —</span>
     </div>
     <div id="ultimaActualizacion"></div>
+    <div id="multiSatAlerta" onclick="irAFocosMultiSat()">
+      <div class="multisat-titulo">
+        <span style="animation:pulsarMultiSat 1.4s ease-in-out infinite;display:inline-block;width:9px;height:9px;border-radius:50%;background:#ff1744;"></span>
+        ⚠ <span id="numMultiSat">0</span> focos confirmados multi-satélite
+      </div>
+      <div class="multisat-sub" id="multiSatDesc">Varios satélites detectaron incendio en el mismo punto.</div>
+    </div>
     <div class="estado-box" id="estado">⏳ Cargando datos satelitales…</div>
 
     <!-- ── Regla 30-30-30 ────────────────────────────── -->
@@ -789,9 +806,10 @@
     const capaRiesgo30   = L.layerGroup();
     const capaAgua       = L.markerClusterGroup({ showCoverageOnHover:false, maxClusterRadius:60, chunkedLoading:true });
     const capaVeg        = L.layerGroup();
-    const capaINPE       = L.layerGroup();
+    const capaINPE       = L.markerClusterGroup({ ...clusterOpts, iconCreateFunction: mkClusterIcon('rgba(230,81,0,0.90)','#ffcc80') });
     const capaFWI        = L.layerGroup();
-    const capaGOES_RT = L.layerGroup();
+    const capaGOES_RT    = L.layerGroup();
+    const capaMultiSat   = L.layerGroup();
 
     // Hillshade / topografía (ESRI World Hillshade — transparente sobre cualquier capa)
     const topoOverlay = L.tileLayer(
@@ -823,7 +841,8 @@
       "🔥 FWI":                capaFWI,
       "⛰ Topografía/Relieve": topoOverlay,
       "🛣 Caminos de acceso":  roadsOverlay,
-      "🔴 GOES-16 Tiempo Real": capaGOES_RT
+      "🔴 GOES-16 Tiempo Real": capaGOES_RT,
+      "🚨 Multi-satélite confirmados": capaMultiSat
     }, { position:'topright', collapsed:true }).addTo(mapa);
 
     // ── Estado global ────────────────────────────────────────────────────────
@@ -1336,6 +1355,7 @@
         ultimoFocos = cnt;
         actualizarTimestamp();
         actualizarContadores();
+        verificarMultiSatelite();
         if (cnt > 0) document.getElementById('confStrip').style.display = 'flex';
         btn.classList.add('active');
         setEstado(`Focos activos (>${dias}d): ${cnt} | ${new Date().toLocaleTimeString('es-AR')}`, cnt>0?'warn':'ok');
@@ -1644,7 +1664,9 @@
     let climaActivo  = false;
     let smnActivo    = false;
     let goesRtActivo = false;
+    let goesRtPts    = [];   // [{lat,lon,frp}] para cross-check multi-satélite
     let precipActivo = false;
+    let _prevMultiSat = 0;
     let ultimoBboxAgua = null;
 
     async function cargarAguaViewport() {
@@ -1994,10 +2016,12 @@
         </div>`);
         capaINPE.addLayer(mk);
       });
-      if (document.getElementById('togINPE').checked && !mapa.hasLayer(capaINPE)) mapa.addLayer(capaINPE);
+      if (!mapa.hasLayer(capaINPE)) mapa.addLayer(capaINPE);
+      document.getElementById('togINPE').checked = true;
       document.getElementById('numINPE').textContent = focos.length;
       const ic=document.getElementById('inpeCount'); ic.textContent=focos.length; ic.style.display='inline-block';
       actualizarContadores();
+      verificarMultiSatelite();
     }
 
     function renderizarPanelINPE(focos) {
@@ -2323,6 +2347,86 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
       badge.textContent=`RIESGO: ${riesgo}`; badge.style.background=bg; badge.style.color='#fff';
     }
 
+    // ── Verificación multi-satélite ──────────────────────────────────────────
+    const MULTISAT_UMBRAL_KM = 25;
+
+    function verificarMultiSatelite() {
+      const tieneNASA = firePts.length > 0;
+      const tieneINPE = datosINPE.length > 0;
+      const tieneGOES = goesRtPts.length > 0;
+      if ([tieneNASA, tieneINPE, tieneGOES].filter(Boolean).length < 2) return;
+
+      capaMultiSat.clearLayers();
+      const confirmados = [];
+
+      // Eje de comparación: puntos NASA vs INPE y GOES
+      firePts.forEach(nasa => {
+        const fuentesSet = new Set(['NASA']);
+        datosINPE.forEach(i => {
+          if (haversineKm(nasa.lat, nasa.lon, i.lat, i.lon) <= MULTISAT_UMBRAL_KM) fuentesSet.add('INPE');
+        });
+        goesRtPts.forEach(g => {
+          if (haversineKm(nasa.lat, nasa.lon, g.lat, g.lon) <= MULTISAT_UMBRAL_KM) fuentesSet.add('GOES-16');
+        });
+        if (fuentesSet.size < 2) return;
+        // Deduplicar: ignorar si ya hay un confirmado a < 5 km
+        if (confirmados.some(c => haversineKm(c.lat, c.lon, nasa.lat, nasa.lon) < 5)) return;
+        confirmados.push({ lat: nasa.lat, lon: nasa.lon, fuentes: [...fuentesSet] });
+      });
+
+      // También comparar INPE vs GOES (sin NASA)
+      if (tieneINPE && tieneGOES) {
+        datosINPE.forEach(inpe => {
+          if (firePts.some(n => haversineKm(inpe.lat, inpe.lon, n.lat, n.lon) <= MULTISAT_UMBRAL_KM)) return; // ya cubierto
+          const goesCerca = goesRtPts.filter(g => haversineKm(inpe.lat, inpe.lon, g.lat, g.lon) <= MULTISAT_UMBRAL_KM);
+          if (!goesCerca.length) return;
+          if (confirmados.some(c => haversineKm(c.lat, c.lon, inpe.lat, inpe.lon) < 5)) return;
+          confirmados.push({ lat: inpe.lat, lon: inpe.lon, fuentes: ['INPE', 'GOES-16'] });
+        });
+      }
+
+      // Renderizar marcadores pulsantes
+      confirmados.forEach(c => {
+        const icon = L.divIcon({
+          html: `<div class="mk-multisat-ring"></div>`,
+          iconSize:[28,28], iconAnchor:[14,14], className:''
+        });
+        const mk = L.marker([c.lat, c.lon], { icon, zIndexOffset: 2000 });
+        mk.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:210px;">
+          <b style="color:#ff1744;">🛰 Verificación Multi-Satélite</b><br>
+          Fuentes: <b>${c.fuentes.join(' + ')}</b><br>
+          Alta certeza de foco activo confirmado.<br>
+          <small style="color:#888;">Lat ${c.lat.toFixed(4)} | Lon ${c.lon.toFixed(4)}</small>
+        </div>`);
+        capaMultiSat.addLayer(mk);
+      });
+      if (confirmados.length > 0 && !mapa.hasLayer(capaMultiSat)) mapa.addLayer(capaMultiSat);
+
+      // Panel y toast
+      const alerta = document.getElementById('multiSatAlerta');
+      const numEl  = document.getElementById('numMultiSat');
+      const descEl = document.getElementById('multiSatDesc');
+      if (confirmados.length > 0) {
+        numEl.textContent = confirmados.length;
+        const fts = [...new Set(confirmados.flatMap(c => c.fuentes))];
+        descEl.textContent = `Fuentes: ${fts.join(' · ')} · Radio ${MULTISAT_UMBRAL_KM} km`;
+        alerta.style.display = 'block';
+        if (confirmados.length > _prevMultiSat) {
+          mostrarToast(`🛰 ${confirmados.length} foco${confirmados.length > 1?'s':''} confirmado${confirmados.length > 1?'s':''} por múltiples satélites`);
+        }
+      } else {
+        alerta.style.display = 'none';
+      }
+      _prevMultiSat = confirmados.length;
+    }
+
+    window.irAFocosMultiSat = function() {
+      if (!mapa.hasLayer(capaMultiSat)) mapa.addLayer(capaMultiSat);
+      const layers = [];
+      capaMultiSat.eachLayer(l => { if (l.getLatLng) layers.push(l.getLatLng()); });
+      if (layers.length) mapa.fitBounds(L.latLngBounds(layers), { padding:[60,60], maxZoom:9 });
+    };
+
     // ── Telegram ─────────────────────────────────────────────────────────────
     async function evaluarTelegram() {
       if (ultimoFocos<=0 || ultimoSMN.rojo<=0) return;
@@ -2407,6 +2511,7 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
           return !isNaN(lat) && !isNaN(lon) && estaEnArg(lat,lon);
         });
         capaGOES_RT.clearLayers();
+        goesRtPts = [];
         focos.forEach(f => {
           const lat=parseFloat(f.latitude), lon=parseFloat(f.longitude);
           const frp = parseFloat(f.frp)||0;
@@ -2429,9 +2534,11 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
               <small style="color:#888;">${lat.toFixed(4)}, ${lon.toFixed(4)}</small>
             </div>`);
           capaGOES_RT.addLayer(mk);
+          goesRtPts.push({ lat, lon, frp });
         });
         if (!mapa.hasLayer(capaGOES_RT)) mapa.addLayer(capaGOES_RT);
         document.getElementById('numGOES').textContent = focos.length;
+        verificarMultiSatelite();
         const badge = document.getElementById('goesRtBadge');
         if (badge) badge.style.display = focos.length>0?'inline-block':'none';
         if (!goesRtTimer) goesRtTimer = setInterval(()=>cargarGOES_RT(true), 10*60*1000);
