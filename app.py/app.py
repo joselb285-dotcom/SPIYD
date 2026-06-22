@@ -1809,16 +1809,30 @@ def _daily_summary_loop():
 
 @app.route('/sismos')
 @login_required
-@limiter.limit("30 per minute")
+@limiter.limit("60 per minute")
 def sismos():
+    from datetime import timedelta as _td
     try:
+        periodo = request.args.get('periodo', '24h')
+        minmag_override = request.args.get('minmag')
+        periodo_horas = {'1h': 1, '24h': 24, '7d': 168, '30d': 720}.get(periodo, 24)
+        if minmag_override:
+            minmag = float(minmag_override)
+        elif periodo_horas <= 24:
+            minmag = 3.5
+        elif periodo_horas <= 168:
+            minmag = 4.0
+        else:
+            minmag = 4.5
+        starttime = (datetime.utcnow() - _td(hours=periodo_horas)).strftime('%Y-%m-%dT%H:%M:%S')
         params = {
-            'format': 'geojson',
-            'minlatitude': -56, 'maxlatitude': -17,
+            'format':       'geojson',
+            'minlatitude':  -56, 'maxlatitude':  -17,
             'minlongitude': -76, 'maxlongitude': -66,
-            'minmagnitude': 3.5,
-            'orderby': 'time',
-            'limit': 150,
+            'minmagnitude': minmag,
+            'starttime':    starttime,
+            'orderby':      'time',
+            'limit':        500,
         }
         r = requests.get(
             'https://earthquake.usgs.gov/fdsnws/event/1/query',
@@ -1846,28 +1860,35 @@ def sismos():
         return jsonify({'error': str(e)}), 500
 
 
-# Volcanes activos de Chile — datos base SERNAGEOMIN
+# Volcanes activos de Chile — datos base SERNAGEOMIN + GVP histórico
 _VOLCANES_CHILE = [
-    {'nombre': 'Villarrica',           'lat': -39.42, 'lon': -71.93},
-    {'nombre': 'Llaima',               'lat': -38.69, 'lon': -71.73},
-    {'nombre': 'Copahue',              'lat': -37.86, 'lon': -71.17},
-    {'nombre': 'Calbuco',              'lat': -41.33, 'lon': -72.61},
-    {'nombre': 'Hudson',               'lat': -45.90, 'lon': -72.97},
-    {'nombre': 'Nevados de Chillán',   'lat': -36.86, 'lon': -71.38},
-    {'nombre': 'Planchón-Peteroa',     'lat': -35.24, 'lon': -70.57},
-    {'nombre': 'Lonquimay',            'lat': -38.38, 'lon': -71.59},
-    {'nombre': 'Puyehue-Cordón Caulle','lat': -40.59, 'lon': -72.12},
-    {'nombre': 'Mocho-Choshuenco',     'lat': -39.93, 'lon': -72.03},
-    {'nombre': 'Sollipulli',           'lat': -38.97, 'lon': -71.52},
-    {'nombre': 'San José',             'lat': -33.79, 'lon': -69.86},
-    {'nombre': 'Tupungatito',          'lat': -33.36, 'lon': -69.80},
-    {'nombre': 'Descabezado Grande',   'lat': -35.58, 'lon': -70.75},
-    {'nombre': 'Láscar',               'lat': -23.37, 'lon': -67.73},
-    {'nombre': 'Irruputuncu',          'lat': -20.72, 'lon': -68.53},
-    {'nombre': 'Isluga',               'lat': -19.15, 'lon': -68.83},
-    {'nombre': 'Guallatiri',           'lat': -18.42, 'lon': -69.09},
-    {'nombre': 'Tinguiririca',         'lat': -34.81, 'lon': -70.35},
-    {'nombre': 'Callaqui',             'lat': -37.92, 'lon': -71.45},
+    {'nombre': 'Villarrica',           'lat': -39.42, 'lon': -71.93, 'ultima_erupcion': 2024},
+    {'nombre': 'Nevados de Chillán',   'lat': -36.86, 'lon': -71.38, 'ultima_erupcion': 2023},
+    {'nombre': 'Láscar',               'lat': -23.37, 'lon': -67.73, 'ultima_erupcion': 2023},
+    {'nombre': 'Copahue',              'lat': -37.86, 'lon': -71.17, 'ultima_erupcion': 2021},
+    {'nombre': 'Llaima',               'lat': -38.69, 'lon': -71.73, 'ultima_erupcion': 2009},
+    {'nombre': 'Calbuco',              'lat': -41.33, 'lon': -72.61, 'ultima_erupcion': 2015},
+    {'nombre': 'Puyehue-Cordón Caulle','lat': -40.59, 'lon': -72.12, 'ultima_erupcion': 2011},
+    {'nombre': 'Hudson',               'lat': -45.90, 'lon': -72.97, 'ultima_erupcion': 2011},
+    {'nombre': 'Planchón-Peteroa',     'lat': -35.24, 'lon': -70.57, 'ultima_erupcion': 2011},
+    {'nombre': 'Isluga',               'lat': -19.15, 'lon': -68.83, 'ultima_erupcion': 2015},
+    {'nombre': 'Callaqui',             'lat': -37.92, 'lon': -71.45, 'ultima_erupcion': 1999},
+    {'nombre': 'Lonquimay',            'lat': -38.38, 'lon': -71.59, 'ultima_erupcion': 1990},
+    {'nombre': 'Irruputuncu',          'lat': -20.72, 'lon': -68.53, 'ultima_erupcion': 1995},
+    {'nombre': 'Guallatiri',           'lat': -18.42, 'lon': -69.09, 'ultima_erupcion': 1985},
+    {'nombre': 'Tupungatito',          'lat': -33.36, 'lon': -69.80, 'ultima_erupcion': 1987},
+    {'nombre': 'Mocho-Choshuenco',     'lat': -39.93, 'lon': -72.03, 'ultima_erupcion': 1864},
+    {'nombre': 'San José',             'lat': -33.79, 'lon': -69.86, 'ultima_erupcion': 1960},
+    {'nombre': 'Descabezado Grande',   'lat': -35.58, 'lon': -70.75, 'ultima_erupcion': 1932},
+    {'nombre': 'Tinguiririca',         'lat': -34.81, 'lon': -70.35, 'ultima_erupcion': 1917},
+    {'nombre': 'Sollipulli',           'lat': -38.97, 'lon': -71.52, 'ultima_erupcion': None},
+]
+
+# Endpoints SERNAGEOMIN RNVV a intentar en orden
+_SERNAGEOMIN_APIS = [
+    'https://rnvv.sernageomin.cl/api/v1/datos/actividad/lista/',
+    'https://rnvv.sernageomin.cl/api/actividad/lista',
+    'https://rnvv.sernageomin.cl/api/volcanes',
 ]
 
 @app.route('/volcanes')
@@ -1875,26 +1896,32 @@ _VOLCANES_CHILE = [
 @limiter.limit("20 per minute")
 def volcanes():
     volcanes_out = [dict(v, nivel='verde', fuente='catalogo') for v in _VOLCANES_CHILE]
-    try:
-        r = requests.get(
-            'https://rnvv.sernageomin.cl/api/v1/datos/actividad/lista/',
-            timeout=10, headers={'User-Agent': 'SPIYD-FireMonitor/1.0'}
-        )
-        if r.status_code == 200:
+    for api_url in _SERNAGEOMIN_APIS:
+        try:
+            r = requests.get(api_url, timeout=8,
+                             headers={'User-Agent': 'SPIYD-FireMonitor/1.0',
+                                      'Accept': 'application/json'})
+            if r.status_code != 200:
+                continue
             data = r.json()
+            items = data if isinstance(data, list) else data.get('data', data.get('volcanes', data.get('results', [])))
+            if not items:
+                continue
             nivel_map = {}
-            for item in (data if isinstance(data, list) else data.get('data', data.get('volcanes', []))):
-                nombre = (item.get('nombre') or item.get('name') or '').strip()
-                nivel  = (item.get('nivel') or item.get('level') or item.get('alerta') or 'verde').lower()
+            for item in items:
+                nombre = (item.get('nombre') or item.get('name') or item.get('NombreVolcan') or '').strip()
+                nivel  = (item.get('nivel') or item.get('level') or item.get('alerta') or item.get('NivelAlerta') or 'verde').lower()
                 if nombre:
                     nivel_map[nombre.lower()] = nivel
-            for v in volcanes_out:
-                k = v['nombre'].lower()
-                if k in nivel_map:
-                    v['nivel'] = nivel_map[k]
-                    v['fuente'] = 'sernageomin'
-    except Exception:
-        pass  # Usar nivel por defecto si SERNAGEOMIN no responde
+            if nivel_map:
+                for v in volcanes_out:
+                    k = v['nombre'].lower()
+                    if k in nivel_map:
+                        v['nivel'] = nivel_map[k]
+                        v['fuente'] = 'sernageomin'
+                break  # éxito — no seguir intentando
+        except Exception:
+            continue
     return jsonify(volcanes_out)
 
 
