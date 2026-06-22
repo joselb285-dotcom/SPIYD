@@ -1827,4 +1827,4 @@ threading.Thread(target=_daily_summary_loop, daemon=True).start()
 if __name__ == "__main__":
     threading.Thread(target=_build_wind_data, daemon=True).start()
     threading.Thread(target=obtener_grilla_clima, daemon=True).start()
-    app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
+    app.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
