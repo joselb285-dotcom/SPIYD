@@ -911,7 +911,7 @@
     const basemaps = {
       "🛰 Satelital": L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution:'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics', maxZoom:19, maxNativeZoom:19 }
+        { attribution:'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics', maxZoom:19, maxNativeZoom:17, errorTileUrl:'' }
       ),
       "🗺 Calles": L.tileLayer(
         'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
