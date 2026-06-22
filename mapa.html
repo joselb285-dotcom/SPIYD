@@ -462,6 +462,21 @@
         </div>
       </div>
 
+      <!-- Geología -->
+      <div class="btn-group">
+        <div class="btn-group-label">Geología Chile</div>
+        <div class="btn-row">
+          <button class="qbtn" id="btnSismos">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><polyline points="2,12 5,12 7,7 9,17 11,10 13,14 15,12 22,12" stroke="#ffa726" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="ql">Sismos</span>
+          </button>
+          <button class="qbtn" id="btnVolcanes">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><polygon points="12,3 22,21 2,21" fill="#b71c1c" opacity=".85" stroke="#ef5350" stroke-width=".8"/><polygon points="12,9 17,18 7,18" fill="#ff6d00" opacity=".7"/><polygon points="12,13 15,18 9,18" fill="#fff176" opacity=".55"/><path d="M6 21 Q9 17,12 16 Q15 17,18 21" stroke="#795548" stroke-width="1" fill="none" opacity=".6"/></svg></span>
+            <span class="ql">Volcanes</span>
+          </button>
+        </div>
+      </div>
+
       <!-- IA full-width -->
       <button class="qbtn zona-btn" id="btnZonaIA" style="width:100%;flex-direction:row;padding:10px 14px;gap:11px;min-height:0;justify-content:flex-start;border-radius:10px;box-sizing:border-box;">
         <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.5" stroke="#ab47bc" stroke-width="1.1" fill="none" opacity=".65"/><circle cx="12" cy="12" r="5.5" stroke="#ce93d8" stroke-width="1.1" fill="none"/><circle cx="12" cy="12" r="1.8" fill="#ab47bc"/><line x1="12" y1="1" x2="12" y2="5" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="23" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/><line x1="1" y1="12" x2="5" y2="12" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/><line x1="19" y1="12" x2="23" y2="12" stroke="#ab47bc" stroke-width="1.1" stroke-linecap="round"/></svg></span>
@@ -591,6 +606,28 @@
       <div class="seccion-body" id="secFWI">
         <div id="fwiResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "FWI".</div>
         <div id="fwiLista" style="margin-top:4px;font-size:11px;"></div>
+      </div>
+    </div>
+
+    <!-- Sismos -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secSismos')">
+        <span>Sismos Chile <span id="sismosCount" class="data-badge" style="display:none;background:rgba(255,167,38,.3);color:#ffa726;border:1px solid #e65100;"></span> <span id="chev-secSismos" class="seccion-chevron">▼</span></span>
+      </div>
+      <div class="seccion-body" id="secSismos">
+        <div id="sismosResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Sismos".</div>
+        <div id="sismosLista" style="margin-top:4px;font-size:11px;max-height:150px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+    <!-- Volcanes -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secVolcanes')">
+        <span>Volcanes Chile <span id="volcanesCount" class="data-badge" style="display:none;background:rgba(183,28,28,.35);color:#ef5350;border:1px solid #b71c1c;"></span> <span id="chev-secVolcanes" class="seccion-chevron">▼</span></span>
+      </div>
+      <div class="seccion-body" id="secVolcanes">
+        <div id="volcanesResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Volcanes".</div>
+        <div id="volcanesLista" style="margin-top:4px;font-size:11px;max-height:150px;overflow-y:auto;"></div>
       </div>
     </div>
 
@@ -892,6 +929,8 @@
     const capaFWI        = L.layerGroup();
     const capaGOES_RT    = L.layerGroup();
     const capaMultiSat   = L.layerGroup();
+    const capaSismos     = L.layerGroup();
+    const capaVolcanes   = L.layerGroup();
 
     // Hillshade / topografía (ESRI World Hillshade — transparente sobre cualquier capa)
     const topoOverlay = L.tileLayer(
@@ -1846,7 +1885,9 @@
     let smnActivo    = false;
     let goesRtActivo = false;
     let goesRtPts    = [];   // [{lat,lon,frp}] para cross-check multi-satélite
-    let precipActivo = false;
+    let precipActivo  = false;
+    let sismosActivo  = false;
+    let volcanesActivo= false;
     let _prevMultiSat = 0;
     let ultimoBboxAgua = null;
 
@@ -2731,6 +2772,128 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
       if (!silencioso) { btn.childNodes[0].textContent='🛰 GOES-16 Tiempo Real  '; btn.disabled=false; }
     }
 
+    // ── Sismos USGS ──────────────────────────────────────────────────────────────
+    async function cargarSismos() {
+      const btn = document.getElementById('btnSismos');
+      if (sismosActivo) {
+        sismosActivo = false;
+        capaSismos.clearLayers();
+        if (mapa.hasLayer(capaSismos)) mapa.removeLayer(capaSismos);
+        btn.classList.remove('active');
+        document.getElementById('sismosResumen').textContent = 'Presioná "Sismos".';
+        document.getElementById('sismosLista').innerHTML = '';
+        const bc = document.getElementById('sismosCount'); bc.style.display='none';
+        return;
+      }
+      btn.disabled = true;
+      setEstado('Consultando sismos USGS…');
+      try {
+        const r = await fetch('/sismos');
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        capaSismos.clearLayers();
+        // Radio y color por magnitud
+        const magColor = m => m >= 6 ? '#d32f2f' : m >= 5 ? '#f57c00' : m >= 4 ? '#ffa726' : '#fff176';
+        const magRadius = m => m >= 6 ? 13 : m >= 5 ? 9 : m >= 4 ? 6 : 4;
+        data.forEach(s => {
+          const mag = parseFloat(s.mag) || 0;
+          const mk = L.circleMarker([s.lat, s.lon], {
+            radius: magRadius(mag), color: '#fff', weight: 1,
+            fillColor: magColor(mag), fillOpacity: 0.85
+          });
+          mk.bindPopup(`<div style="font-family:sans-serif;min-width:175px;font-size:12px;">
+            <b style="color:#ffa726;">🌋 Sismo — M ${mag.toFixed(1)}</b><br>
+            ${s.lugar}<br>
+            <b>Prof.:</b> ${s.profundidad} km &nbsp;|&nbsp; <b>Fecha:</b> ${s.fecha} UTC<br>
+            <small style="color:#888;">${s.lat}, ${s.lon}</small>
+            ${s.url ? `<br><a href="${s.url}" target="_blank" style="color:#29b6f6;font-size:10px;">Ver en USGS ↗</a>` : ''}
+          </div>`);
+          capaSismos.addLayer(mk);
+        });
+        if (!mapa.hasLayer(capaSismos)) mapa.addLayer(capaSismos);
+        sismosActivo = true;
+        btn.classList.add('active');
+        const cnt = data.length;
+        const bc = document.getElementById('sismosCount');
+        bc.textContent = cnt; bc.style.display = 'inline-block';
+        document.getElementById('sismosResumen').innerHTML =
+          `<b style="color:#ffa726;">${cnt}</b> sismos M≥3.5 — últimas 24h (USGS)`;
+        const top5 = [...data].sort((a,b)=>(b.mag||0)-(a.mag||0)).slice(0,5);
+        document.getElementById('sismosLista').innerHTML = top5.map(s =>
+          `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+            <b style="color:${magColor(parseFloat(s.mag)||0)};">M ${parseFloat(s.mag).toFixed(1)}</b>
+            <span style="color:#bbb;"> — ${s.lugar || 'Chile'}</span><br>
+            <span style="color:#555;font-size:10px;">${s.fecha} UTC · ${s.profundidad}km prof.</span>
+          </div>`
+        ).join('');
+        setEstado(`Sismos cargados: ${cnt} eventos M≥3.5`, cnt > 0 ? 'warn' : 'ok');
+      } catch(e) {
+        sismosActivo = false;
+        setEstado('Error al consultar sismos: ' + e.message, 'err');
+      } finally { btn.disabled = false; }
+    }
+
+    // ── Volcanes SERNAGEOMIN ──────────────────────────────────────────────────────
+    async function cargarVolcanes() {
+      const btn = document.getElementById('btnVolcanes');
+      if (volcanesActivo) {
+        volcanesActivo = false;
+        capaVolcanes.clearLayers();
+        if (mapa.hasLayer(capaVolcanes)) mapa.removeLayer(capaVolcanes);
+        btn.classList.remove('active');
+        document.getElementById('volcanesResumen').textContent = 'Presioná "Volcanes".';
+        document.getElementById('volcanesLista').innerHTML = '';
+        const bc = document.getElementById('volcanesCount'); bc.style.display = 'none';
+        return;
+      }
+      btn.disabled = true;
+      setEstado('Consultando volcanes SERNAGEOMIN…');
+      try {
+        const r = await fetch('/volcanes');
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        capaVolcanes.clearLayers();
+        const nivelColor = n => n === 'rojo' ? '#d32f2f' : n === 'naranja' ? '#f57c00' : n === 'amarillo' ? '#fdd835' : '#43a047';
+        const nivelLabel = n => n === 'rojo' ? '🔴 ROJO' : n === 'naranja' ? '🟠 NARANJA' : n === 'amarillo' ? '🟡 AMARILLO' : '🟢 VERDE';
+        data.forEach(v => {
+          const col = nivelColor(v.nivel || 'verde');
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22">
+            <polygon points="12,2 22,22 2,22" fill="${col}" stroke="rgba(255,255,255,.6)" stroke-width="1.5"/>
+            <polygon points="12,8 17,19 7,19" fill="rgba(255,255,255,0.2)"/>
+          </svg>`;
+          const icon = L.divIcon({ html: svg, className:'', iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-22] });
+          const mk = L.marker([v.lat, v.lon], { icon });
+          mk.bindPopup(`<div style="font-family:sans-serif;min-width:170px;font-size:12px;">
+            <b style="color:${col};">🌋 ${v.nombre}</b><br>
+            Alerta: <b style="color:${col};">${nivelLabel(v.nivel||'verde')}</b><br>
+            <small style="color:#888;">${v.lat}, ${v.lon}</small><br>
+            <small style="color:#555;">Fuente: ${v.fuente === 'sernageomin' ? 'SERNAGEOMIN (tiempo real)' : 'Catálogo SERNAGEOMIN'}</small>
+          </div>`);
+          capaVolcanes.addLayer(mk);
+        });
+        if (!mapa.hasLayer(capaVolcanes)) mapa.addLayer(capaVolcanes);
+        volcanesActivo = true;
+        btn.classList.add('active');
+        const alertas = data.filter(v => v.nivel && v.nivel !== 'verde');
+        const bc = document.getElementById('volcanesCount');
+        if (alertas.length > 0) { bc.textContent = alertas.length; bc.style.display = 'inline-block'; }
+        document.getElementById('volcanesResumen').innerHTML =
+          `<b style="color:#ef5350;">${data.length}</b> volcanes monitoreados — SERNAGEOMIN`;
+        document.getElementById('volcanesLista').innerHTML = data
+          .sort((a,b) => ['rojo','naranja','amarillo','verde'].indexOf(a.nivel||'verde') - ['rojo','naranja','amarillo','verde'].indexOf(b.nivel||'verde'))
+          .map(v => `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+            <span style="color:${nivelColor(v.nivel||'verde')};font-size:9px;">▲</span>
+            <b style="color:#ccc;">${v.nombre}</b>
+            <span style="float:right;font-size:9px;color:${nivelColor(v.nivel||'verde')};">${(v.nivel||'verde').toUpperCase()}</span>
+          </div>`
+          ).join('');
+        setEstado(`Volcanes cargados: ${data.length} monitoreados`, 'ok');
+      } catch(e) {
+        volcanesActivo = false;
+        setEstado('Error al consultar volcanes: ' + e.message, 'err');
+      } finally { btn.disabled = false; }
+    }
+
     // ── Click en mapa ─────────────────────────────────────────────────────────
     mapa.on('click', e => {
       if (zonaDrawMode) return;
@@ -2914,7 +3077,9 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     document.getElementById('btnINPE')  .addEventListener('click',cargarFocosINPE);
     document.getElementById('btnFWI')   .addEventListener('click',cargarFWI);
 
-    document.getElementById('btnGOES_RT').addEventListener('click',()=>cargarGOES_RT(false));
+    document.getElementById('btnGOES_RT') .addEventListener('click',()=>cargarGOES_RT(false));
+    document.getElementById('btnSismos')  .addEventListener('click',cargarSismos);
+    document.getElementById('btnVolcanes').addEventListener('click',cargarVolcanes);
     document.getElementById('autoRefresh').addEventListener('change',actualizarAutoRefresh);
     document.getElementById('dias')       .addEventListener('change',()=>cargarFocos(true));
 

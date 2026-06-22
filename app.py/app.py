@@ -1807,6 +1807,97 @@ def _daily_summary_loop():
             app.logger.error(f"[RESUMEN] Loop error: {ex}")
 
 
+@app.route('/sismos')
+@login_required
+@limiter.limit("30 per minute")
+def sismos():
+    try:
+        params = {
+            'format': 'geojson',
+            'minlatitude': -56, 'maxlatitude': -17,
+            'minlongitude': -76, 'maxlongitude': -66,
+            'minmagnitude': 3.5,
+            'orderby': 'time',
+            'limit': 150,
+        }
+        r = requests.get(
+            'https://earthquake.usgs.gov/fdsnws/event/1/query',
+            params=params, timeout=15,
+            headers={'User-Agent': 'SPIYD-FireMonitor/1.0'}
+        )
+        r.raise_for_status()
+        features = r.json().get('features', [])
+        result = []
+        for f in features:
+            p = f['properties']
+            c = f['geometry']['coordinates']
+            result.append({
+                'lon':         round(float(c[0]), 4),
+                'lat':         round(float(c[1]), 4),
+                'profundidad': round(float(c[2]), 1),
+                'mag':         p.get('mag'),
+                'lugar':       p.get('place', ''),
+                'fecha':       datetime.utcfromtimestamp(p['time'] / 1000).strftime('%Y-%m-%d %H:%M') if p.get('time') else '',
+                'tipo':        p.get('type', 'earthquake'),
+                'url':         p.get('url', ''),
+            })
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Volcanes activos de Chile — datos base SERNAGEOMIN
+_VOLCANES_CHILE = [
+    {'nombre': 'Villarrica',           'lat': -39.42, 'lon': -71.93},
+    {'nombre': 'Llaima',               'lat': -38.69, 'lon': -71.73},
+    {'nombre': 'Copahue',              'lat': -37.86, 'lon': -71.17},
+    {'nombre': 'Calbuco',              'lat': -41.33, 'lon': -72.61},
+    {'nombre': 'Hudson',               'lat': -45.90, 'lon': -72.97},
+    {'nombre': 'Nevados de Chillán',   'lat': -36.86, 'lon': -71.38},
+    {'nombre': 'Planchón-Peteroa',     'lat': -35.24, 'lon': -70.57},
+    {'nombre': 'Lonquimay',            'lat': -38.38, 'lon': -71.59},
+    {'nombre': 'Puyehue-Cordón Caulle','lat': -40.59, 'lon': -72.12},
+    {'nombre': 'Mocho-Choshuenco',     'lat': -39.93, 'lon': -72.03},
+    {'nombre': 'Sollipulli',           'lat': -38.97, 'lon': -71.52},
+    {'nombre': 'San José',             'lat': -33.79, 'lon': -69.86},
+    {'nombre': 'Tupungatito',          'lat': -33.36, 'lon': -69.80},
+    {'nombre': 'Descabezado Grande',   'lat': -35.58, 'lon': -70.75},
+    {'nombre': 'Láscar',               'lat': -23.37, 'lon': -67.73},
+    {'nombre': 'Irruputuncu',          'lat': -20.72, 'lon': -68.53},
+    {'nombre': 'Isluga',               'lat': -19.15, 'lon': -68.83},
+    {'nombre': 'Guallatiri',           'lat': -18.42, 'lon': -69.09},
+    {'nombre': 'Tinguiririca',         'lat': -34.81, 'lon': -70.35},
+    {'nombre': 'Callaqui',             'lat': -37.92, 'lon': -71.45},
+]
+
+@app.route('/volcanes')
+@login_required
+@limiter.limit("20 per minute")
+def volcanes():
+    volcanes_out = [dict(v, nivel='verde', fuente='catalogo') for v in _VOLCANES_CHILE]
+    try:
+        r = requests.get(
+            'https://rnvv.sernageomin.cl/api/v1/datos/actividad/lista/',
+            timeout=10, headers={'User-Agent': 'SPIYD-FireMonitor/1.0'}
+        )
+        if r.status_code == 200:
+            data = r.json()
+            nivel_map = {}
+            for item in (data if isinstance(data, list) else data.get('data', data.get('volcanes', []))):
+                nombre = (item.get('nombre') or item.get('name') or '').strip()
+                nivel  = (item.get('nivel') or item.get('level') or item.get('alerta') or 'verde').lower()
+                if nombre:
+                    nivel_map[nombre.lower()] = nivel
+            for v in volcanes_out:
+                k = v['nombre'].lower()
+                if k in nivel_map:
+                    v['nivel'] = nivel_map[k]
+                    v['fuente'] = 'sernageomin'
+    except Exception:
+        pass  # Usar nivel por defecto si SERNAGEOMIN no responde
+    return jsonify(volcanes_out)
+
+
 @app.route('/admin/api/enviar-resumen-ahora', methods=['POST'])
 @login_required
 def enviar_resumen_ahora():
