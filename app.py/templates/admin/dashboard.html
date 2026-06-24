@@ -21,6 +21,8 @@
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(143,144,151,0.3); border-radius: 2px; }
+    .dash-map-tip { background: rgba(10,11,16,0.95); color: #e4e2e4; border: 1px solid rgba(249,115,22,0.5); font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 5px 9px; border-radius: 6px; white-space: nowrap; }
+    .dash-map-tip::before { display: none; }
 </style>
 <script id="tailwind-config">
     tailwind.config = {
@@ -352,6 +354,10 @@
                 <!-- Map Preview -->
                 <div class="glass-panel rounded-2xl flex-1 overflow-hidden relative" style="min-height:360px">
                     <div id="dashMap" style="width:100%;height:100%;min-height:360px;border-radius:1rem;"></div>
+                    <div id="dashMapBadge" class="absolute top-3 left-3 z-[1000] glass-panel px-3 py-1.5 rounded-lg font-label-technical text-[10px] text-error flex items-center gap-1.5" style="display:none;pointer-events:none">
+                        <span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse inline-block"></span>
+                        <span id="dashMapConfCount">0</span> confirmados · 2+ satélites
+                    </div>
                     <div id="dashMapLoading" class="absolute inset-0 flex items-center justify-center bg-surface-container/80 z-[999] rounded-2xl" style="pointer-events:none">
                         <div class="flex flex-col items-center gap-2">
                             <span class="w-6 h-6 rounded-full border-2 border-secondary border-t-transparent animate-spin inline-block"></span>
@@ -501,7 +507,7 @@
         document.getElementById('sidebar').style.transform = '';
         document.getElementById('sidebarOverlay').classList.add('hidden');
     }
-    // Dashboard map preview
+    // Dashboard map preview — solo focos confirmados por ≥2 satélites
     (function() {
         const mapEl = document.getElementById('dashMap');
         if (!mapEl) return;
@@ -510,45 +516,76 @@
             attributionControl: false,
             scrollWheelZoom: false
         }).setView([-25, -60], 4);
-        // Satelital ESRI — mismo que el mapa principal
+
         L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             { maxZoom: 10, maxNativeZoom: 9, errorTileUrl: '' }
         ).addTo(map);
-        // Labels encima (CartoDB dark labels)
         L.tileLayer(
             'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
             { subdomains: 'abcd', maxZoom: 10, opacity: 0.8 }
         ).addTo(map);
-        const sources = [
-            { url: '/nasa-focos',  color: '#ef4444' },
-            { url: '/inpe-focos',  color: '#f97316' },
-            { url: '/goes-focos',  color: '#fbbf24' }
+
+        const SOURCES = [
+            { url: '/nasa-focos', name: 'NASA'  },
+            { url: '/inpe-focos', name: 'INPE'  },
+            { url: '/goes-focos', name: 'GOES'  }
         ];
-        let done = 0;
-        sources.forEach(({ url, color }) => {
+        const GRID = 0.15; // ~17 km por celda
+
+        Promise.all(SOURCES.map(({ url, name }) =>
             fetch(url)
                 .then(r => r.ok ? r.json() : null)
                 .then(data => {
-                    if (data && data.features) {
-                        data.features.forEach(f => {
-                            const [lng, lat] = f.geometry.coordinates;
-                            L.circleMarker([lat, lng], {
-                                radius: 4, fillColor: color,
-                                color: 'rgba(0,0,0,0.4)', fillOpacity: 0.9,
-                                weight: 0.5
-                            }).addTo(map);
-                        });
-                    }
+                    if (!data || !data.features) return [];
+                    return data.features.map(f => ({
+                        lat: f.geometry.coordinates[1],
+                        lng: f.geometry.coordinates[0],
+                        src: name
+                    }));
                 })
-                .catch(() => {})
-                .finally(() => {
-                    done++;
-                    if (done === sources.length) {
-                        const el = document.getElementById('dashMapLoading');
-                        if (el) el.style.display = 'none';
-                    }
-                });
+                .catch(() => [])
+        )).then(results => {
+            const allPts = results.flat();
+
+            // Agrupar en celdas de ~17km
+            const grid = {};
+            allPts.forEach(pt => {
+                const key = `${Math.round(pt.lat / GRID)}_${Math.round(pt.lng / GRID)}`;
+                if (!grid[key]) grid[key] = { srcs: new Set(), pts: [] };
+                grid[key].srcs.add(pt.src);
+                grid[key].pts.push(pt);
+            });
+
+            let confirmed = 0;
+            Object.values(grid).forEach(cell => {
+                if (cell.srcs.size < 2) return; // descarta celdas con 1 solo satélite
+                confirmed++;
+                const avgLat = cell.pts.reduce((s, p) => s + p.lat, 0) / cell.pts.length;
+                const avgLng = cell.pts.reduce((s, p) => s + p.lng, 0) / cell.pts.length;
+                const nSrc = cell.srcs.size;
+                const color = nSrc >= 3 ? '#ff2020' : '#ef4444';
+                const r = nSrc >= 3 ? 7 : 5;
+                L.circleMarker([avgLat, avgLng], {
+                    radius: r,
+                    fillColor: color,
+                    color: 'rgba(255,80,40,0.55)',
+                    fillOpacity: 0.92,
+                    weight: 1.5
+                }).bindTooltip(
+                    `<b>${[...cell.srcs].join(' + ')}</b><br>${cell.pts.length} detecciones`,
+                    { direction: 'top', className: 'dash-map-tip' }
+                ).addTo(map);
+            });
+
+            const loading = document.getElementById('dashMapLoading');
+            if (loading) loading.style.display = 'none';
+            const badge = document.getElementById('dashMapBadge');
+            const count = document.getElementById('dashMapConfCount');
+            if (badge && confirmed > 0) {
+                if (count) count.textContent = confirmed;
+                badge.style.display = 'flex';
+            }
         });
     })();
 
