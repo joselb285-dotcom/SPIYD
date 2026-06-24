@@ -356,7 +356,7 @@
                     <div id="dashMap" style="width:100%;height:100%;min-height:360px;border-radius:1rem;"></div>
                     <div id="dashMapBadge" class="absolute top-3 left-3 z-[1000] glass-panel px-3 py-1.5 rounded-lg font-label-technical text-[10px] text-error flex items-center gap-1.5" style="display:none;pointer-events:none">
                         <span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse inline-block"></span>
-                        <span id="dashMapConfCount">0</span> confirmados · 2+ satélites
+                        <span id="dashMapConfCount">0</span> alertas · conf &lt; 50 %
                     </div>
                     <div id="dashMapLoading" class="absolute inset-0 flex items-center justify-center bg-surface-container/80 z-[999] rounded-2xl" style="pointer-events:none">
                         <div class="flex flex-col items-center gap-2">
@@ -507,7 +507,7 @@
         document.getElementById('sidebar').style.transform = '';
         document.getElementById('sidebarOverlay').classList.add('hidden');
     }
-    // Dashboard map preview — solo focos confirmados por ≥2 satélites
+    // Dashboard map preview — focos con probabilidad de incendio < 50 %
     (function() {
         const mapEl = document.getElementById('dashMap');
         if (!mapEl) return;
@@ -526,65 +526,79 @@
             { subdomains: 'abcd', maxZoom: 10, opacity: 0.8 }
         ).addTo(map);
 
+        // Normaliza confidence a 0-100 independientemente del formato
+        function normConf(c) {
+            if (c === null || c === undefined) return 55;
+            if (typeof c === 'number') return c;
+            const s = String(c).toLowerCase();
+            if (s === 'l') return 25;
+            if (s === 'n') return 55;
+            if (s === 'h') return 85;
+            const n = parseFloat(s);
+            return isNaN(n) ? 55 : n;
+        }
+
         const SOURCES = [
-            { url: '/nasa-focos', name: 'NASA'  },
-            { url: '/inpe-focos', name: 'INPE'  },
-            { url: '/goes-focos', name: 'GOES'  }
+            { url: '/nasa-focos', name: 'NASA' },
+            { url: '/inpe-focos', name: 'INPE' },
+            { url: '/goes-focos', name: 'GOES' }
         ];
-        const GRID = 0.15; // ~17 km por celda
+        const GRID = 0.1; // ~11 km — deduplicación por celda
 
         Promise.all(SOURCES.map(({ url, name }) =>
             fetch(url)
                 .then(r => r.ok ? r.json() : null)
                 .then(data => {
                     if (!data || !data.features) return [];
-                    return data.features.map(f => ({
-                        lat: f.geometry.coordinates[1],
-                        lng: f.geometry.coordinates[0],
-                        src: name
-                    }));
+                    return data.features
+                        .filter(f => normConf(f.properties && f.properties.confidence) < 50)
+                        .map(f => ({
+                            lat: f.geometry.coordinates[1],
+                            lng: f.geometry.coordinates[0],
+                            src: name,
+                            conf: normConf(f.properties && f.properties.confidence)
+                        }));
                 })
                 .catch(() => [])
         )).then(results => {
             const allPts = results.flat();
 
-            // Agrupar en celdas de ~17km
+            // Agrupar por celda para evitar solapamiento entre fuentes
             const grid = {};
             allPts.forEach(pt => {
                 const key = `${Math.round(pt.lat / GRID)}_${Math.round(pt.lng / GRID)}`;
-                if (!grid[key]) grid[key] = { srcs: new Set(), pts: [] };
+                if (!grid[key]) grid[key] = { srcs: new Set(), pts: [], minConf: 100 };
                 grid[key].srcs.add(pt.src);
                 grid[key].pts.push(pt);
+                grid[key].minConf = Math.min(grid[key].minConf, pt.conf);
             });
 
-            let confirmed = 0;
+            let total = 0;
             Object.values(grid).forEach(cell => {
-                if (cell.srcs.size < 2) return; // descarta celdas con 1 solo satélite
-                confirmed++;
+                total++;
                 const avgLat = cell.pts.reduce((s, p) => s + p.lat, 0) / cell.pts.length;
                 const avgLng = cell.pts.reduce((s, p) => s + p.lng, 0) / cell.pts.length;
-                const nSrc = cell.srcs.size;
-                const color = nSrc >= 3 ? '#ff2020' : '#ef4444';
-                const r = nSrc >= 3 ? 7 : 5;
+                // Amarillo si conf muy baja (<20%), naranja si 20-49%
+                const color = cell.minConf < 20 ? '#facc15' : '#f97316';
                 L.circleMarker([avgLat, avgLng], {
-                    radius: r,
+                    radius: 4,
                     fillColor: color,
-                    color: 'rgba(255,80,40,0.55)',
-                    fillOpacity: 0.92,
-                    weight: 1.5
+                    color: 'rgba(0,0,0,0.35)',
+                    fillOpacity: 0.88,
+                    weight: 0.5
                 }).bindTooltip(
-                    `<b>${[...cell.srcs].join(' + ')}</b><br>${cell.pts.length} detecciones`,
+                    `<b>${[...cell.srcs].join(' + ')}</b><br>Confianza: ${Math.round(cell.minConf)}%`,
                     { direction: 'top', className: 'dash-map-tip' }
                 ).addTo(map);
             });
 
             const loading = document.getElementById('dashMapLoading');
             if (loading) loading.style.display = 'none';
-            const badge = document.getElementById('dashMapBadge');
-            const count = document.getElementById('dashMapConfCount');
-            if (badge && confirmed > 0) {
-                if (count) count.textContent = confirmed;
-                badge.style.display = 'flex';
+            const badge  = document.getElementById('dashMapBadge');
+            const countEl = document.getElementById('dashMapConfCount');
+            if (badge) {
+                if (countEl) countEl.textContent = total;
+                badge.style.display = total > 0 ? 'flex' : 'none';
             }
         });
     })();
