@@ -101,6 +101,9 @@ def dashboard():
         .group_by(FocoLog.fuente).all()
     )
 
+    ultima_focos = foco_q.order_by(FocoLog.timestamp.desc()).first()
+    ultima_actualizacion = ultima_focos.timestamp if ultima_focos else None
+
     # Logins recientes — solo los usuarios de este admin + el admin mismo
     login_q = (
         db.session.query(UsageLog, User)
@@ -130,6 +133,7 @@ def dashboard():
         focos_medios=focos_medios,
         fuente_counts=fuente_counts,
         logins_recientes=logins_recientes,
+        ultima_actualizacion=ultima_actualizacion,
     )
 
 
