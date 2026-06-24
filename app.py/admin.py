@@ -39,6 +39,11 @@ def admin_required(f):
     return decorated
 
 
+def _own_id():
+    """Retorna current_user.id para admins; None para superadmins (sin restricción)."""
+    return None if current_user.role == 'superadmin' else current_user.id
+
+
 def _audit(action, target_type, target_id, detail=''):
     try:
         db.session.add(AuditLog(
@@ -60,19 +65,30 @@ def dashboard():
     inicio_hoy = datetime.combine(hoy, datetime.min.time())
     inicio_mes = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    total_users = User.query.filter_by(role='user').count()
-    active_users = User.query.filter_by(role='user', active=True).count()
+    own = _own_id()
 
+    # Usuarios — solo los del admin
+    users_q = User.query.filter_by(role='user')
+    if own:
+        users_q = users_q.filter_by(created_by_admin=own)
+    total_users = users_q.count()
+    active_users = users_q.filter_by(active=True).count()
+
+    # SMN — datos de entorno, filtrado geográfico (no por admin)
     smn_q = _geo_filter(SmnAlerta.query, SmnAlerta)
     smn_total = smn_q.count()
     smn_hoy = smn_q.filter(SmnAlerta.timestamp >= inicio_hoy).count()
     smn_recientes = smn_q.order_by(SmnAlerta.timestamp.desc()).limit(8).all()
 
-    ai_q = _geo_filter(AiInforme.query, AiInforme)
+    # IA — solo informes generados por este admin
+    ai_q = AiInforme.query
+    if own:
+        ai_q = ai_q.filter_by(user_id=own)
     ai_total = ai_q.count()
     ai_mes = ai_q.filter(AiInforme.timestamp >= inicio_mes).count()
     ai_recientes = ai_q.order_by(AiInforme.timestamp.desc()).limit(8).all()
 
+    # Focos — datos de entorno, filtrado geográfico
     foco_q = _geo_filter(FocoLog.query, FocoLog)
     focos_hoy = foco_q.filter(FocoLog.timestamp >= inicio_hoy).count()
     focos_mes = foco_q.filter(FocoLog.timestamp >= inicio_mes).count()
@@ -85,14 +101,18 @@ def dashboard():
         .group_by(FocoLog.fuente).all()
     )
 
-    logins_recientes = (
+    # Logins recientes — solo los usuarios de este admin + el admin mismo
+    login_q = (
         db.session.query(UsageLog, User)
         .join(User, UsageLog.user_id == User.id)
         .filter(UsageLog.action.in_(['login', 'mapa']))
-        .order_by(UsageLog.timestamp.desc())
-        .limit(6)
-        .all()
     )
+    if own:
+        login_q = login_q.filter(
+            or_(UsageLog.user_id == own,
+                User.created_by_admin == own)
+        )
+    logins_recientes = login_q.order_by(UsageLog.timestamp.desc()).limit(6).all()
 
     return render_template('admin/dashboard.html',
         total_users=total_users,
@@ -210,6 +230,9 @@ def recursos():
     search = request.args.get('q', '').strip()
     page = request.args.get('page', 1, type=int)
     query = Recurso.query
+    own = _own_id()
+    if own:
+        query = query.filter_by(created_by=own)
     if tipo_filter:
         query = query.filter_by(tipo=tipo_filter)
     if pais_filter:
@@ -325,7 +348,10 @@ def ai_informes():
     tipo = request.args.get('tipo', '').strip()
     severidad = request.args.get('severidad', '').strip()
     region_q = request.args.get('region', '').strip()
-    query = _geo_filter(AiInforme.query, AiInforme)
+    own = _own_id()
+    query = AiInforme.query
+    if own:
+        query = query.filter_by(user_id=own)
     if tipo:
         query = query.filter_by(tipo_foco=tipo)
     if severidad:
@@ -344,12 +370,15 @@ def ai_informes():
 @login_required
 @admin_required
 def mapa_recursos():
-    recursos_activos = Recurso.query.filter_by(activo=True).filter(
-        Recurso.lat.isnot(None), Recurso.lon.isnot(None)
-    ).all()
-    ai_recientes = AiInforme.query.filter(
-        AiInforme.lat.isnot(None)
-    ).order_by(AiInforme.timestamp.desc()).limit(50).all()
+    own = _own_id()
+    rec_q = Recurso.query.filter_by(activo=True).filter(Recurso.lat.isnot(None), Recurso.lon.isnot(None))
+    if own:
+        rec_q = rec_q.filter_by(created_by=own)
+    recursos_activos = rec_q.all()
+    ai_q2 = AiInforme.query.filter(AiInforme.lat.isnot(None))
+    if own:
+        ai_q2 = ai_q2.filter_by(user_id=own)
+    ai_recientes = ai_q2.order_by(AiInforme.timestamp.desc()).limit(50).all()
 
     recursos_json = [{'id': r.id, 'tipo': r.tipo, 'tipo_label': r.tipo_label,
                       'nombre': r.nombre, 'lat': r.lat, 'lon': r.lon,
@@ -405,7 +434,11 @@ def unidad_delete(unidad_id):
 @login_required
 @admin_required
 def export_usuarios_csv():
-    usuarios = User.query.filter_by(role='user').order_by(User.created_at.desc()).all()
+    own = _own_id()
+    uq = User.query.filter_by(role='user')
+    if own:
+        uq = uq.filter_by(created_by_admin=own)
+    usuarios = uq.order_by(User.created_at.desc()).all()
     si = io.StringIO()
     cw = csv.writer(si)
     cw.writerow(['id', 'username', 'email', 'activo', 'pais', 'region_tipo', 'region_nombre', 'creado', 'ultimo_acceso'])
@@ -422,7 +455,11 @@ def export_usuarios_csv():
 @login_required
 @admin_required
 def export_recursos_csv():
-    recursos = Recurso.query.order_by(Recurso.tipo, Recurso.nombre).all()
+    own = _own_id()
+    rq = Recurso.query
+    if own:
+        rq = rq.filter_by(created_by=own)
+    recursos = rq.order_by(Recurso.tipo, Recurso.nombre).all()
     si = io.StringIO()
     cw = csv.writer(si)
     cw.writerow(['id', 'tipo', 'nombre', 'pais', 'provincia_departamento', 'localidad',
@@ -443,7 +480,10 @@ def auditoria():
     accion = request.args.get('accion', '').strip()
     fecha_desde = request.args.get('desde', '').strip()
     fecha_hasta = request.args.get('hasta', '').strip()
+    own = _own_id()
     query = AuditLog.query
+    if own:
+        query = query.filter_by(user_id=own)
     if accion:
         query = query.filter_by(action=accion)
     if fecha_desde:
@@ -457,7 +497,11 @@ def auditoria():
         except ValueError:
             pass
     pagination = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=30, error_out=False)
-    acciones = [a[0] for a in db.session.query(AuditLog.action).distinct().all() if a[0]]
+    # distinct solo sobre las acciones visibles para este admin
+    acciones_q = db.session.query(AuditLog.action).distinct()
+    if own:
+        acciones_q = acciones_q.filter(AuditLog.user_id == own)
+    acciones = [a[0] for a in acciones_q.all() if a[0]]
     admin_ids = {log.user_id for log in pagination.items if log.user_id}
     admin_names = {u.id: u.username for u in User.query.filter(User.id.in_(admin_ids)).all()} if admin_ids else {}
     return render_template('admin/auditoria.html', logs=pagination, accion_filter=accion, acciones=acciones,
@@ -468,7 +512,11 @@ def auditoria():
 @login_required
 @admin_required
 def export_ai_informes_csv():
-    query = _geo_filter(AiInforme.query, AiInforme).order_by(AiInforme.timestamp.desc())
+    own = _own_id()
+    query = AiInforme.query
+    if own:
+        query = query.filter_by(user_id=own)
+    query = query.order_by(AiInforme.timestamp.desc())
     si = io.StringIO()
     cw = csv.writer(si)
     cw.writerow(['id','fecha','region','severidad','tipo_foco','satelite','confianza','fwi','hectareas','lat','lon'])
@@ -512,7 +560,11 @@ def alert_counts():
     inicio_hoy = datetime.combine(hoy, datetime.min.time())
     focos_criticos = _geo_filter(FocoLog.query, FocoLog).filter_by(severidad='critical').filter(FocoLog.timestamp >= inicio_hoy).count()
     smn_rojo = _geo_filter(SmnAlerta.query, SmnAlerta).filter_by(severidad='rojo').filter(SmnAlerta.timestamp >= inicio_hoy).count()
-    ai_hoy = _geo_filter(AiInforme.query, AiInforme).filter(AiInforme.timestamp >= inicio_hoy).count()
+    own = _own_id()
+    ai_q = AiInforme.query
+    if own:
+        ai_q = ai_q.filter_by(user_id=own)
+    ai_hoy = ai_q.filter(AiInforme.timestamp >= inicio_hoy).count()
     return jsonify({'focos_criticos': focos_criticos, 'smn_rojo': smn_rojo, 'ai_hoy': ai_hoy})
 
 
