@@ -510,9 +510,16 @@
             attributionControl: false,
             scrollWheelZoom: false
         }).setView([-25, -60], 4);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            maxZoom: 10, subdomains: 'abcd'
-        }).addTo(map);
+        // Satelital ESRI — mismo que el mapa principal
+        L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 10, maxNativeZoom: 9, errorTileUrl: '' }
+        ).addTo(map);
+        // Labels encima (CartoDB dark labels)
+        L.tileLayer(
+            'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
+            { subdomains: 'abcd', maxZoom: 10, opacity: 0.8 }
+        ).addTo(map);
         const sources = [
             { url: '/nasa-focos',  color: '#ef4444' },
             { url: '/inpe-focos',  color: '#f97316' },
@@ -527,9 +534,9 @@
                         data.features.forEach(f => {
                             const [lng, lat] = f.geometry.coordinates;
                             L.circleMarker([lat, lng], {
-                                radius: 3, fillColor: color,
-                                color: 'transparent', fillOpacity: 0.75,
-                                weight: 0
+                                radius: 4, fillColor: color,
+                                color: 'rgba(0,0,0,0.4)', fillOpacity: 0.9,
+                                weight: 0.5
                             }).addTo(map);
                         });
                     }
