@@ -56,7 +56,13 @@
       <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Dashboard</span>
     </a>
     <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
-       {% if 'user' in request.endpoint %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
+       {% if request.endpoint in ('superadmin.admins','superadmin.admin_new','superadmin.admin_edit') %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
+       href="/superadmin/admins">
+      <span class="material-symbols-outlined">manage_accounts</span>
+      <span class="font-label-technical text-[12px]">Administradores</span>
+    </a>
+    <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
+       {% if request.endpoint in ('superadmin.users','superadmin.user_new','superadmin.user_edit') %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
        href="/superadmin/users">
       <span class="material-symbols-outlined">group</span>
       <span class="font-label-technical text-[12px]" data-i18n="nav.users">Usuarios</span>

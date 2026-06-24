@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 superadmin_bp = Blueprint('superadmin', __name__)
 
 ROLES = ['user', 'admin', 'superadmin']
+ADMIN_ROLES = ['admin', 'superadmin']
 
 PROVINCIAS_ARG = [
     'Buenos Aires', 'Catamarca', 'Chaco', 'Chubut', 'Ciudad Autónoma de Buenos Aires',
@@ -214,3 +215,149 @@ def user_toggle(user_id):
     estado = 'activado' if user.active else 'desactivado'
     flash(f'Usuario {user.username} {estado}', 'success')
     return redirect(url_for('superadmin.users'))
+
+
+# ── Gestión de Administradores ───────────────────────────────────────────────
+
+@superadmin_bp.route('/admins')
+@login_required
+@superadmin_required
+def admins():
+    search = request.args.get('q', '').strip()
+    query = User.query.filter(User.role.in_(['admin', 'superadmin']))
+    if search:
+        query = query.filter(
+            (User.username.ilike(f'%{search}%')) | (User.email.ilike(f'%{search}%'))
+        )
+    admin_list = query.order_by(User.created_at.desc()).all()
+    # contar usuarios bajo cada admin
+    from sqlalchemy import func as _func
+    user_counts = dict(
+        db.session.query(User.created_by_admin, _func.count(User.id))
+        .filter(User.role == 'user')
+        .group_by(User.created_by_admin).all()
+    )
+    return render_template('superadmin/admins.html',
+                           admins=admin_list, user_counts=user_counts, search=search)
+
+
+@superadmin_bp.route('/admins/new', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def admin_new():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email    = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        role     = request.form.get('role', 'admin')
+        if role not in ('admin', 'superadmin'):
+            role = 'admin'
+        if not username or not email or not password:
+            flash('Todos los campos son obligatorios', 'error')
+        elif User.query.filter_by(username=username).first():
+            flash('El nombre de usuario ya existe', 'error')
+        elif User.query.filter_by(email=email).first():
+            flash('El email ya está registrado', 'error')
+        else:
+            pais         = request.form.get('pais', '').strip() or None
+            region_tipo  = request.form.get('region_tipo', 'pais').strip()
+            region_nombre= request.form.get('region_nombre', '').strip() or None
+            if region_tipo == 'pais':
+                region_nombre = None
+            logo = _procesar_logo(request.files.get('institucion_logo'))
+            user = User(
+                username=username, email=email, role=role,
+                pais=pais, region_tipo=region_tipo, region_nombre=region_nombre,
+                institucion_nombre=request.form.get('institucion_nombre','').strip() or None,
+                institucion_titulo=request.form.get('institucion_titulo','').strip() or None,
+                institucion_logo=logo,
+            )
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            flash(f'Administrador {username} creado exitosamente', 'success')
+            return redirect(url_for('superadmin.admins'))
+    return render_template('superadmin/admin_form.html', admin=None, action='new',
+                           roles=ADMIN_ROLES,
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
+
+
+@superadmin_bp.route('/admins/<int:admin_id>/edit', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def admin_edit(admin_id):
+    admin = db.get_or_404(User, admin_id)
+    if admin.role not in ('admin', 'superadmin'):
+        flash('El usuario no es administrador', 'error')
+        return redirect(url_for('superadmin.admins'))
+    if request.method == 'POST':
+        email        = request.form.get('email', '').strip()
+        role         = request.form.get('role', admin.role)
+        active       = 'active' in request.form
+        new_password = request.form.get('password', '').strip()
+        if role not in ('admin', 'superadmin'):
+            flash('Rol inválido para administrador', 'error')
+        elif User.query.filter(User.email == email, User.id != admin_id).first():
+            flash('El email ya está en uso', 'error')
+        else:
+            pais         = request.form.get('pais', '').strip() or None
+            region_tipo  = request.form.get('region_tipo', 'pais').strip()
+            region_nombre= request.form.get('region_nombre', '').strip() or None
+            if region_tipo == 'pais':
+                region_nombre = None
+            nuevo_logo = _procesar_logo(request.files.get('institucion_logo'))
+            admin.email             = email
+            admin.role              = role
+            admin.active            = active
+            admin.pais              = pais
+            admin.region_tipo       = region_tipo
+            admin.region_nombre     = region_nombre
+            admin.institucion_nombre= request.form.get('institucion_nombre','').strip() or None
+            admin.institucion_titulo= request.form.get('institucion_titulo','').strip() or None
+            if nuevo_logo:
+                admin.institucion_logo = nuevo_logo
+            elif 'quitar_logo' in request.form:
+                admin.institucion_logo = None
+            if new_password:
+                admin.set_password(new_password)
+            db.session.commit()
+            flash(f'Administrador {admin.username} actualizado', 'success')
+            return redirect(url_for('superadmin.admins'))
+    return render_template('superadmin/admin_form.html', admin=admin, action='edit',
+                           roles=ADMIN_ROLES,
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
+
+
+@superadmin_bp.route('/admins/<int:admin_id>/delete', methods=['POST'])
+@login_required
+@superadmin_required
+def admin_delete(admin_id):
+    admin = db.get_or_404(User, admin_id)
+    if admin.id == current_user.id:
+        flash('No podés eliminarte a vos mismo', 'error')
+        return redirect(url_for('superadmin.admins'))
+    if admin.role not in ('admin', 'superadmin'):
+        flash('El usuario no es administrador', 'error')
+        return redirect(url_for('superadmin.admins'))
+    # Desvincular usuarios que pertenecían a este admin
+    User.query.filter_by(created_by_admin=admin.id).update({'created_by_admin': None})
+    username = admin.username
+    db.session.delete(admin)
+    db.session.commit()
+    flash(f'Administrador {username} eliminado. Sus usuarios quedaron sin asignar.', 'success')
+    return redirect(url_for('superadmin.admins'))
+
+
+@superadmin_bp.route('/admins/<int:admin_id>/toggle', methods=['POST'])
+@login_required
+@superadmin_required
+def admin_toggle(admin_id):
+    admin = db.get_or_404(User, admin_id)
+    if admin.id == current_user.id:
+        flash('No podés desactivarte a vos mismo', 'error')
+        return redirect(url_for('superadmin.admins'))
+    admin.active = not admin.active
+    db.session.commit()
+    estado = 'activado' if admin.active else 'desactivado'
+    flash(f'Administrador {admin.username} {estado}', 'success')
+    return redirect(url_for('superadmin.admins'))

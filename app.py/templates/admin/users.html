@@ -7,7 +7,12 @@
 <div class="data-card">
   <div class="data-card-header">
     <h6><i class="fas fa-users me-2" style="color:var(--orange)"></i>
-      <span data-i18n="users.title">Usuarios registrados</span> <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ pagination.total }})</span>
+      {% if current_user.role == 'superadmin' %}
+        Todos los usuarios
+      {% else %}
+        Mis usuarios
+      {% endif %}
+      <span style="color:var(--muted);font-weight:400;font-size:0.85rem">({{ pagination.total }})</span>
     </h6>
     <div class="d-flex gap-2 align-items-center">
       <form method="GET" action="/admin/users" class="d-flex gap-2">

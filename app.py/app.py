@@ -93,6 +93,7 @@ with app.app_context():
         ('"user"',      "institucion_nombre",  "VARCHAR(150)"),
         ('"user"',      "institucion_titulo",  "VARCHAR(150)"),
         ('"user"',      "institucion_logo",    "TEXT"),
+        ('"user"',      "created_by_admin",    "INTEGER"),
     ]
     for _tbl, _col, _type in _new_cols:
         try:

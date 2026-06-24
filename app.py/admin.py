@@ -118,8 +118,11 @@ def dashboard():
 @admin_required
 def users():
     search = request.args.get('q', '').strip()
-    page = request.args.get('page', 1, type=int)
+    page   = request.args.get('page', 1, type=int)
+    # superadmin ve todos; admin solo ve sus propios usuarios
     query = User.query.filter_by(role='user')
+    if current_user.role != 'superadmin':
+        query = query.filter_by(created_by_admin=current_user.id)
     if search:
         query = query.filter(
             (User.username.ilike(f'%{search}%')) | (User.email.ilike(f'%{search}%'))
@@ -149,8 +152,10 @@ def user_new():
             region_nombre = request.form.get('region_nombre', '').strip() or None
             if region_tipo == 'pais':
                 region_nombre = None
+            admin_id = current_user.id if current_user.role != 'superadmin' else None
             user = User(username=username, email=email, role='user',
-                        pais=pais, region_tipo=region_tipo, region_nombre=region_nombre)
+                        pais=pais, region_tipo=region_tipo, region_nombre=region_nombre,
+                        created_by_admin=admin_id)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -165,6 +170,9 @@ def user_new():
 @admin_required
 def user_edit(user_id):
     user = db.get_or_404(User, user_id)
+    if current_user.role != 'superadmin' and user.created_by_admin != current_user.id:
+        flash('No tenés permiso para editar este usuario', 'error')
+        return redirect(url_for('admin.users'))
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         active = 'active' in request.form
@@ -547,6 +555,9 @@ def configuracion():
 @admin_required
 def user_delete(user_id):
     user = db.get_or_404(User, user_id)
+    if current_user.role != 'superadmin' and user.created_by_admin != current_user.id:
+        flash('No tenés permiso para eliminar este usuario', 'error')
+        return redirect(url_for('admin.users'))
     if user.id == current_user.id:
         flash('No puedes eliminar tu propio usuario', 'error')
         return redirect(url_for('admin.users'))

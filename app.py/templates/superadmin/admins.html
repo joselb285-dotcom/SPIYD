@@ -1,0 +1,146 @@
+{% extends "superadmin/base_superadmin.html" %}
+{% block title %}Administradores — SPIYD SuperAdmin{% endblock %}
+{% block page_title %}Gestión de Administradores{% endblock %}
+{% block breadcrumb %}Administradores{% endblock %}
+
+{% block content %}
+<div class="glass-panel rounded-xl overflow-hidden">
+
+  <!-- Header -->
+  <div class="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+    <h2 class="font-headline-lg text-on-surface text-lg">
+      Administradores del sistema
+      <span class="text-on-surface-variant text-[14px] font-normal">({{ admins|length }})</span>
+    </h2>
+    <a href="/superadmin/admins/new"
+       class="bg-secondary-container text-on-secondary-container px-4 py-2 rounded-lg text-[13px] font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">
+      <span class="material-symbols-outlined" style="font-size:16px">add</span> Nuevo Admin
+    </a>
+  </div>
+
+  <!-- Buscar -->
+  <div class="px-6 py-3 border-b border-outline-variant/10">
+    <form method="get" class="flex gap-3">
+      <div class="relative flex-1 max-w-sm">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size:18px">search</span>
+        <input type="text" name="q"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg pl-9 pr-3 py-2 text-[13px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
+               placeholder="Buscar administrador..." value="{{ search }}">
+      </div>
+      <button type="submit" class="bg-secondary-container text-on-secondary-container px-4 py-2 rounded-lg text-[13px] font-bold hover:opacity-90">Buscar</button>
+      {% if search %}<a href="/superadmin/admins" class="border border-outline-variant text-on-surface-variant px-4 py-2 rounded-lg text-[13px] hover:text-on-surface">Limpiar</a>{% endif %}
+    </form>
+  </div>
+
+  <!-- Tabla -->
+  <div class="overflow-x-auto">
+    <table class="w-full text-left">
+      <thead class="bg-surface-container-lowest/50 border-b border-outline-variant/10">
+        <tr class="text-[10px] uppercase font-label-technical text-on-surface-variant">
+          <th class="px-6 py-4">#</th>
+          <th class="px-6 py-4">Administrador</th>
+          <th class="px-6 py-4">Rol</th>
+          <th class="px-6 py-4">Institución</th>
+          <th class="px-6 py-4">Alcance</th>
+          <th class="px-6 py-4 text-center">Usuarios</th>
+          <th class="px-6 py-4 text-center">Estado</th>
+          <th class="px-6 py-4 text-center">Último acceso</th>
+          <th class="px-6 py-4 text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/10">
+        {% for a in admins %}
+        <tr class="hover:bg-surface-variant/10 transition-colors">
+          <td class="px-6 py-4 text-[12px] text-on-surface-variant font-label-technical">{{ a.id }}</td>
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              {% if a.institucion_logo %}
+              <img src="{{ a.institucion_logo }}" alt="" class="w-8 h-8 rounded-full object-cover border border-outline-variant/30 shrink-0">
+              {% else %}
+              <div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-on-surface-variant" style="font-size:16px">person</span>
+              </div>
+              {% endif %}
+              <div>
+                <div class="text-[13px] font-bold text-on-surface">{{ a.username }}</div>
+                <div class="text-[11px] text-on-surface-variant">{{ a.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4">
+            <span class="px-2 py-1 rounded text-[10px] font-bold font-label-technical
+              {% if a.role == 'superadmin' %}bg-primary/20 text-primary{% else %}bg-secondary/20 text-secondary{% endif %}">
+              {{ a.role_label }}
+            </span>
+          </td>
+          <td class="px-6 py-4 text-[12px] text-on-surface-variant">
+            {{ a.institucion_nombre or '—' }}
+            {% if a.institucion_titulo %}<div class="text-[10px] opacity-60">{{ a.institucion_titulo }}</div>{% endif %}
+          </td>
+          <td class="px-6 py-4 text-[12px] text-on-surface-variant">
+            {% if a.pais %}
+              <span class="font-bold text-on-surface">{{ a.pais|capitalize }}</span>
+              {% if a.region_nombre %}<div class="text-[10px] opacity-60">{{ a.region_nombre }}</div>{% endif %}
+            {% else %}
+              <span class="opacity-40">Sin restricción</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4 text-center">
+            <span class="px-3 py-1 bg-surface-container-highest rounded-full text-[12px] font-bold font-label-technical text-on-surface">
+              {{ user_counts.get(a.id, 0) }}
+            </span>
+          </td>
+          <td class="px-6 py-4 text-center">
+            {% if a.active %}
+              <span class="flex items-center justify-center gap-1.5 text-secondary text-[11px] font-bold">
+                <span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Activo
+              </span>
+            {% else %}
+              <span class="flex items-center justify-center gap-1.5 text-error text-[11px] font-bold">
+                <span class="w-1.5 h-1.5 rounded-full bg-error"></span> Inactivo
+              </span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4 text-center text-[11px] text-on-surface-variant font-label-technical">
+            {{ a.last_login.strftime('%d/%m %H:%M') if a.last_login else '—' }}
+          </td>
+          <td class="px-6 py-4 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <a href="/superadmin/admins/{{ a.id }}/edit"
+                 class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-all inline-flex"
+                 title="Editar">
+                <span class="material-symbols-outlined" style="font-size:16px">edit</span>
+              </a>
+              <form method="post" action="/superadmin/admins/{{ a.id }}/toggle" style="margin:0">
+                <button type="submit"
+                        class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-tertiary hover:border-tertiary/40 transition-all inline-flex"
+                        title="{{ 'Desactivar' if a.active else 'Activar' }}">
+                  <span class="material-symbols-outlined" style="font-size:16px">{{ 'toggle_on' if a.active else 'toggle_off' }}</span>
+                </button>
+              </form>
+              {% if a.id != current_user.id %}
+              <form method="post" action="/superadmin/admins/{{ a.id }}/delete" style="margin:0"
+                    onsubmit="return confirm('¿Eliminar a {{ a.username }}? Sus usuarios quedarán sin administrador asignado.')">
+                <button type="submit"
+                        class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-all inline-flex"
+                        title="Eliminar">
+                  <span class="material-symbols-outlined" style="font-size:16px">delete</span>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="px-6 py-12 text-center text-on-surface-variant text-[13px]">
+            No se encontraron administradores
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}
