@@ -766,6 +766,8 @@
           <div class="leyenda-item"><span class="cbox" style="background:rgba(229,57,53,.5);border:1px solid #e53935;"></span>Crítico — 3 condiciones</div>
           <div class="leyenda-item"><span class="cbox" style="background:rgba(255,143,0,.4);border:1px solid #fb8c00;"></span>Alto — 2 condiciones</div>
           <div class="leyenda-item"><span class="cbox" style="background:rgba(253,216,53,.3);border:1px solid #fdd835;"></span>Moderado — 1 condición</div>
+          <div class="leyenda-item"><svg width="16" height="16" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#ff1744" stroke-width="1.8" stroke-dasharray="3 2"/></svg> Anillo rojo en foco = zona 3/3 (requiere clima cargado)</div>
+          <div class="leyenda-item"><svg width="16" height="16" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#ffab00" stroke-width="1.6" stroke-dasharray="3 2"/></svg> Anillo ámbar en foco = zona 2/3</div>
         </div>
 
         <div class="leyenda">
@@ -1000,6 +1002,7 @@
     let datosINPE     = [];
     let datosFWI      = [];
     let firePts       = [];   // [{lat,lon,conf}]
+    let focoMarkers   = [];   // [{marker,lat,lon,outer,inner,size}] — para re-aplicar anillo 30-30-30
     let firesBBox     = null; // {s,w,n,e}
     let intervaloAR   = null;
     let ultimoFocos   = 0;
@@ -1222,12 +1225,21 @@
     function nomFeat(p) { return p.nombre||p.name||p.NAME||''; }
 
     // ── Icono llama SVG ──────────────────────────────────────────────────────
-    function flameIcon(outerColor, innerColor, size) {
+    function flameIcon(outerColor, innerColor, size, f30) {
       const h = Math.round(size * 1.5);
+      let ring = '';
+      if (f30 === 3) {
+        ring = `<ellipse cx="10" cy="13" rx="9" ry="12.5" fill="none" stroke="#ff1744" stroke-width="1.6" stroke-dasharray="3 2" opacity="0.9">
+                  <animate attributeName="opacity" values="0.9;0.35;0.9" dur="1.4s" repeatCount="indefinite"/>
+                </ellipse>`;
+      } else if (f30 === 2) {
+        ring = `<ellipse cx="10" cy="13" rx="9" ry="12.5" fill="none" stroke="#ffab00" stroke-width="1.4" stroke-dasharray="3 2" opacity="0.75"/>`;
+      }
       return L.divIcon({
         html: `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${h}"
                     viewBox="0 0 20 30"
                     style="filter:drop-shadow(0 0 3px ${outerColor}cc);">
+          ${ring}
           <!-- cuerpo de la llama -->
           <path d="M10 1
                    C 8 5, 3 9, 3 15
@@ -1517,12 +1529,28 @@
       return                            { outer:'#f57f17', inner:'#fff176', size:13 };
     }
 
+    function factores30EnPunto(lat, lon) {
+      if (!datosClima.length) return 0;
+      let best = null, bestDist = Infinity;
+      for (const d of datosClima) {
+        const dist = (d.lat - lat) ** 2 + (d.lon - lon) ** 2;
+        if (dist < bestDist) { bestDist = dist; best = d; }
+      }
+      return best ? (best.factores_30 || 0) : 0;
+    }
+
+    function refrescarAlertas3030() {
+      focoMarkers.forEach(o => {
+        o.marker.setIcon(flameIcon(o.outer, o.inner, o.size, factores30EnPunto(o.lat, o.lon)));
+      });
+    }
+
     async function cargarFocos(msg=true) {
       const btn = document.getElementById('btnCargar');
       if (nasaActivo) {
         nasaActivo = false;
         clusterAlta.clearLayers(); clusterMedia.clearLayers(); clusterBaja.clearLayers();
-        firePts = []; focoDataMap = {}; focoCounter = 0;
+        firePts = []; focoDataMap = {}; focoCounter = 0; focoMarkers = [];
         btn.classList.remove('active');
         document.getElementById('confStrip').style.display = 'none';
         actualizarContadores();
@@ -1532,7 +1560,7 @@
       nasaActivo = true;
       clusterAlta.clearLayers(); clusterMedia.clearLayers(); clusterBaja.clearLayers();
       firePts = [];
-      focoDataMap = {}; focoCounter = 0;
+      focoDataMap = {}; focoCounter = 0; focoMarkers = [];
       const dias = document.getElementById('dias').value;
       if (msg) setEstado('Consultando NASA FIRMS…');
       startLoad('nasa');
@@ -1566,13 +1594,21 @@
             satellite: f.satellite || 'N/D',
             fecha:     `${f.acq_date||''} ${f.acq_time||''}`.trim()
           };
-          const mk = L.marker([lat, lng], { icon: flameIcon(col.outer, col.inner, col.size) });
+          const f30 = factores30EnPunto(lat, lng);
+          const mk = L.marker([lat, lng], { icon: flameIcon(col.outer, col.inner, col.size, f30) });
+          focoMarkers.push({ marker: mk, lat, lon: lng, outer: col.outer, inner: col.inner, size: col.size });
+          const avisoF30 = f30 === 3
+            ? `<div style="margin-top:5px;color:#ff1744;font-weight:700;">⚠ Zona 30-30-30: 3/3 condiciones críticas</div>`
+            : f30 === 2
+              ? `<div style="margin-top:5px;color:#ffab00;font-weight:700;">⚠ Zona 30-30-30: 2/3 condiciones</div>`
+              : '';
           mk.bindPopup(`<div style="font-family:monospace;font-size:11px;min-width:190px;">
             <b style="color:#c62828;">🔥 Foco NASA FIRMS</b><br>
             Lat ${lat.toFixed(4)} | Lng ${lng.toFixed(4)}<br>
             Confianza: <b>${conf}%</b> &nbsp;|&nbsp; Brillo: ${brillo} K<br>
             Fecha: ${f.acq_date||'N/D'} ${f.acq_time||''}<br>
             Satélite: ${f.satellite||'N/D'}
+            ${avisoF30}
             <div style="margin-top:7px;">
               <button onclick="analizarFoco(${focoId})"
                 style="width:100%;padding:5px 0;background:linear-gradient(135deg,#6a1b9a,#ad1457);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;">
@@ -1750,6 +1786,8 @@
         capaRiesgo30.clearLayers();
         if (mapa.hasLayer(capaRiesgo30)) mapa.removeLayer(capaRiesgo30);
         if (capasViento) { mapa.removeLayer(capasViento); capasViento = null; }
+        datosClima = [];
+        refrescarAlertas3030();
         btn.classList.remove('active');
         btn.textContent='🌡 Clima y viento (Open-Meteo)'; btn.disabled=false;
         return;
@@ -1760,6 +1798,7 @@
         datosClima = await fetch(`${BACKEND}/weather-grid`).then(r=>r.json());
         renderizarZonasRiesgo(datosClima);
         actualizarIndicadores30(datosClima);
+        refrescarAlertas3030();
         await cargarViento();
         btn.classList.add('active');
         btn.textContent='✅ Clima OK';

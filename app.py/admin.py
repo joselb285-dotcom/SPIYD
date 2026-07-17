@@ -2,9 +2,10 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy import func, or_
-import csv, io, math
+import csv, io, math, secrets
 from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog, UnidadRecurso, TIPOS_UNIDAD
 from superadmin import PROVINCIAS_ARG, DEPARTAMENTOS_PRY
+from email_utils import enviar_email_verificacion
 from datetime import datetime, timedelta
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -179,11 +180,13 @@ def user_new():
             admin_id = current_user.id if current_user.role != 'superadmin' else None
             user = User(username=username, email=email, role='user',
                         pais=pais, region_tipo=region_tipo, region_nombre=region_nombre,
-                        created_by_admin=admin_id)
+                        created_by_admin=admin_id,
+                        email_verified=False, email_verify_token=secrets.token_urlsafe(32))
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            flash(f'Usuario {username} creado exitosamente', 'success')
+            enviar_email_verificacion(user, request.url_root)
+            flash(f'Usuario {username} creado exitosamente. Se envió un email de verificación.', 'success')
             return redirect(url_for('admin.users'))
     return render_template('admin/user_form.html', user=None, action='new',
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)

@@ -1,10 +1,12 @@
 import base64
+import secrets
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy import func
 from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog
 from datetime import datetime, timedelta
+from email_utils import enviar_email_verificacion
 
 superadmin_bp = Blueprint('superadmin', __name__)
 
@@ -132,11 +134,13 @@ def user_new():
                 institucion_nombre=request.form.get('institucion_nombre', '').strip() or None,
                 institucion_titulo=request.form.get('institucion_titulo', '').strip() or None,
                 institucion_logo=logo,
+                email_verified=False, email_verify_token=secrets.token_urlsafe(32),
             )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            flash(f'Usuario {username} creado exitosamente', 'success')
+            enviar_email_verificacion(user, request.url_root)
+            flash(f'Usuario {username} creado exitosamente. Se envió un email de verificación.', 'success')
             return redirect(url_for('superadmin.users'))
     return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES,
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
@@ -271,11 +275,13 @@ def admin_new():
                 institucion_nombre=request.form.get('institucion_nombre','').strip() or None,
                 institucion_titulo=request.form.get('institucion_titulo','').strip() or None,
                 institucion_logo=logo,
+                email_verified=False, email_verify_token=secrets.token_urlsafe(32),
             )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            flash(f'Administrador {username} creado exitosamente', 'success')
+            enviar_email_verificacion(user, request.url_root)
+            flash(f'Administrador {username} creado exitosamente. Se envió un email de verificación.', 'success')
             return redirect(url_for('superadmin.admins'))
     return render_template('superadmin/admin_form.html', admin=None, action='new',
                            roles=ADMIN_ROLES,

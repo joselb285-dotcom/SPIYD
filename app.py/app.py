@@ -94,6 +94,8 @@ with app.app_context():
         ('"user"',      "institucion_titulo",  "VARCHAR(150)"),
         ('"user"',      "institucion_logo",    "TEXT"),
         ('"user"',      "created_by_admin",    "INTEGER"),
+        ('"user"',      "email_verified",      "BOOLEAN DEFAULT TRUE"),
+        ('"user"',      "email_verify_token",  "VARCHAR(64)"),
     ]
     for _tbl, _col, _type in _new_cols:
         try:

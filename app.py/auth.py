@@ -17,6 +17,9 @@ def login():
         user = User.query.filter(
             (User.username == identifier) | (User.email == identifier)
         ).first()
+        if user and user.check_password(password) and not user.email_verified:
+            flash('Verificá tu email antes de iniciar sesión. Revisá tu casilla de correo.', 'error')
+            return render_template('auth/login.html')
         if user and user.check_password(password) and user.active:
             remember = request.form.get('remember') == 'on'
             login_user(user, remember=remember)
@@ -47,4 +50,17 @@ def login():
 @auth_bp.route('/logout')
 def logout():
     logout_user()
+    return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    user = User.query.filter_by(email_verify_token=token).first()
+    if not user:
+        flash('Enlace de verificación inválido o ya utilizado', 'error')
+        return redirect(url_for('auth.login'))
+    user.email_verified = True
+    user.email_verify_token = None
+    db.session.commit()
+    flash('Email verificado correctamente. Ya podés iniciar sesión.', 'success')
     return redirect(url_for('auth.login'))

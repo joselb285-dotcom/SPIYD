@@ -13,6 +13,8 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), default='user')
     active = db.Column(db.Boolean, default=True)
+    email_verified = db.Column(db.Boolean, default=True)
+    email_verify_token = db.Column(db.String(64))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     pais = db.Column(db.String(50))
