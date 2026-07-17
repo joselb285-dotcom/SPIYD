@@ -466,6 +466,10 @@
             <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17.5 9.5A4.5 4.5 0 0 0 10 9A3.5 3.5 0 0 0 10 16L18 16A4.5 4.5 0 0 0 17.5 9.5Z" fill="#546e7a" opacity=".85"/><path d="M7.5 11A3.5 3.5 0 0 0 7.5 16L13 16" stroke="#546e7a" stroke-width="2.5" fill="none" stroke-linecap="round"/><line x1="9" y1="18" x2="8" y2="21.5" stroke="#29b6f6" stroke-width="1.3" stroke-linecap="round"/><line x1="12" y1="18" x2="11" y2="22" stroke="#29b6f6" stroke-width="1.3" stroke-linecap="round"/><line x1="15" y1="18" x2="14" y2="21.5" stroke="#29b6f6" stroke-width="1.3" stroke-linecap="round"/></svg></span>
             <span class="ql">Precip.</span>
           </button>
+          <button class="qbtn" id="btnMultiSat" onclick="toggleMultiSat()" title="Verificar focos coincidentes entre NASA/INPE/GOES">
+            <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="#ff1744"/><circle cx="12" cy="12" r="7" stroke="#ff1744" stroke-width="1.2" fill="none" opacity=".55"/><circle cx="5" cy="6" r="1.6" fill="#29b6f6"/><circle cx="19" cy="6" r="1.6" fill="#ffa726"/><circle cx="12" cy="20" r="1.6" fill="#66bb6a"/><line x1="6" y1="7.2" x2="10.2" y2="10.5" stroke="#455a64" stroke-width=".8"/><line x1="18" y1="7.2" x2="13.8" y2="10.5" stroke="#455a64" stroke-width=".8"/><line x1="12" y1="18.4" x2="12" y2="15" stroke="#455a64" stroke-width=".8"/></svg></span>
+            <span class="ql">Verificar</span>
+          </button>
         </div>
       </div>
 
@@ -2635,9 +2639,27 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     }
 
     // ── Verificación multi-satélite ──────────────────────────────────────────
-    const MULTISAT_UMBRAL_KM = 25;
+    const MULTISAT_UMBRAL_KM = 5;
+    let multiSatActivo = false;
+
+    function toggleMultiSat() {
+      multiSatActivo = !multiSatActivo;
+      const btn = document.getElementById('btnMultiSat');
+      if (multiSatActivo) {
+        btn.classList.add('active');
+        verificarMultiSatelite();
+        setEstado(`🛰 Verificación multi-satélite activada (radio ${MULTISAT_UMBRAL_KM} km)`, 'ok');
+      } else {
+        btn.classList.remove('active');
+        capaMultiSat.clearLayers();
+        if (mapa.hasLayer(capaMultiSat)) mapa.removeLayer(capaMultiSat);
+        document.getElementById('multiSatAlerta').style.display = 'none';
+        setEstado('🛰 Verificación multi-satélite desactivada', '');
+      }
+    }
 
     function verificarMultiSatelite() {
+      if (!multiSatActivo) return;
       const tieneNASA = firePts.length > 0;
       const tieneINPE = datosINPE.length > 0;
       const tieneGOES = goesRtPts.length > 0;
@@ -2793,9 +2815,12 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         const txt = await fetch(
           `${BACKEND}/nasa-focos?fuente=GOES_NRT&dias=1`
         ).then(r => r.text());
+        const otrosSatPts = [...firePts, ...datosINPE];
         const focos = parseCSV(txt).filter(f => {
           const lat=parseFloat(f.latitude), lon=parseFloat(f.longitude);
-          return !isNaN(lat) && !isNaN(lon) && estaEnArg(lat,lon);
+          if (isNaN(lat) || isNaN(lon) || !estaEnArg(lat,lon)) return false;
+          if (!otrosSatPts.length) return false;
+          return otrosSatPts.some(o => haversineKm(lat, lon, o.lat, o.lon) <= MULTISAT_UMBRAL_KM);
         });
         capaGOES_RT.clearLayers();
         goesRtPts = [];
@@ -2830,7 +2855,10 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         if (badge) badge.style.display = focos.length>0?'inline-block':'none';
         if (!goesRtTimer) goesRtTimer = setInterval(()=>cargarGOES_RT(true), 10*60*1000);
         if (!silencioso) btn.classList.add('active');
-        setEstado(`🛰 GOES-16 RT: ${focos.length} focos activos (actualiza c/10 min)`, focos.length>0?'warn':'ok');
+        const msgGOES = otrosSatPts.length
+          ? `🛰 GOES-16 RT: ${focos.length} focos coincidentes con NASA/INPE (radio ${MULTISAT_UMBRAL_KM} km, actualiza c/10 min)`
+          : `🛰 GOES-16 RT: cargá focos NASA o INPE primero para cruzar detecciones`;
+        setEstado(msgGOES, focos.length>0?'warn':'ok');
       } catch(e) {
         if (!silencioso) { goesRtActivo = false; setEstado('Error al consultar GOES-16 RT', 'err'); }
       } finally { doneLoad('goes'); }
