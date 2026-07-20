@@ -376,6 +376,14 @@ _overpass_cache = {}   # key -> (timestamp, data)
 OVERPASS_CACHE_TTL = 7200  # 2 horas
 _overpass_lock = threading.RLock()
 
+_nasa_focos_cache = {}   # "fuente|dias" -> (timestamp, texto_csv)
+NASA_FOCOS_CACHE_TTL = 120  # 2 minutos
+_nasa_focos_lock = threading.RLock()
+
+_smn_cache = {}   # provincia -> (timestamp, alertas)
+SMN_CACHE_TTL = 300  # 5 minutos
+_smn_lock = threading.RLock()
+
 ultimas_alertas_enviadas = set()
 
 
@@ -619,22 +627,45 @@ def elemento_punto(el: dict):
 
 # ── SMN ──────────────────────────────────────────────────────────────────────
 
-def obtener_alertas_smn(provincia: str):
-    alertas = []
+def _fetch_smn_crudas():
+    """Descarga y parsea los 3 feeds RSS del SMN (sin filtrar por provincia). Cacheado."""
+    import time as _t
+    with _smn_lock:
+        cached = _smn_cache.get('__raw__')
+        if cached and (_t.time() - cached[0]) < SMN_CACHE_TTL:
+            return cached[1]
+    crudas = []
     for feed in SMN_FEEDS:
-        parsed = feedparser.parse(feed["url"])
+        try:
+            parsed = feedparser.parse(feed["url"])
+        except Exception:
+            continue
         for entry in parsed.entries:
             title, description = entry.get("title",""), entry.get("description","")
             link, pub_date     = entry.get("link",""), entry.get("published","")
             categorias = [t.get("term","") for t in entry.get("tags",[])]
-            txt = f"{title} {description} {' '.join(categorias)}"
-            if not coincide_provincia(txt, provincia): continue
-            alertas.append({
+            crudas.append({
                 "tipoFeed": feed["tipo"], "title": title,
                 "description": description, "link": link,
                 "pubDate": pub_date, "category": categorias,
-                "nivel": detectar_nivel_alerta(txt, feed.get("nivel_base", "verde"))
+                "txt": f"{title} {description} {' '.join(categorias)}",
+                "nivel_base": feed.get("nivel_base", "verde"),
             })
+    with _smn_lock:
+        _smn_cache['__raw__'] = (_t.time(), crudas)
+    return crudas
+
+
+def obtener_alertas_smn(provincia: str):
+    alertas = []
+    for c in _fetch_smn_crudas():
+        if not coincide_provincia(c["txt"], provincia): continue
+        alertas.append({
+            "tipoFeed": c["tipoFeed"], "title": c["title"],
+            "description": c["description"], "link": c["link"],
+            "pubDate": c["pubDate"], "category": c["category"],
+            "nivel": detectar_nivel_alerta(c["txt"], c["nivel_base"])
+        })
     return alertas
 
 
@@ -1431,6 +1462,59 @@ def weather_grid():
         d["factores_30"] = f
     return jsonify(datos)
 
+
+_zona_clima_cache = {}   # "s,w,n,e" -> (timestamp, datos)
+ZONA_CLIMA_CACHE_TTL = 600  # 10 minutos
+_zona_clima_lock = threading.RLock()
+
+@app.route("/weather-grid-zona")
+@login_required
+def weather_grid_zona():
+    """Grilla de clima 30-30-30 acotada a una zona (bbox de focos activos o de una provincia),
+    más fina que la grilla nacional y mucho más liviana."""
+    import time as _t
+    try:
+        s = float(request.args.get("s")); w = float(request.args.get("w"))
+        n = float(request.args.get("n")); e = float(request.args.get("e"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "bbox inválido"}), 400
+    buf = 0.3
+    s, w, n, e = s - buf, w - buf, n + buf, e + buf
+    s = max(s, -56.0); n = min(n, -19.0); w = max(w, -74.0); e = min(e, -53.0)
+    if n <= s or e <= w:
+        return jsonify({"error": "bbox inválido"}), 400
+    if (n - s) > 15 or (e - w) > 15:
+        return jsonify({"error": "zona demasiado grande, usá la grilla nacional"}), 400
+
+    cache_key = f"{round(s,1)},{round(w,1)},{round(n,1)},{round(e,1)}"
+    with _zona_clima_lock:
+        cached = _zona_clima_cache.get(cache_key)
+        if cached and (_t.time() - cached[0]) < ZONA_CLIMA_CACHE_TTL:
+            return jsonify(cached[1])
+
+    step = 1.0  # más fino que los 3° de la grilla nacional
+    lats, lat = [], n
+    while lat >= s:
+        lats.append(round(lat, 2)); lat -= step
+    lons, lon = [], w
+    while lon <= e:
+        lons.append(round(lon, 2)); lon += step
+
+    lats_grid = [la for la in lats for _ in lons]
+    lons_grid = [lo for _ in lats for lo in lons]
+    datos = fetch_multi_points(lats_grid, lons_grid)
+    for d in datos:
+        f = 0
+        if d["temp"]       is not None and d["temp"]       >= 30: f += 1
+        if d["wind_speed"] is not None and d["wind_speed"] >= 30: f += 1
+        if d["humidity"]   is not None and d["humidity"]   <= 30: f += 1
+        d["factores_30"] = f
+        d["region"] = _region_argentina(d["lat"], d["lon"])
+    with _zona_clima_lock:
+        _zona_clima_cache[cache_key] = (_t.time(), datos)
+    return jsonify(datos)
+
+
 SA_LATS = list(range(12, -57, -5))   # 12,7,2,-3,...,-53  → 14 filas
 SA_LONS = list(range(-82, -34, 5))   # -82,-77,...,-37    → 10 columnas
 _wind_cache = {"data": None, "ts": 0}
@@ -1636,11 +1720,16 @@ BBOX_ARG = "-73.5,-55.8,-53.5,-19.0"  # Argentina + Paraguay
 @app.route("/nasa-focos")
 @login_required
 def nasa_focos():
-    import csv, io
+    import csv, io, time as _t
     fuente = request.args.get("fuente", "VIIRS_SNPP_NRT")
     dias   = request.args.get("dias", "1")
     if fuente not in FUENTES_NASA:
         return jsonify({"error": "fuente inválida"}), 400
+    cache_key = f"{fuente}|{dias}"
+    with _nasa_focos_lock:
+        cached = _nasa_focos_cache.get(cache_key)
+        if cached and (_t.time() - cached[0]) < NASA_FOCOS_CACHE_TTL:
+            return cached[1], 200, {"Content-Type": "text/plain; charset=utf-8"}
     key = get_cfg('NASA_MAP_KEY') or NASA_MAP_KEY
     if not key:
         return jsonify({"error": "NASA_MAP_KEY no configurada"}), 503
@@ -1665,6 +1754,8 @@ def nasa_focos():
             _guardar_focos(focos)
         except Exception:
             pass
+        with _nasa_focos_lock:
+            _nasa_focos_cache[cache_key] = (_t.time(), r.text)
         return r.text, 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Exception as ex:
         return jsonify({"error": str(ex)}), 502

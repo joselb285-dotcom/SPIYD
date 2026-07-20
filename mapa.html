@@ -564,6 +564,23 @@
 
     <!-- ── Secciones colapsables de datos ────────────── -->
 
+    <!-- Zonas 30-30-30 -->
+    <div class="seccion">
+      <div class="seccion-header" onclick="toggleSeccion('secZona30')">
+        <span>Zonas 30-30-30 <span id="zona30Count" class="data-badge" style="display:none;background:rgba(255,23,68,.3);color:#ff8a80;border:1px solid #ff1744;"></span> <span id="chev-secZona30" class="seccion-chevron">▼</span></span>
+      </div>
+      <div class="seccion-body" id="secZona30">
+        <div style="display:flex;gap:4px;margin:5px 0;">
+          <select id="selectProvincia30" style="flex:1;font-size:10px;background:#111;color:#ccc;border:1px solid #333;border-radius:4px;padding:3px;min-width:0;">
+            <option value="">🔥 Zona de focos activos</option>
+          </select>
+          <button class="geo-per-btn" id="btnAnalizarZona30" onclick="analizarZona3030()" style="flex:0 0 auto;padding:3px 10px;white-space:nowrap;">Analizar</button>
+        </div>
+        <div id="zona30Resumen" style="font-size:11px;color:#666;">Elegí una zona (o dejá "focos activos") y presioná "Analizar".</div>
+        <div id="zona30Lista" style="margin-top:4px;font-size:11px;max-height:200px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
     <!-- SMN -->
     <div class="seccion">
       <div class="seccion-header" onclick="toggleSeccion('secSMN')">
@@ -1001,6 +1018,7 @@
     // ── Estado global ────────────────────────────────────────────────────────
     let geojsonArg    = null;
     let datosClima    = [];
+    let datosZonaClima = [];  // grilla fina de una zona (focos activos o provincia)
     let datosAgua     = [];
     let datosVeg      = [];
     let datosINPE     = [];
@@ -1212,9 +1230,21 @@
     async function cargarGeoJSON() {
       if (geojsonArg) return geojsonArg;
       for (const u of GJ_URLS) {
-        try { const r = await fetch(u); if (!r.ok) continue; const d = await r.json(); if (d?.features?.length) { geojsonArg = d; return d; } } catch(e) {}
+        try { const r = await fetch(u); if (!r.ok) continue; const d = await r.json(); if (d?.features?.length) { geojsonArg = d; poblarSelectProvincias30(); return d; } } catch(e) {}
       }
       return null;
+    }
+
+    function poblarSelectProvincias30() {
+      const sel = document.getElementById('selectProvincia30');
+      if (!sel || !geojsonArg || sel.dataset.poblado) return;
+      const nombres = [...new Set(geojsonArg.features.map(f => nomFeat(f.properties)).filter(Boolean))].sort();
+      nombres.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = n; opt.textContent = n;
+        sel.appendChild(opt);
+      });
+      sel.dataset.poblado = '1';
     }
     // Bounding box de Paraguay para aceptar puntos fuera del GeoJSON argentino
     function estaEnParaguay(lat, lng) {
@@ -1534,9 +1564,10 @@
     }
 
     function factores30EnPunto(lat, lon) {
-      if (!datosClima.length) return 0;
+      const fuente = datosZonaClima.length ? datosZonaClima : datosClima;
+      if (!fuente.length) return 0;
       let best = null, bestDist = Infinity;
-      for (const d of datosClima) {
+      for (const d of fuente) {
         const dist = (d.lat - lat) ** 2 + (d.lon - lon) ** 2;
         if (dist < bestDist) { bestDist = dist; best = d; }
       }
@@ -1547,6 +1578,68 @@
       focoMarkers.forEach(o => {
         o.marker.setIcon(flameIcon(o.outer, o.inner, o.size, factores30EnPunto(o.lat, o.lon)));
       });
+    }
+
+    // ── Análisis 30-30-30 por zona (focos activos o provincia) ────────────────
+    async function analizarZona3030() {
+      const provSel  = document.getElementById('selectProvincia30').value;
+      const resumenEl = document.getElementById('zona30Resumen');
+      const btn = document.getElementById('btnAnalizarZona30');
+      let bbox = null, etiqueta = '';
+
+      if (provSel) {
+        if (!geojsonArg) { mostrarToast('Los límites provinciales todavía están cargando, probá de nuevo en unos segundos.'); return; }
+        const feat = geojsonArg.features.find(f => nomFeat(f.properties) === provSel);
+        if (!feat) { mostrarToast('No se encontró la provincia seleccionada.'); return; }
+        const [w, s, e, n] = turf.bbox(feat);
+        bbox = { s, w, n, e };
+        etiqueta = provSel;
+      } else {
+        if (!firesBBox) { mostrarToast('Cargá focos NASA primero, o elegí una provincia.'); return; }
+        bbox = firesBBox;
+        etiqueta = 'zona de focos activos';
+      }
+
+      btn.disabled = true; btn.textContent = '⏳';
+      resumenEl.textContent = `Analizando ${etiqueta}…`;
+      try {
+        const url = `${BACKEND}/weather-grid-zona?s=${bbox.s}&w=${bbox.w}&n=${bbox.n}&e=${bbox.e}`;
+        datosZonaClima = await fetch(url).then(r => r.json());
+        if (datosZonaClima.error) throw new Error(datosZonaClima.error);
+        refrescarAlertas3030();
+        renderizarZona3030(datosZonaClima, etiqueta);
+      } catch (e) {
+        resumenEl.textContent = `Error al analizar la zona: ${e.message || e}`;
+      } finally {
+        btn.disabled = false; btn.textContent = 'Analizar';
+      }
+    }
+
+    function renderizarZona3030(datos, etiqueta) {
+      const resumenEl = document.getElementById('zona30Resumen');
+      const listaEl   = document.getElementById('zona30Lista');
+      const countEl   = document.getElementById('zona30Count');
+      if (!datos.length) {
+        resumenEl.textContent = 'Sin datos climáticos para esta zona.';
+        listaEl.innerHTML = ''; countEl.style.display = 'none';
+        return;
+      }
+      const criticas = datos.filter(d => (d.factores_30 || 0) >= 2)
+        .sort((a, b) => (b.factores_30 - a.factores_30) || ((b.temp || 0) - (a.temp || 0)));
+      resumenEl.textContent = `${etiqueta}: ${criticas.length} zona${criticas.length !== 1 ? 's' : ''} crítica${criticas.length !== 1 ? 's' : ''} de ${datos.length} puntos analizados (grilla ~1°).`;
+      countEl.textContent = criticas.length;
+      countEl.style.display = criticas.length ? 'inline-block' : 'none';
+      if (!criticas.length) {
+        listaEl.innerHTML = '<span style="color:#43a047;">Sin condiciones 30-30-30 (2/3 o 3/3) en esta zona.</span>';
+        return;
+      }
+      listaEl.innerHTML = criticas.map(d => {
+        const col = d.factores_30 === 3 ? '#ff1744' : '#ffab00';
+        return `<div style="padding:5px 7px;margin-bottom:3px;background:rgba(255,255,255,.04);border-left:3px solid ${col};border-radius:3px;">
+          <b style="color:${col};">${d.factores_30}/3</b> — ${d.region || 'Región s/d'}<br>
+          <span style="color:#888;">🌡 ${d.temp ?? '—'}°C · 💧 ${d.humidity ?? '—'}% · 💨 ${d.wind_speed ?? '—'} km/h</span>
+        </div>`;
+      }).join('');
     }
 
     async function cargarFocos(msg=true) {
@@ -2779,9 +2872,9 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
       if (intervaloAR) { clearInterval(intervaloAR); intervaloAR=null; }
       const ms=parseInt(document.getElementById('autoRefresh').value,10);
       if (ms>0) intervaloAR=setInterval(()=>{
-        // Forzar recarga (no toggle): apagar antes de cargar
+        // Forzar recarga (no toggle): apagar antes de cargar, escalonado
         if (nasaActivo) { nasaActivo = false; cargarFocos(false); }
-        if (smnActivo)  { smnActivo  = false; cargarAlertasSMN(false); }
+        if (smnActivo)  { setTimeout(() => { smnActivo = false; cargarAlertasSMN(false); }, 700); }
       }, ms);
     }
 
@@ -3238,14 +3331,14 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
     document.getElementById('autoRefresh').addEventListener('change',actualizarAutoRefresh);
     document.getElementById('dias')       .addEventListener('change',()=>cargarFocos(true));
 
-    // ── Inicio — carga automática al abrir el mapa ───────────────────────────
+    // ── Inicio — carga escalonada al abrir el mapa ───────────────────────────
+    // Se espacian las cargas para no saturar red/hilo principal con el primer render del mapa.
     actualizarAutoRefresh();
     actualizarContadores();
-    // Todo en paralelo: no esperar GeoJSON para mostrar datos
     cargarGeoJSON();
-    cargarFocos(true);        // VIIRS SNPP/NOAA-20/NOAA-21 + MODIS + GOES NRT
-    cargarAlertasSMN(true);   // Alertas SMN Argentina
-    cargarGOES_RT(false);     // GOES-16 geoestacionario — se auto-refresca c/15 min
+    cargarFocos(true);                            // prioridad: focos NASA (VIIRS+MODIS)
+    setTimeout(() => cargarAlertasSMN(true), 700); // Alertas SMN Argentina
+    setTimeout(() => cargarGOES_RT(false), 1500);  // GOES-16 geoestacionario — se auto-refresca c/15 min
 
     // ── Tema claro/oscuro ─────────────────────────────────────────────────────
     function toggleTema() {
