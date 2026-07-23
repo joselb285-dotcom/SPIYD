@@ -36,7 +36,10 @@ def _rate_limit_key():
 
 limiter = Limiter(_rate_limit_key, app=app, default_limits=[])
 
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'spiyd-dev-secret-change-in-prod-2026')
+_secret_key = os.environ.get('SECRET_KEY')
+if not _secret_key:
+    raise RuntimeError('SECRET_KEY no está configurada. Definila en .env (ver .env.example).')
+app.config['SECRET_KEY'] = _secret_key
 _db_url = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(BASE_DIR, 'spiyd.db'))
 if _db_url.startswith('postgres://'):
     _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
@@ -96,6 +99,8 @@ with app.app_context():
         ('"user"',      "created_by_admin",    "INTEGER"),
         ('"user"',      "email_verified",      "BOOLEAN DEFAULT TRUE"),
         ('"user"',      "email_verify_token",  "VARCHAR(64)"),
+        ('"user"',      "totp_secret",         "VARCHAR(32)"),
+        ('"user"',      "totp_enabled",        "BOOLEAN DEFAULT FALSE"),
     ]
     for _tbl, _col, _type in _new_cols:
         try:

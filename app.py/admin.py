@@ -300,6 +300,10 @@ def recurso_new():
 @admin_required
 def recurso_edit(recurso_id):
     recurso = db.get_or_404(Recurso, recurso_id)
+    own = _own_id()
+    if own and recurso.created_by != own:
+        flash('No tenés permiso para editar este recurso', 'error')
+        return redirect(url_for('admin.recursos'))
     if request.method == 'POST':
         f = request.form
         lat_str = f.get('lat', '').strip()
@@ -339,6 +343,10 @@ def recurso_edit(recurso_id):
 @admin_required
 def recurso_delete(recurso_id):
     recurso = db.get_or_404(Recurso, recurso_id)
+    own = _own_id()
+    if own and recurso.created_by != own:
+        flash('No tenés permiso para eliminar este recurso', 'error')
+        return redirect(url_for('admin.recursos'))
     nombre = recurso.nombre
     _audit('delete_recurso', 'Recurso', recurso_id, f'nombre={nombre}')
     db.session.delete(recurso)
@@ -406,6 +414,10 @@ def mapa_recursos():
 @admin_required
 def unidad_new(recurso_id):
     recurso = db.get_or_404(Recurso, recurso_id)
+    own = _own_id()
+    if own and recurso.created_by != own:
+        flash('No tenés permiso para modificar este recurso', 'error')
+        return redirect(url_for('admin.recursos'))
     f = request.form
     unidad = UnidadRecurso(
         recurso_id=recurso_id,
@@ -430,6 +442,10 @@ def unidad_new(recurso_id):
 def unidad_delete(unidad_id):
     unidad = db.get_or_404(UnidadRecurso, unidad_id)
     recurso_id = unidad.recurso_id
+    own = _own_id()
+    if own and unidad.recurso.created_by != own:
+        flash('No tenés permiso para modificar este recurso', 'error')
+        return redirect(url_for('admin.recursos'))
     _audit('delete_unidad', 'Recurso', recurso_id, f'tipo={unidad.tipo_unidad} nombre={unidad.nombre}')
     db.session.delete(unidad)
     db.session.commit()
@@ -579,6 +595,9 @@ def alert_counts():
 @login_required
 @admin_required
 def configuracion():
+    if current_user.role != 'superadmin':
+        flash('Acceso restringido a superadministradores', 'error')
+        return redirect(url_for('admin.dashboard'))
     from app import get_cfg, set_cfg
     CAMPOS = [
         ('SUMMARY_ENABLED',    'Resumen diario activo',          'bool',     'true'),

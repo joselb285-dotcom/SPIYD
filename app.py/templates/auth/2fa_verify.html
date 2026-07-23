@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificación en dos pasos — SPIYD</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0b10; --surface: #12141c; --text: #fff; --muted: #7a7468;
+      --stroke: rgba(255,255,255,0.07); --accent-a: #f97316; --accent-b: #ea580c;
+    }
+    html, body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+    .card { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--stroke); border-radius: 1.5rem; padding: 2rem; }
+    .title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; margin-bottom: .35rem; }
+    .sub { font-size: .82rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.5; }
+    .flash-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: #f87171; border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.82rem; margin-bottom: 1.25rem; }
+    .form-label { display: block; font-size: 0.68rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.4rem; }
+    .form-control {
+      width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--stroke); color: var(--text);
+      border-radius: 0.75rem; padding: 0.75rem 0.875rem; font-size: 1.1rem; font-family: 'JetBrains Mono', monospace;
+      text-align: center; letter-spacing: .3em; outline: none;
+    }
+    .form-control:focus { border-color: rgba(249,115,22,0.5); box-shadow: 0 0 0 3px rgba(249,115,22,0.1); }
+    .btn-submit {
+      width: 100%; margin-top: 1rem; background: linear-gradient(135deg, var(--accent-a) 0%, var(--accent-b) 100%);
+      color: #fff; border: none; border-radius: 0.75rem; padding: 0.875rem; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">Verificación en dos pasos</div>
+    <div class="sub">Ingresá el código de 6 dígitos de tu app de autenticación.</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash-error">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+      <label class="form-label">Código de 6 dígitos</label>
+      <input class="form-control" type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required autofocus autocomplete="one-time-code">
+      <button type="submit" class="btn-submit">Ingresar →</button>
+    </form>
+  </div>
+</body>
+</html>

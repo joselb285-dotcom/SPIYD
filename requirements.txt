@@ -9,3 +9,5 @@ anthropic
 python-dotenv
 gunicorn
 psycopg2-binary
+pyotp
+qrcode[pil]

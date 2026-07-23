@@ -1040,6 +1040,7 @@
 
     // ── Utilidades ──────────────────────────────────────────────────────────
     const normProv = s => (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const escapeHTML = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
     function parseCSV(txt) {
       const ls = txt.trim().split('\n');
@@ -1867,10 +1868,10 @@
         const txt=normProv(a.title+' '+a.description+' '+(a.category||[]).join(' '));
         const provs=PROVINCIAS.filter(p=>txt.includes(normProv(p)));
         return `<div class="alerta-item nivel-${a.nivel}">
-          <div class="alerta-titulo">${a.title} ${badgeNivel(a.nivel)}</div>
-          <div class="alerta-meta">${a.tipoFeed}</div>
-          ${a.description?`<div style="font-size:10px;color:#999;margin-top:2px;">${a.description.slice(0,120)}…</div>`:''}
-          ${provs.length?`<div style="font-size:10px;color:#aaa;margin-top:3px;">📍 ${provs.join(', ')}</div>`:''}
+          <div class="alerta-titulo">${escapeHTML(a.title)} ${badgeNivel(a.nivel)}</div>
+          <div class="alerta-meta">${escapeHTML(a.tipoFeed)}</div>
+          ${a.description?`<div style="font-size:10px;color:#999;margin-top:2px;">${escapeHTML(a.description.slice(0,120))}…</div>`:''}
+          ${provs.length?`<div style="font-size:10px;color:#aaa;margin-top:3px;">📍 ${escapeHTML(provs.join(', '))}</div>`:''}
         </div>`;
       }).join('');
     }
@@ -2560,8 +2561,8 @@
           else if (s.content.includes('BAJO'))     contentColor = '#66bb6a';
         }
         return `<div style="margin-bottom:8px;padding:9px 12px;background:${meta.bg};border-left:3px solid ${meta.color};border-radius:4px;">
-          <div style="font-weight:700;color:${meta.color};font-size:10px;letter-spacing:.6px;margin-bottom:3px;">${emojiChar||''} ${title.toUpperCase()}</div>
-          <div style="color:${contentColor};font-size:11.5px;line-height:1.55;">${s.content}</div>
+          <div style="font-weight:700;color:${meta.color};font-size:10px;letter-spacing:.6px;margin-bottom:3px;">${emojiChar||''} ${escapeHTML(title.toUpperCase())}</div>
+          <div style="color:${contentColor};font-size:11.5px;line-height:1.55;">${escapeHTML(s.content)}</div>
         </div>`;
       }).join('');
     }
@@ -3019,8 +3020,8 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         document.getElementById('sismosLista').innerHTML = top.map(s =>
           `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
             <b style="color:${_magColor(parseFloat(s.mag)||0)};">M ${parseFloat(s.mag).toFixed(1)}</b>
-            <span style="color:#bbb;"> ${s.lugar||'Chile'}</span><br>
-            <span style="color:#555;font-size:10px;">${s.fecha} UTC · ${s.profundidad}km</span>
+            <span style="color:#bbb;"> ${escapeHTML(s.lugar||'Chile')}</span><br>
+            <span style="color:#555;font-size:10px;">${escapeHTML(s.fecha)} UTC · ${escapeHTML(s.profundidad)}km</span>
           </div>`
         ).join('');
         // Sección histórica (M≥5, 30d) — se carga sola al activar por primera vez
@@ -3043,8 +3044,8 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         document.getElementById('sismosHistoricoLista').innerHTML = data.map(s =>
           `<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);">
             <b style="color:${_magColor(parseFloat(s.mag)||0)};">M ${parseFloat(s.mag).toFixed(1)}</b>
-            <span style="color:#999;"> ${s.lugar||'Chile'}</span>
-            <span style="float:right;color:#444;font-size:9px;">${s.fecha.slice(0,10)}</span>
+            <span style="color:#999;"> ${escapeHTML(s.lugar||'Chile')}</span>
+            <span style="float:right;color:#444;font-size:9px;">${escapeHTML(s.fecha.slice(0,10))}</span>
           </div>`
         ).join('');
         wrap.style.display = 'block';
@@ -3099,11 +3100,11 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
           const svgH = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22"><polygon points="12,2 22,22 2,22" fill="${col}" stroke="rgba(255,255,255,.6)" stroke-width="1.5"/><polygon points="12,8 17,19 7,19" fill="rgba(255,255,255,0.2)"/></svg>`;
           const icon = L.divIcon({ html: svgH, className:'', iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-22] });
           const mk = L.marker([v.lat, v.lon], { icon });
-          const ult = v.ultima_erupcion ? `<br><b>Última erupción:</b> ${v.ultima_erupcion}` : '';
+          const ult = v.ultima_erupcion ? `<br><b>Última erupción:</b> ${escapeHTML(v.ultima_erupcion)}` : '';
           mk.bindPopup(`<div style="font-family:sans-serif;min-width:175px;font-size:12px;">
-            <b style="color:${col};">🌋 ${v.nombre}</b><br>
+            <b style="color:${col};">🌋 ${escapeHTML(v.nombre)}</b><br>
             Alerta SERNAGEOMIN: <b style="color:${col};">${nivelLabel(v.nivel||'verde')}</b>${ult}<br>
-            <small style="color:#888;">${v.lat}, ${v.lon}</small><br>
+            <small style="color:#888;">${Number(v.lat)}, ${Number(v.lon)}</small><br>
             <small style="color:#555;">${v.fuente==='sernageomin'?'SERNAGEOMIN tiempo real':'Catálogo base SERNAGEOMIN'}</small>
           </div>`);
           capaVolcanes.addLayer(mk);
@@ -3121,9 +3122,9 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
           `📡 ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})} · Fuente: SERNAGEOMIN`;
         document.getElementById('volcanesLista').innerHTML = [...data]
           .sort((a,b)=>nivelOrd.indexOf(a.nivel||'verde')-nivelOrd.indexOf(b.nivel||'verde'))
-          .map(v=>`<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;" onclick="mapa.setView([${v.lat},${v.lon}],10)">
+          .map(v=>`<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;" onclick="mapa.setView([${Number(v.lat)},${Number(v.lon)}],10)">
             <span style="color:${nivelColor(v.nivel||'verde')};font-size:10px;">▲</span>
-            <b style="color:#ccc;">${v.nombre}</b>
+            <b style="color:#ccc;">${escapeHTML(v.nombre)}</b>
             <span style="float:right;font-size:9px;color:${nivelColor(v.nivel||'verde')};">${(v.nivel||'verde').toUpperCase()}</span>
           </div>`).join('');
         // Histórico (datos estáticos + erupciones recientes)
@@ -3132,8 +3133,8 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
           .sort((a,b)=>b.ultima_erupcion-a.ultima_erupcion)
           .map(v=>`<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);">
             <span style="color:${nivelColor(v.nivel||'verde')};font-size:9px;">▲</span>
-            <b style="color:#bbb;">${v.nombre}</b>
-            <span style="float:right;color:#666;font-size:9px;">Ú. erupción: ${v.ultima_erupcion}</span>
+            <b style="color:#bbb;">${escapeHTML(v.nombre)}</b>
+            <span style="float:right;color:#666;font-size:9px;">Ú. erupción: ${escapeHTML(v.ultima_erupcion)}</span>
           </div>`).join('');
         if (!silent) setEstado(`Volcanes cargados: ${data.length} monitoreados`,'ok');
         if (!_volcanesTimer) _volcanesTimer = setInterval(()=>cargarVolcanes(true), 15*60*1000);

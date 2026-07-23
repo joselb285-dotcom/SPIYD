@@ -24,6 +24,8 @@ class User(UserMixin, db.Model):
     institucion_titulo = db.Column(db.String(150))
     institucion_logo = db.Column(db.Text)
     created_by_admin = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    totp_secret = db.Column(db.String(32))
+    totp_enabled = db.Column(db.Boolean, default=False)
     usage_logs = db.relationship('UsageLog', backref='user', lazy=True, cascade='all, delete-orphan')
 
     def set_password(self, password):
