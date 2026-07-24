@@ -56,51 +56,47 @@ def superadmin_required(f):
 @login_required
 @superadmin_required
 def dashboard():
-    hoy = datetime.utcnow().date()
-    inicio_hoy = datetime.combine(hoy, datetime.min.time())
-    total_users = User.query.count()
-    active_users = User.query.filter_by(active=True).count()
-    admins = User.query.filter_by(role='admin').count()
-    superadmins = User.query.filter_by(role='superadmin').count()
-    role_counts = dict(
-        db.session.query(User.role, func.count(User.id)).group_by(User.role).all()
+    search_admin = request.args.get('qa', '').strip()
+    admin_q = User.query.filter(User.role.in_(['admin', 'superadmin']))
+    if search_admin:
+        admin_q = admin_q.filter(
+            (User.username.ilike(f'%{search_admin}%')) | (User.email.ilike(f'%{search_admin}%'))
+        )
+    admin_list = admin_q.order_by(User.created_at.desc()).all()
+
+    user_counts = dict(
+        db.session.query(User.created_by_admin, func.count(User.id))
+        .filter(User.role == 'user')
+        .group_by(User.created_by_admin).all()
     )
-    recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
-    admin_list = User.query.filter_by(role='admin').order_by(User.created_at.desc()).all()
-    smn_total = SmnAlerta.query.count()
-    ai_total = AiInforme.query.count()
-    focos_total = FocoLog.query.count()
-    focos_hoy = FocoLog.query.filter(FocoLog.timestamp >= inicio_hoy).count()
+
+    all_users = User.query.filter_by(role='user').order_by(User.created_at.desc()).all()
+    users_by_admin = {}
+    unassigned_users = []
+    for u in all_users:
+        if u.created_by_admin:
+            users_by_admin.setdefault(u.created_by_admin, []).append(u)
+        else:
+            unassigned_users.append(u)
+
+    total_users = len(all_users)
+    active_users = sum(1 for u in all_users if u.active)
+    pending_verif = sum(1 for u in all_users if not u.email_verified)
+    admins = sum(1 for a in admin_list if a.role == 'admin')
+    superadmins = sum(1 for a in admin_list if a.role == 'superadmin')
+
     return render_template('superadmin/dashboard.html',
+        admin_list=admin_list,
+        user_counts=user_counts,
+        users_by_admin=users_by_admin,
+        unassigned_users=unassigned_users,
         total_users=total_users,
         active_users=active_users,
+        pending_verif=pending_verif,
         admins=admins,
         superadmins=superadmins,
-        role_counts=role_counts,
-        recent_users=recent_users,
-        admin_list=admin_list,
-        smn_total=smn_total,
-        ai_total=ai_total,
-        focos_total=focos_total,
-        focos_hoy=focos_hoy,
+        search_admin=search_admin,
     )
-
-
-@superadmin_bp.route('/users')
-@login_required
-@superadmin_required
-def users():
-    search = request.args.get('q', '').strip()
-    role_filter = request.args.get('role', '').strip()
-    query = User.query
-    if search:
-        query = query.filter(
-            (User.username.ilike(f'%{search}%')) | (User.email.ilike(f'%{search}%'))
-        )
-    if role_filter:
-        query = query.filter_by(role=role_filter)
-    all_users = query.order_by(User.created_at.desc()).all()
-    return render_template('superadmin/users.html', users=all_users, search=search, role_filter=role_filter, roles=ROLES)
 
 
 @superadmin_bp.route('/users/new', methods=['GET', 'POST'])
@@ -141,7 +137,7 @@ def user_new():
             db.session.commit()
             enviar_email_verificacion(user, request.url_root)
             flash(f'Usuario {username} creado exitosamente. Se envió un email de verificación.', 'success')
-            return redirect(url_for('superadmin.users'))
+            return redirect(url_for('superadmin.dashboard'))
     return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES,
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
 
@@ -186,7 +182,7 @@ def user_edit(user_id):
                 user.set_password(new_password)
             db.session.commit()
             flash(f'Usuario {user.username} actualizado', 'success')
-            return redirect(url_for('superadmin.users'))
+            return redirect(url_for('superadmin.dashboard'))
     return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES,
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
 
@@ -198,12 +194,12 @@ def user_delete(user_id):
     user = db.get_or_404(User, user_id)
     if user.id == current_user.id:
         flash('No podés eliminarte a vos mismo', 'error')
-        return redirect(url_for('superadmin.users'))
+        return redirect(url_for('superadmin.dashboard'))
     username = user.username
     db.session.delete(user)
     db.session.commit()
     flash(f'Usuario {username} eliminado', 'success')
-    return redirect(url_for('superadmin.users'))
+    return redirect(url_for('superadmin.dashboard'))
 
 
 @superadmin_bp.route('/users/<int:user_id>/toggle', methods=['POST'])
@@ -213,36 +209,15 @@ def user_toggle(user_id):
     user = db.get_or_404(User, user_id)
     if user.id == current_user.id:
         flash('No podés desactivarte a vos mismo', 'error')
-        return redirect(url_for('superadmin.users'))
+        return redirect(url_for('superadmin.dashboard'))
     user.active = not user.active
     db.session.commit()
     estado = 'activado' if user.active else 'desactivado'
     flash(f'Usuario {user.username} {estado}', 'success')
-    return redirect(url_for('superadmin.users'))
+    return redirect(url_for('superadmin.dashboard'))
 
 
 # ── Gestión de Administradores ───────────────────────────────────────────────
-
-@superadmin_bp.route('/admins')
-@login_required
-@superadmin_required
-def admins():
-    search = request.args.get('q', '').strip()
-    query = User.query.filter(User.role.in_(['admin', 'superadmin']))
-    if search:
-        query = query.filter(
-            (User.username.ilike(f'%{search}%')) | (User.email.ilike(f'%{search}%'))
-        )
-    admin_list = query.order_by(User.created_at.desc()).all()
-    # contar usuarios bajo cada admin
-    from sqlalchemy import func as _func
-    user_counts = dict(
-        db.session.query(User.created_by_admin, _func.count(User.id))
-        .filter(User.role == 'user')
-        .group_by(User.created_by_admin).all()
-    )
-    return render_template('superadmin/admins.html',
-                           admins=admin_list, user_counts=user_counts, search=search)
 
 
 @superadmin_bp.route('/admins/new', methods=['GET', 'POST'])
@@ -282,7 +257,7 @@ def admin_new():
             db.session.commit()
             enviar_email_verificacion(user, request.url_root)
             flash(f'Administrador {username} creado exitosamente. Se envió un email de verificación.', 'success')
-            return redirect(url_for('superadmin.admins'))
+            return redirect(url_for('superadmin.dashboard'))
     return render_template('superadmin/admin_form.html', admin=None, action='new',
                            roles=ADMIN_ROLES,
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
@@ -295,7 +270,7 @@ def admin_edit(admin_id):
     admin = db.get_or_404(User, admin_id)
     if admin.role not in ('admin', 'superadmin'):
         flash('El usuario no es administrador', 'error')
-        return redirect(url_for('superadmin.admins'))
+        return redirect(url_for('superadmin.dashboard'))
     if request.method == 'POST':
         email        = request.form.get('email', '').strip()
         role         = request.form.get('role', admin.role)
@@ -328,7 +303,7 @@ def admin_edit(admin_id):
                 admin.set_password(new_password)
             db.session.commit()
             flash(f'Administrador {admin.username} actualizado', 'success')
-            return redirect(url_for('superadmin.admins'))
+            return redirect(url_for('superadmin.dashboard'))
     return render_template('superadmin/admin_form.html', admin=admin, action='edit',
                            roles=ADMIN_ROLES,
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
@@ -341,17 +316,17 @@ def admin_delete(admin_id):
     admin = db.get_or_404(User, admin_id)
     if admin.id == current_user.id:
         flash('No podés eliminarte a vos mismo', 'error')
-        return redirect(url_for('superadmin.admins'))
+        return redirect(url_for('superadmin.dashboard'))
     if admin.role not in ('admin', 'superadmin'):
         flash('El usuario no es administrador', 'error')
-        return redirect(url_for('superadmin.admins'))
+        return redirect(url_for('superadmin.dashboard'))
     # Desvincular usuarios que pertenecían a este admin
     User.query.filter_by(created_by_admin=admin.id).update({'created_by_admin': None})
     username = admin.username
     db.session.delete(admin)
     db.session.commit()
     flash(f'Administrador {username} eliminado. Sus usuarios quedaron sin asignar.', 'success')
-    return redirect(url_for('superadmin.admins'))
+    return redirect(url_for('superadmin.dashboard'))
 
 
 @superadmin_bp.route('/admins/<int:admin_id>/toggle', methods=['POST'])
@@ -361,9 +336,9 @@ def admin_toggle(admin_id):
     admin = db.get_or_404(User, admin_id)
     if admin.id == current_user.id:
         flash('No podés desactivarte a vos mismo', 'error')
-        return redirect(url_for('superadmin.admins'))
+        return redirect(url_for('superadmin.dashboard'))
     admin.active = not admin.active
     db.session.commit()
     estado = 'activado' if admin.active else 'desactivado'
     flash(f'Administrador {admin.username} {estado}', 'success')
-    return redirect(url_for('superadmin.admins'))
+    return redirect(url_for('superadmin.dashboard'))

@@ -50,22 +50,15 @@
   <nav class="flex flex-col gap-1 flex-1">
     <div class="px-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.main">Principal</div>
     <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
-       {% if request.endpoint == 'superadmin.dashboard' %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
+       {% if request.endpoint in ('superadmin.dashboard','superadmin.admin_new','superadmin.admin_edit','superadmin.user_new','superadmin.user_edit') %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
        href="/superadmin/">
       <span class="material-symbols-outlined">dashboard</span>
       <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Dashboard</span>
     </a>
-    <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
-       {% if request.endpoint in ('superadmin.admins','superadmin.admin_new','superadmin.admin_edit') %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
-       href="/superadmin/admins">
-      <span class="material-symbols-outlined">manage_accounts</span>
-      <span class="font-label-technical text-[12px]">Administradores</span>
-    </a>
-    <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
-       {% if request.endpoint in ('superadmin.users','superadmin.user_new','superadmin.user_edit') %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
-       href="/superadmin/users">
-      <span class="material-symbols-outlined">group</span>
-      <span class="font-label-technical text-[12px]" data-i18n="nav.users">Usuarios</span>
+    <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all text-on-surface-variant hover:bg-surface-variant/30"
+       href="/admin/configuracion">
+      <span class="material-symbols-outlined">settings</span>
+      <span class="font-label-technical text-[12px]">Configuración global</span>
     </a>
     <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.accesses">Accesos</div>
     <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all"

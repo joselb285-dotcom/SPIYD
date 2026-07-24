@@ -2,7 +2,7 @@
 {% block title %}{{ 'Nuevo Usuario' if action == 'new' else 'Editar Usuario' }} — SPIYD SuperAdmin{% endblock %}
 {% block page_title %}{{ 'Nuevo Usuario' if action == 'new' else 'Editar: ' + user.username }}{% endblock %}
 {% block breadcrumb %}
-  <a href="/superadmin/users" class="text-on-surface-variant hover:text-on-surface transition-colors">Usuarios</a> ›
+  <a href="/superadmin/" class="text-on-surface-variant hover:text-on-surface transition-colors">Dashboard</a> ›
   {{ 'Nuevo' if action == 'new' else 'Editar' }}
 {% endblock %}
 
@@ -151,7 +151,7 @@
           <span class="material-symbols-outlined" style="font-size:16px">{{ 'add' if action == 'new' else 'save' }}</span>
           {{ 'Crear usuario' if action == 'new' else 'Guardar cambios' }}
         </button>
-        <a href="/superadmin/users"
+        <a href="/superadmin/"
            class="border border-outline-variant text-on-surface-variant px-5 py-2.5 rounded-lg text-[13px] hover:text-on-surface hover:border-on-surface-variant/40 transition-all">
           Cancelar
         </a>
