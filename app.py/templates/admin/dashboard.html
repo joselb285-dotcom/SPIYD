@@ -2,6 +2,11 @@
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>SPIYD - Command Center Admin</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#f97316">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SPIYD">
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@300..700&family=JetBrains+Mono:wght@300..700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
@@ -86,10 +91,6 @@
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/mapa?auth=1">
             <span class="material-symbols-outlined">satellite_alt</span>
             <span class="font-label-technical text-[12px]" data-i18n="nav.satelliteMap">Mapa Satelital</span>
-        </a>
-        <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/dashboard" target="_blank">
-            <span class="material-symbols-outlined">monitoring</span>
-            <span class="font-label-technical text-[12px]" data-i18n="nav.alertDashboard">Dashboard Alertas</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/">
             <span class="material-symbols-outlined">public</span>
@@ -607,6 +608,13 @@
         }
         setTimeout(()=>{ btn.disabled=false; btn.querySelector('span:last-child').textContent='Resumen'; btn.style.background=''; }, 4000);
     }
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+    }
 </script>
 <script src="/i18n.js"></script>
+<script src="/pwa-install.js"></script>
 </body></html>

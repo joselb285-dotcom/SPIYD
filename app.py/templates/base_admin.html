@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SPIYD Admin{% endblock %}</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f97316">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SPIYD">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -203,9 +208,6 @@
   <a href="/mapa?auth=1" class="sidebar-link">
     <i class="fas fa-map"></i> <span data-i18n="nav.viewMap">Ver Mapa</span>
   </a>
-  <a href="/dashboard" class="sidebar-link" target="_blank">
-    <i class="fas fa-chart-bar"></i> <span data-i18n="nav.alertDashboard">Dashboard Alertas</span>
-  </a>
   <a href="/" class="sidebar-link">
     <i class="fas fa-globe"></i> <span data-i18n="nav.website">Sitio Web</span>
   </a>
@@ -304,6 +306,13 @@ function actualizarBadgesAdmin() {
 }
 actualizarBadgesAdmin();
 setInterval(actualizarBadgesAdmin, 5 * 60 * 1000);
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+}
 </script>
+<script src="/pwa-install.js"></script>
 </body>
 </html>

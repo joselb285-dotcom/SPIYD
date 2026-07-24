@@ -13,7 +13,7 @@ superadmin_bp = Blueprint('superadmin', __name__)
 ROLES = ['user', 'admin', 'superadmin']
 ADMIN_ROLES = ['admin', 'superadmin']
 
-PAISES_VALIDOS = ('argentina', 'paraguay')
+PAISES_VALIDOS = ('argentina', 'paraguay', 'chile')
 
 
 def _parse_pais_scope(form):

@@ -18,6 +18,8 @@ def _pais_condition(model, pais):
         return or_(model.region.is_(None), ~model.region.ilike('%paraguay%'))
     if pais == 'paraguay':
         return model.region.ilike('%paraguay%')
+    if pais == 'chile':
+        return model.region.ilike('%chile%')  # sin cobertura de focos en Chile por ahora
     return None
 
 
@@ -26,7 +28,7 @@ def _geo_filter(query, model):
     Solo se aplica cuando el admin tiene paises configurados; sin restricción (o ambos paises) ve todo."""
     u = current_user
     paises = u.paises_list
-    if paises and len(paises) < 2:
+    if paises:
         conds = [c for c in (_pais_condition(model, p) for p in paises) if c is not None]
         if conds:
             query = query.filter(or_(*conds))
@@ -35,7 +37,7 @@ def _geo_filter(query, model):
     return query
 
 
-PAISES_VALIDOS = ('argentina', 'paraguay')
+PAISES_VALIDOS = ('argentina', 'paraguay', 'chile')
 
 
 def _parse_pais_scope(form):

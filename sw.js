@@ -1,5 +1,5 @@
 const CACHE = 'spiyd-v1';
-const PRECACHE = ['/mapa', '/manifest.json', '/pwa-icon.svg', '/i18n.js'];
+const PRECACHE = ['/mapa', '/manifest.json', '/pwa-icon.svg', '/i18n.js', '/pwa-install.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(

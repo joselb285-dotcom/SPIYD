@@ -383,9 +383,9 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:5px">
-        <a href="/dashboard" class="ph-nav" title="Dashboard de alertas">
+        <a href="#" id="btnPanel" class="ph-nav" title="Volver al panel" style="display:none">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          Dashboard
+          <span id="btnPanelLabel">Panel</span>
         </a>
         <button onclick="irAMiUbicacion()" class="ph-logout" title="Ir a mi ubicación" style="font-size:14px;">🎯</button>
         <button id="btnTema" onclick="toggleTema()" class="ph-logout" title="Cambiar tema" style="font-size:14px;">🌙</button>
@@ -474,7 +474,7 @@
       </div>
 
       <!-- Sismos / Volcanes -->
-      <div class="btn-group">
+      <div class="btn-group" id="grpSismosVolcanes">
         <div class="btn-row">
           <button class="qbtn" id="btnSismos">
             <span class="qi"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><polyline points="2,12 5,12 7,7 9,17 11,10 13,14 15,12 22,12" stroke="#ffa726" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -637,9 +637,9 @@
     </div>
 
     <!-- Sismos -->
-    <div class="seccion">
+    <div class="seccion" id="grpSeccionSismos">
       <div class="seccion-header" onclick="toggleSeccion('secSismos')">
-        <span>Sismos Chile <span id="sismosCount" class="data-badge" style="display:none;background:rgba(255,167,38,.3);color:#ffa726;border:1px solid #e65100;"></span> <span id="chev-secSismos" class="seccion-chevron">▼</span></span>
+        <span>Sismos <span id="sismosCount" class="data-badge" style="display:none;background:rgba(255,167,38,.3);color:#ffa726;border:1px solid #e65100;"></span> <span id="chev-secSismos" class="seccion-chevron">▼</span></span>
       </div>
       <div class="seccion-body" id="secSismos">
         <div style="display:flex;gap:3px;margin:5px 0 4px;">
@@ -659,9 +659,9 @@
     </div>
 
     <!-- Volcanes -->
-    <div class="seccion">
+    <div class="seccion" id="grpSeccionVolcanes">
       <div class="seccion-header" onclick="toggleSeccion('secVolcanes')">
-        <span>Volcanes Chile <span id="volcanesCount" class="data-badge" style="display:none;background:rgba(183,28,28,.35);color:#ef5350;border:1px solid #b71c1c;"></span> <span id="chev-secVolcanes" class="seccion-chevron">▼</span></span>
+        <span>Volcanes <span id="volcanesCount" class="data-badge" style="display:none;background:rgba(183,28,28,.35);color:#ef5350;border:1px solid #b71c1c;"></span> <span id="chev-secVolcanes" class="seccion-chevron">▼</span></span>
       </div>
       <div class="seccion-body" id="secVolcanes">
         <div id="volcanesResumen" style="margin-top:5px;font-size:11px;color:#666;">Presioná "Volcanes".</div>
@@ -861,6 +861,36 @@
     // ── Región del usuario ───────────────────────────────────────────────────
     const USER_REGION = __USER_REGION__;
 
+    // Botón "volver al panel" — según el rol del usuario logueado.
+    (function () {
+      const btn = document.getElementById('btnPanel');
+      const label = document.getElementById('btnPanelLabel');
+      if (!btn || !USER_REGION) return;
+      if (USER_REGION.role === 'superadmin') {
+        btn.href = '/superadmin/'; label.textContent = 'SuperAdmin';
+      } else if (USER_REGION.role === 'admin') {
+        btn.href = '/admin/'; label.textContent = 'Panel';
+      } else {
+        return; // usuario estándar: el mapa ya es su pantalla principal
+      }
+      btn.style.display = '';
+    })();
+
+    // Sismos/Volcanes: cobertura de la cordillera (Chile + oeste de Argentina).
+    // Se ocultan si el usuario está restringido a un país sin esa cobertura (ej. solo Paraguay).
+    (function () {
+      const paises = (USER_REGION && USER_REGION.pais)
+        ? USER_REGION.pais.split(',').map(p => p.trim()).filter(Boolean)
+        : [];
+      const tieneCobertura = paises.length === 0 || paises.includes('argentina') || paises.includes('chile');
+      if (!tieneCobertura) {
+        ['grpSismosVolcanes', 'grpSeccionSismos', 'grpSeccionVolcanes'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+    })();
+
     const BOUNDS_ARG_PROVINCIAS = {
       'Buenos Aires':                    [[-41.0,-63.5],[-33.3,-56.7]],
       'Catamarca':                       [[-29.1,-69.6],[-25.1,-65.2]],
@@ -910,6 +940,7 @@
     const BOUNDS_PAIS = {
       'argentina': [[-55.1,-73.6],[-21.8,-53.6]],
       'paraguay':  [[-27.6,-62.7],[-19.3,-54.3]],
+      'chile':     [[-55.9,-75.8],[-17.5,-66.4]],
     };
     function getRegionBounds(cfg) {
       if (!cfg || !cfg.pais) return null;
@@ -3427,5 +3458,6 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
       });
     }
   </script>
+  <script src="/pwa-install.js"></script>
 </body>
 </html>

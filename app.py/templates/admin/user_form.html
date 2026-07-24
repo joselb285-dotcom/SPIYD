@@ -67,6 +67,11 @@
                      {% if user and 'paraguay' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
               <label class="form-check-label" for="paisParaguay">Paraguay</label>
             </div>
+            <div class="form-check">
+              <input class="form-check-input pais-check" type="checkbox" name="pais" value="chile" id="paisChile"
+                     {% if user and 'chile' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
+              <label class="form-check-label" for="paisChile">Chile</label>
+            </div>
           </div>
           <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Sin ninguno tildado, el usuario ve todo (sin restricción).</div>
         </div>
@@ -186,7 +191,7 @@ function onPaisChange() {
   const optProv = document.getElementById('optProvincia');
   const optDep  = document.getElementById('optDepartamento');
   const selTipo = document.getElementById('selectRegionTipo');
-  if (paises.length !== 1) {
+  if (paises.length !== 1 || paises[0] === 'chile') {
     divTipo.style.display = 'none'; document.getElementById('divRegionNombre').style.display = 'none';
     selTipo.value = 'pais';
     return;

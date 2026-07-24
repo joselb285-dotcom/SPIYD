@@ -70,6 +70,11 @@
                    {% if user and 'paraguay' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
             Paraguay
           </label>
+          <label class="flex items-center gap-2 text-[14px] text-on-surface cursor-pointer">
+            <input type="checkbox" name="pais" value="chile" class="pais-check rounded border-outline-variant/30 bg-surface-container-high"
+                   {% if user and 'chile' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
+            Chile
+          </label>
         </div>
         <p class="text-[11px] text-on-surface-variant mt-1">Sin ninguno tildado, ve todo (sin restricción).</p>
       </div>
@@ -236,7 +241,7 @@ function onPaisChange() {
   const optProv = document.getElementById('optProvincia');
   const optDep  = document.getElementById('optDepartamento');
   const selTipo = document.getElementById('selectRegionTipo');
-  if (paises.length !== 1) {
+  if (paises.length !== 1 || paises[0] === 'chile') {
     divTipo.style.display = 'none';
     document.getElementById('divRegionNombre').style.display = 'none';
     selTipo.value = 'pais';
