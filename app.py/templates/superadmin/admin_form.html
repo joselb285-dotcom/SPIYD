@@ -55,13 +55,19 @@
       <!-- Alcance geográfico -->
       <div>
         <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">País de cobertura</label>
-        <select name="pais" id="selectPais"
-                class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:border-primary/50"
-                onchange="onPaisChange()">
-          <option value="">— Sin restricción (ve todo) —</option>
-          <option value="argentina" {% if admin and admin.pais == 'argentina' %}selected{% endif %}>Argentina</option>
-          <option value="paraguay" {% if admin and admin.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
-        </select>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 text-[14px] text-on-surface cursor-pointer">
+            <input type="checkbox" name="pais" value="argentina" class="pais-check rounded border-outline-variant/30 bg-surface-container-high"
+                   {% if admin and 'argentina' in admin.paises_list %}checked{% endif %} onchange="onPaisChange()">
+            Argentina
+          </label>
+          <label class="flex items-center gap-2 text-[14px] text-on-surface cursor-pointer">
+            <input type="checkbox" name="pais" value="paraguay" class="pais-check rounded border-outline-variant/30 bg-surface-container-high"
+                   {% if admin and 'paraguay' in admin.paises_list %}checked{% endif %} onchange="onPaisChange()">
+            Paraguay
+          </label>
+        </div>
+        <p class="text-[11px] text-on-surface-variant mt-1">Sin ninguno tildado, ve todo (sin restricción).</p>
       </div>
 
       <div id="divRegionTipo" style="display:none">
@@ -154,10 +160,12 @@
 <script>
 const PROVINCIAS = {{ provincias | tojson }};
 const DEPARTAMENTOS = {{ departamentos | tojson }};
-const initPais = {{ (admin.pais | tojson) if admin and admin.pais else 'null' }};
 const initRegionTipo = {{ (admin.region_tipo | tojson) if admin and admin.region_tipo else '"pais"' }};
 const initRegionNombre = {{ (admin.region_nombre | tojson) if admin and admin.region_nombre else 'null' }};
 
+function paisesChecked() {
+  return Array.from(document.querySelectorAll('.pais-check:checked')).map(c => c.value);
+}
 function populateRegionNombre(lista, selected) {
   const sel = document.getElementById('selectRegionNombre');
   sel.innerHTML = '<option value="">Seleccioná una opción</option>';
@@ -170,7 +178,7 @@ function populateRegionNombre(lista, selected) {
 }
 function onRegionTipoChange() {
   const tipo = document.getElementById('selectRegionTipo').value;
-  const pais = document.getElementById('selectPais').value;
+  const pais = paisesChecked()[0];
   const divN = document.getElementById('divRegionNombre');
   if (tipo === 'pais') { divN.style.display = 'none'; return; }
   const lista = pais === 'argentina' ? PROVINCIAS : DEPARTAMENTOS;
@@ -179,20 +187,24 @@ function onRegionTipoChange() {
   divN.style.display = 'block';
 }
 function onPaisChange() {
-  const pais = document.getElementById('selectPais').value;
+  const paises = paisesChecked();
   const divT = document.getElementById('divRegionTipo');
   const optP = document.getElementById('optProvincia');
   const optD = document.getElementById('optDepartamento');
   const selT = document.getElementById('selectRegionTipo');
-  if (!pais) { divT.style.display = 'none'; document.getElementById('divRegionNombre').style.display = 'none'; return; }
+  if (paises.length !== 1) {
+    divT.style.display = 'none'; document.getElementById('divRegionNombre').style.display = 'none';
+    selT.value = 'pais';
+    return;
+  }
+  const pais = paises[0];
   divT.style.display = 'block';
   if (pais === 'argentina') { optP.style.display='block'; optD.style.display='none'; if(selT.value==='departamento') selT.value='pais'; }
   else { optD.style.display='block'; optP.style.display='none'; if(selT.value==='provincia') selT.value='pais'; }
   onRegionTipoChange();
 }
 window.addEventListener('DOMContentLoaded', () => {
-  if (initPais) {
-    document.getElementById('selectPais').value = initPais;
+  if (paisesChecked().length === 1) {
     onPaisChange();
     if (initRegionTipo && initRegionTipo !== 'pais') {
       document.getElementById('selectRegionTipo').value = initRegionTipo;

@@ -13,6 +13,21 @@ superadmin_bp = Blueprint('superadmin', __name__)
 ROLES = ['user', 'admin', 'superadmin']
 ADMIN_ROLES = ['admin', 'superadmin']
 
+PAISES_VALIDOS = ('argentina', 'paraguay')
+
+
+def _parse_pais_scope(form):
+    """Lee los checkboxes 'pais' (uno o varios) y el alcance regional del form.
+    El alcance por provincia/departamento solo tiene sentido si se eligió un único país."""
+    paises = [p for p in form.getlist('pais') if p in PAISES_VALIDOS]
+    pais = ','.join(paises) or None
+    region_tipo = form.get('region_tipo', 'pais').strip()
+    region_nombre = form.get('region_nombre', '').strip() or None
+    if len(paises) != 1 or region_tipo == 'pais':
+        region_tipo = 'pais'
+        region_nombre = None
+    return pais, region_tipo, region_nombre
+
 PROVINCIAS_ARG = [
     'Buenos Aires', 'Catamarca', 'Chaco', 'Chubut', 'Ciudad Autónoma de Buenos Aires',
     'Córdoba', 'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
@@ -139,11 +154,7 @@ def user_new():
         elif User.query.filter_by(email=email).first():
             flash('El email ya está registrado', 'error')
         else:
-            pais = request.form.get('pais', '').strip() or None
-            region_tipo = request.form.get('region_tipo', 'pais').strip()
-            region_nombre = request.form.get('region_nombre', '').strip() or None
-            if region_tipo == 'pais':
-                region_nombre = None
+            pais, region_tipo, region_nombre = _parse_pais_scope(request.form)
             logo = _procesar_logo(request.files.get('institucion_logo'))
             trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user = User(
@@ -185,11 +196,7 @@ def user_edit(user_id):
         if existing:
             flash('El email ya está en uso por otro usuario', 'error')
         else:
-            pais = request.form.get('pais', '').strip() or None
-            region_tipo = request.form.get('region_tipo', 'pais').strip()
-            region_nombre = request.form.get('region_nombre', '').strip() or None
-            if region_tipo == 'pais':
-                region_nombre = None
+            pais, region_tipo, region_nombre = _parse_pais_scope(request.form)
             nuevo_logo = _procesar_logo(request.files.get('institucion_logo'))
             trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user.email = email
@@ -280,11 +287,7 @@ def admin_new():
         elif User.query.filter_by(email=email).first():
             flash('El email ya está registrado', 'error')
         else:
-            pais         = request.form.get('pais', '').strip() or None
-            region_tipo  = request.form.get('region_tipo', 'pais').strip()
-            region_nombre= request.form.get('region_nombre', '').strip() or None
-            if region_tipo == 'pais':
-                region_nombre = None
+            pais, region_tipo, region_nombre = _parse_pais_scope(request.form)
             logo = _procesar_logo(request.files.get('institucion_logo'))
             user = User(
                 username=username, email=email, role=role,
@@ -325,11 +328,7 @@ def admin_edit(admin_id):
         elif User.query.filter(User.email == email, User.id != admin_id).first():
             flash('El email ya está en uso', 'error')
         else:
-            pais         = request.form.get('pais', '').strip() or None
-            region_tipo  = request.form.get('region_tipo', 'pais').strip()
-            region_nombre= request.form.get('region_nombre', '').strip() or None
-            if region_tipo == 'pais':
-                region_nombre = None
+            pais, region_tipo, region_nombre = _parse_pais_scope(request.form)
             nuevo_logo = _procesar_logo(request.files.get('institucion_logo'))
             admin.email             = email
             admin.role              = role

@@ -211,13 +211,17 @@ def dashboard_alertas():
 
     def _geo(q, model):
         u = current_user
-        if not getattr(u, 'pais', None):
-            return q
-        if u.pais == 'argentina':
-            q = q.filter(or_(model.region.is_(None), ~model.region.ilike('%paraguay%')))
-        elif u.pais == 'paraguay':
-            q = q.filter(model.region.ilike('%paraguay%'))
-        if getattr(u, 'region_tipo', None) in ('provincia', 'departamento') and getattr(u, 'region_nombre', None):
+        paises = getattr(u, 'paises_list', [])
+        if paises and len(paises) < 2:
+            conds = []
+            for p in paises:
+                if p == 'argentina':
+                    conds.append(or_(model.region.is_(None), ~model.region.ilike('%paraguay%')))
+                elif p == 'paraguay':
+                    conds.append(model.region.ilike('%paraguay%'))
+            if conds:
+                q = q.filter(or_(*conds))
+        if len(paises) == 1 and getattr(u, 'region_tipo', None) in ('provincia', 'departamento') and getattr(u, 'region_nombre', None):
             q = q.filter(model.region.ilike(f'%{u.region_nombre}%'))
         return q
 
@@ -368,6 +372,33 @@ def set_cfg(key, value):
         db.session.add(_SL(key=f'cfg_{key}', value=str(value)))
     db.session.commit()
 
+
+def _shared_cache_get(key, ttl_seconds):
+    """Lee la caché compartida en DB (entre workers de gunicorn). None si no existe o venció."""
+    from models import ApiCache
+    try:
+        row = ApiCache.query.filter_by(key=key).first()
+        if row and (datetime.utcnow() - row.updated_at).total_seconds() < ttl_seconds:
+            return row.value
+    except Exception:
+        pass
+    return None
+
+
+def _shared_cache_set(key, value):
+    """Escribe/actualiza la caché compartida en DB."""
+    from models import ApiCache
+    try:
+        row = ApiCache.query.filter_by(key=key).first()
+        if row:
+            row.value = value
+            row.updated_at = datetime.utcnow()
+        else:
+            db.session.add(ApiCache(key=key, value=value))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
 SMN_FEEDS = [
     {"tipo": "Alertas y advertencias",   "url": "https://ssl.smn.gob.ar/feeds/CAP/rss_alertaCAP_nuevo.xml",             "nivel_base": "naranja"},
     {"tipo": "Temperaturas extremas",    "url": "https://ssl.smn.gob.ar/feeds/CAP/oladecalor/rss_ola_calor_nuevo.xml",  "nivel_base": "naranja"},
@@ -393,6 +424,10 @@ _nasa_focos_lock = threading.RLock()
 _smn_cache = {}   # provincia -> (timestamp, alertas)
 SMN_CACHE_TTL = 300  # 5 minutos
 _smn_lock = threading.RLock()
+
+_inpe_focos_cache = {}   # "dias" -> (timestamp, dict con focos/total/satelites)
+INPE_FOCOS_CACHE_TTL = 300  # 5 minutos
+_inpe_focos_lock = threading.RLock()
 
 ultimas_alertas_enviadas = set()
 
@@ -638,12 +673,18 @@ def elemento_punto(el: dict):
 # ── SMN ──────────────────────────────────────────────────────────────────────
 
 def _fetch_smn_crudas():
-    """Descarga y parsea los 3 feeds RSS del SMN (sin filtrar por provincia). Cacheado."""
-    import time as _t
+    """Descarga y parsea los 3 feeds RSS del SMN (sin filtrar por provincia). Cacheado (L1 memoria + L2 DB compartida)."""
+    import time as _t, json
     with _smn_lock:
         cached = _smn_cache.get('__raw__')
         if cached and (_t.time() - cached[0]) < SMN_CACHE_TTL:
             return cached[1]
+    shared = _shared_cache_get('smn_crudas', SMN_CACHE_TTL)
+    if shared is not None:
+        crudas = json.loads(shared)
+        with _smn_lock:
+            _smn_cache['__raw__'] = (_t.time(), crudas)
+        return crudas
     crudas = []
     for feed in SMN_FEEDS:
         try:
@@ -663,6 +704,7 @@ def _fetch_smn_crudas():
             })
     with _smn_lock:
         _smn_cache['__raw__'] = (_t.time(), crudas)
+    _shared_cache_set('smn_crudas', json.dumps(crudas))
     return crudas
 
 
@@ -1639,9 +1681,21 @@ def inpe_focos():
     Proxy para INPE dataserver-coids — focos diarios América del Sur,
     filtrados por bounding box Argentina + Paraguay.
     """
-    import csv, io
+    import csv, io, json, time as _t
     dias = int(request.args.get("dias", "1"))
     dias = max(1, min(dias, 3))
+    cache_key = str(dias)
+
+    with _inpe_focos_lock:
+        cached = _inpe_focos_cache.get(cache_key)
+        if cached and (_t.time() - cached[0]) < INPE_FOCOS_CACHE_TTL:
+            return jsonify(cached[1])
+    shared = _shared_cache_get(f"inpe_focos:{cache_key}", INPE_FOCOS_CACHE_TTL)
+    if shared is not None:
+        resultado = json.loads(shared)
+        with _inpe_focos_lock:
+            _inpe_focos_cache[cache_key] = (_t.time(), resultado)
+        return jsonify(resultado)
 
     todos  = []
     vistos = set()
@@ -1690,7 +1744,11 @@ def inpe_focos():
         'frp': f.get('frp'),
     } for f in todos])
 
-    return jsonify({"focos": todos, "total": len(todos), "satelites": sorted(sats_vistos)})
+    resultado = {"focos": todos, "total": len(todos), "satelites": sorted(sats_vistos)}
+    with _inpe_focos_lock:
+        _inpe_focos_cache[cache_key] = (_t.time(), resultado)
+    _shared_cache_set(f"inpe_focos:{cache_key}", json.dumps(resultado))
+    return jsonify(resultado)
 
 
 # ── FWI por grilla ────────────────────────────────────────────────────────────
@@ -1753,6 +1811,11 @@ def nasa_focos():
         cached = _nasa_focos_cache.get(cache_key)
         if cached and (_t.time() - cached[0]) < NASA_FOCOS_CACHE_TTL:
             return cached[1], 200, {"Content-Type": "text/plain; charset=utf-8"}
+    shared = _shared_cache_get(f"nasa_focos:{cache_key}", NASA_FOCOS_CACHE_TTL)
+    if shared is not None:
+        with _nasa_focos_lock:
+            _nasa_focos_cache[cache_key] = (_t.time(), shared)
+        return shared, 200, {"Content-Type": "text/plain; charset=utf-8"}
     key = get_cfg('NASA_MAP_KEY') or NASA_MAP_KEY
     if not key:
         return jsonify({"error": "NASA_MAP_KEY no configurada"}), 503
@@ -1779,6 +1842,7 @@ def nasa_focos():
             pass
         with _nasa_focos_lock:
             _nasa_focos_cache[cache_key] = (_t.time(), r.text)
+        _shared_cache_set(f"nasa_focos:{cache_key}", r.text)
         return r.text, 200, {"Content-Type": "text/plain; charset=utf-8"}
     except Exception as ex:
         return jsonify({"error": str(ex)}), 502

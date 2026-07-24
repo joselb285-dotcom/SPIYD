@@ -59,13 +59,19 @@
         <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
           País
         </label>
-        <select name="pais" id="selectPais"
-                class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:border-primary/50"
-                onchange="onPaisChange()">
-          <option value="">— Sin restricción —</option>
-          <option value="argentina" {% if user and user.pais == 'argentina' %}selected{% endif %}>Argentina</option>
-          <option value="paraguay" {% if user and user.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
-        </select>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 text-[14px] text-on-surface cursor-pointer">
+            <input type="checkbox" name="pais" value="argentina" class="pais-check rounded border-outline-variant/30 bg-surface-container-high"
+                   {% if user and 'argentina' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
+            Argentina
+          </label>
+          <label class="flex items-center gap-2 text-[14px] text-on-surface cursor-pointer">
+            <input type="checkbox" name="pais" value="paraguay" class="pais-check rounded border-outline-variant/30 bg-surface-container-high"
+                   {% if user and 'paraguay' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
+            Paraguay
+          </label>
+        </div>
+        <p class="text-[11px] text-on-surface-variant mt-1">Sin ninguno tildado, ve todo (sin restricción).</p>
       </div>
 
       <div id="divRegionTipo" style="display:none">
@@ -191,9 +197,12 @@
 const PROVINCIAS = {{ provincias | tojson }};
 const DEPARTAMENTOS = {{ departamentos | tojson }};
 
-const initPais = {{ (user.pais | tojson) if user and user.pais else 'null' }};
 const initRegionTipo = {{ (user.region_tipo | tojson) if user and user.region_tipo else '"pais"' }};
 const initRegionNombre = {{ (user.region_nombre | tojson) if user and user.region_nombre else 'null' }};
+
+function paisesChecked() {
+  return Array.from(document.querySelectorAll('.pais-check:checked')).map(c => c.value);
+}
 
 function populateRegionNombre(lista, selected) {
   const sel = document.getElementById('selectRegionNombre');
@@ -210,7 +219,7 @@ function populateRegionNombre(lista, selected) {
 function onRegionTipoChange() {
   const tipo = document.getElementById('selectRegionTipo').value;
   const divNombre = document.getElementById('divRegionNombre');
-  const pais = document.getElementById('selectPais').value;
+  const pais = paisesChecked()[0];
   if (tipo === 'pais') {
     divNombre.style.display = 'none';
   } else {
@@ -222,16 +231,18 @@ function onRegionTipoChange() {
 }
 
 function onPaisChange() {
-  const pais = document.getElementById('selectPais').value;
+  const paises = paisesChecked();
   const divTipo = document.getElementById('divRegionTipo');
   const optProv = document.getElementById('optProvincia');
   const optDep  = document.getElementById('optDepartamento');
   const selTipo = document.getElementById('selectRegionTipo');
-  if (!pais) {
+  if (paises.length !== 1) {
     divTipo.style.display = 'none';
     document.getElementById('divRegionNombre').style.display = 'none';
+    selTipo.value = 'pais';
     return;
   }
+  const pais = paises[0];
   divTipo.style.display = 'block';
   if (pais === 'argentina') {
     optProv.style.display = 'block';
@@ -246,8 +257,7 @@ function onPaisChange() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  if (initPais) {
-    document.getElementById('selectPais').value = initPais;
+  if (paisesChecked().length === 1) {
     onPaisChange();
     if (initRegionTipo && initRegionTipo !== 'pais') {
       document.getElementById('selectRegionTipo').value = initRegionTipo;

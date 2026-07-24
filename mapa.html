@@ -913,11 +913,14 @@
     };
     function getRegionBounds(cfg) {
       if (!cfg || !cfg.pais) return null;
+      const paises = cfg.pais.split(',').map(p => p.trim()).filter(Boolean);
+      if (paises.length !== 1) return null; // ambos países o ninguno = sin restricción
+      const pais = paises[0];
       if (cfg.region_tipo === 'provincia' && cfg.region_nombre)
-        return BOUNDS_ARG_PROVINCIAS[cfg.region_nombre] || BOUNDS_PAIS[cfg.pais];
+        return BOUNDS_ARG_PROVINCIAS[cfg.region_nombre] || BOUNDS_PAIS[pais];
       if (cfg.region_tipo === 'departamento' && cfg.region_nombre)
-        return BOUNDS_PRY_DEPARTAMENTOS[cfg.region_nombre] || BOUNDS_PAIS[cfg.pais];
-      return BOUNDS_PAIS[cfg.pais] || null;
+        return BOUNDS_PRY_DEPARTAMENTOS[cfg.region_nombre] || BOUNDS_PAIS[pais];
+      return BOUNDS_PAIS[pais] || null;
     }
 
     // ── Mapa ────────────────────────────────────────────────────────────────

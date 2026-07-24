@@ -54,13 +54,21 @@
 
         <div class="mb-3">
           <label class="form-label">País asignado
-            <span title="Restringe al usuario para ver solo datos del país seleccionado." style="cursor:help;color:var(--muted);font-size:0.8rem;font-weight:400"> (?)</span>
+            <span title="Restringe al usuario para ver solo alertas de los países tildados. Sin ninguno tildado, ve todo." style="cursor:help;color:var(--muted);font-size:0.8rem;font-weight:400"> (?)</span>
           </label>
-          <select name="pais" id="selectPais" class="form-select" onchange="onPaisChange()">
-            <option value="">— Sin restricción —</option>
-            <option value="argentina" {% if user and user.pais == 'argentina' %}selected{% endif %}>Argentina</option>
-            <option value="paraguay" {% if user and user.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
-          </select>
+          <div class="d-flex gap-3">
+            <div class="form-check">
+              <input class="form-check-input pais-check" type="checkbox" name="pais" value="argentina" id="paisArgentina"
+                     {% if user and 'argentina' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
+              <label class="form-check-label" for="paisArgentina">Argentina</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input pais-check" type="checkbox" name="pais" value="paraguay" id="paisParaguay"
+                     {% if user and 'paraguay' in user.paises_list %}checked{% endif %} onchange="onPaisChange()">
+              <label class="form-check-label" for="paisParaguay">Paraguay</label>
+            </div>
+          </div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Sin ninguno tildado, el usuario ve todo (sin restricción).</div>
         </div>
 
         <div class="mb-3" id="divRegionTipo" style="display:none">
@@ -146,10 +154,12 @@
 <script>
 const PROVINCIAS = {{ provincias | tojson }};
 const DEPARTAMENTOS = {{ departamentos | tojson }};
-const initPais = {{ (user.pais | tojson) if user and user.pais else 'null' }};
 const initRegionTipo = {{ (user.region_tipo | tojson) if user and user.region_tipo else '"pais"' }};
 const initRegionNombre = {{ (user.region_nombre | tojson) if user and user.region_nombre else 'null' }};
 
+function paisesChecked() {
+  return Array.from(document.querySelectorAll('.pais-check:checked')).map(c => c.value);
+}
 function populateRegionNombre(lista, selected) {
   const sel = document.getElementById('selectRegionNombre');
   sel.innerHTML = '<option value="">Seleccioná una opción</option>';
@@ -162,7 +172,7 @@ function populateRegionNombre(lista, selected) {
 }
 function onRegionTipoChange() {
   const tipo = document.getElementById('selectRegionTipo').value;
-  const pais = document.getElementById('selectPais').value;
+  const pais = paisesChecked()[0];
   const divNombre = document.getElementById('divRegionNombre');
   if (tipo === 'pais') { divNombre.style.display = 'none'; return; }
   const lista = pais === 'argentina' ? PROVINCIAS : DEPARTAMENTOS;
@@ -171,12 +181,17 @@ function onRegionTipoChange() {
   divNombre.style.display = 'block';
 }
 function onPaisChange() {
-  const pais = document.getElementById('selectPais').value;
+  const paises = paisesChecked();
   const divTipo = document.getElementById('divRegionTipo');
   const optProv = document.getElementById('optProvincia');
   const optDep  = document.getElementById('optDepartamento');
   const selTipo = document.getElementById('selectRegionTipo');
-  if (!pais) { divTipo.style.display = 'none'; document.getElementById('divRegionNombre').style.display = 'none'; return; }
+  if (paises.length !== 1) {
+    divTipo.style.display = 'none'; document.getElementById('divRegionNombre').style.display = 'none';
+    selTipo.value = 'pais';
+    return;
+  }
+  const pais = paises[0];
   divTipo.style.display = 'block';
   if (pais === 'argentina') {
     optProv.style.display = 'block'; optDep.style.display = 'none';
@@ -188,8 +203,7 @@ function onPaisChange() {
   onRegionTipoChange();
 }
 window.addEventListener('DOMContentLoaded', () => {
-  if (initPais) {
-    document.getElementById('selectPais').value = initPais;
+  if (paisesChecked().length === 1) {
     onPaisChange();
     if (initRegionTipo && initRegionTipo !== 'pais') {
       document.getElementById('selectRegionTipo').value = initRegionTipo;

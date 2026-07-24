@@ -13,21 +13,42 @@ sys.path.insert(0, os.path.dirname(__file__))
 admin_bp = Blueprint('admin', __name__)
 
 
+def _pais_condition(model, pais):
+    if pais == 'argentina':
+        return or_(model.region.is_(None), ~model.region.ilike('%paraguay%'))
+    if pais == 'paraguay':
+        return model.region.ilike('%paraguay%')
+    return None
+
+
 def _geo_filter(query, model):
-    """Filtra una query por el alcance geográfico del current_user (pais + provincia/departamento).
-    Solo se aplica cuando el admin tiene pais configurado; superadmins sin pais ven todo."""
+    """Filtra una query por el alcance geográfico del current_user (paises + provincia/departamento).
+    Solo se aplica cuando el admin tiene paises configurados; sin restricción (o ambos paises) ve todo."""
     u = current_user
-    if not u.pais:
-        return query  # sin restricción
-    if u.pais == 'argentina':
-        query = query.filter(
-            or_(model.region.is_(None), ~model.region.ilike('%paraguay%'))
-        )
-    elif u.pais == 'paraguay':
-        query = query.filter(model.region.ilike('%paraguay%'))
-    if u.region_tipo in ('provincia', 'departamento') and u.region_nombre:
+    paises = u.paises_list
+    if paises and len(paises) < 2:
+        conds = [c for c in (_pais_condition(model, p) for p in paises) if c is not None]
+        if conds:
+            query = query.filter(or_(*conds))
+    if len(paises) == 1 and u.region_tipo in ('provincia', 'departamento') and u.region_nombre:
         query = query.filter(model.region.ilike(f'%{u.region_nombre}%'))
     return query
+
+
+PAISES_VALIDOS = ('argentina', 'paraguay')
+
+
+def _parse_pais_scope(form):
+    """Lee los checkboxes 'pais' (uno o varios) y el alcance regional del form.
+    El alcance por provincia/departamento solo tiene sentido si se eligió un único país."""
+    paises = [p for p in form.getlist('pais') if p in PAISES_VALIDOS]
+    pais = ','.join(paises) or None
+    region_tipo = form.get('region_tipo', 'pais').strip()
+    region_nombre = form.get('region_nombre', '').strip() or None
+    if len(paises) != 1 or region_tipo == 'pais':
+        region_tipo = 'pais'
+        region_nombre = None
+    return pais, region_tipo, region_nombre
 
 
 def admin_required(f):
@@ -191,11 +212,7 @@ def user_new():
         elif User.query.filter_by(email=email).first():
             flash('El email ya está registrado', 'error')
         else:
-            pais = request.form.get('pais', '').strip() or None
-            region_tipo = request.form.get('region_tipo', 'pais').strip()
-            region_nombre = request.form.get('region_nombre', '').strip() or None
-            if region_tipo == 'pais':
-                region_nombre = None
+            pais, region_tipo, region_nombre = _parse_pais_scope(request.form)
             admin_id = current_user.id if current_user.role != 'superadmin' else None
             trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user = User(username=username, email=email, role='user',
@@ -231,11 +248,7 @@ def user_edit(user_id):
         if existing:
             flash('El email ya está en uso por otro usuario', 'error')
         else:
-            pais = request.form.get('pais', '').strip() or None
-            region_tipo = request.form.get('region_tipo', 'pais').strip()
-            region_nombre = request.form.get('region_nombre', '').strip() or None
-            if region_tipo == 'pais':
-                region_nombre = None
+            pais, region_tipo, region_nombre = _parse_pais_scope(request.form)
             trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user.email = email
             user.active = active

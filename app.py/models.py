@@ -44,6 +44,12 @@ class User(UserMixin, db.Model):
         return self.active
 
     @property
+    def paises_list(self):
+        if not self.pais:
+            return []
+        return [p.strip() for p in self.pais.split(',') if p.strip()]
+
+    @property
     def role_label(self):
         labels = {'superadmin': 'SuperAdmin', 'admin': 'Administrador', 'user': 'Usuario'}
         return labels.get(self.role, self.role)
@@ -180,3 +186,12 @@ class SystemLog(db.Model):
     key = db.Column(db.String(100), unique=True, nullable=False)
     value = db.Column(db.String(255))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class ApiCache(db.Model):
+    """Caché compartida entre los workers de gunicorn (respuestas de APIs externas)."""
+    __tablename__ = 'api_cache'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(150), unique=True, nullable=False)
+    value = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
