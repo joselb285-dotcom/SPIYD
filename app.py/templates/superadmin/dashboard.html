@@ -5,10 +5,13 @@
 
 {% block content %}
 
-{% set _banderas = {'argentina': '🇦🇷', 'paraguay': '🇵🇾', 'chile': '🇨🇱'} %}
-{% if current_user.paises_list|length == 1 and _banderas.get(current_user.paises_list[0]) %}
-<div class="glass-panel rounded-xl p-5 mb-section-gap flex items-center gap-4">
-  <span class="flag-wave" style="font-size:2.4rem">{{ _banderas[current_user.paises_list[0]] }}</span>
+{% set _bandera_codes = {'argentina': 'ar', 'paraguay': 'py', 'chile': 'cl'} %}
+{% if current_user.paises_list|length == 1 and _bandera_codes.get(current_user.paises_list[0]) %}
+<div class="glass-panel rounded-xl p-5 mb-section-gap flex items-center gap-4 relative overflow-hidden"
+     style="background-image:linear-gradient(90deg, rgba(19,19,21,.88), rgba(19,19,21,.55)), url('https://flagcdn.com/w320/{{ _bandera_codes[current_user.paises_list[0]] }}.png'); background-size:cover; background-position:center;">
+  <img class="flag-wave" src="https://flagcdn.com/w160/{{ _bandera_codes[current_user.paises_list[0]] }}.png"
+       alt="{{ current_user.paises_list[0]|capitalize }}"
+       style="width:64px;height:auto;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.5)">
   <div class="flex flex-col">
     <span class="font-label-technical text-[10px] text-on-surface-variant uppercase tracking-widest">Cobertura asignada</span>
     <span class="text-lg font-bold text-on-surface">{{ current_user.paises_list[0]|capitalize }}</span>

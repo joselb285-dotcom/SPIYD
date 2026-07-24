@@ -59,6 +59,24 @@
     .btn-key.key-red:active { box-shadow: 0 1px 0 0 #b91c1c, 0 2px 4px rgba(0,0,0,.35); }
     .btn-key.key-dark { background: linear-gradient(180deg,#52525b,#3f3f46); color:#e4e4e7; box-shadow: 0 4px 0 0 #18181b, 0 6px 10px rgba(0,0,0,.35); }
     .btn-key.key-dark:active { box-shadow: 0 1px 0 0 #18181b, 0 2px 4px rgba(0,0,0,.35); }
+
+    /* ── 3D sidebar icon keys ── */
+    .nav-key {
+        width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; color: #fff; font-size: 16px;
+        transition: transform .1s ease, box-shadow .1s ease; transform: translateY(0);
+    }
+    .nav-key .material-symbols-outlined { font-size: 18px; }
+    a:hover .nav-key { transform: translateY(-1px); }
+    a:active .nav-key { transform: translateY(2px); }
+    .nav-key.k-orange { background: linear-gradient(180deg,#fb923c,#f97316); box-shadow: 0 3px 0 0 #c2410c, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-blue   { background: linear-gradient(180deg,#60a5fa,#3b82f6); box-shadow: 0 3px 0 0 #1d4ed8, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-green  { background: linear-gradient(180deg,#4ade80,#22c55e); box-shadow: 0 3px 0 0 #15803d, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-teal   { background: linear-gradient(180deg,#2dd4bf,#14b8a6); box-shadow: 0 3px 0 0 #0f766e, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-purple { background: linear-gradient(180deg,#c084fc,#a855f7); box-shadow: 0 3px 0 0 #7e22ce, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-red    { background: linear-gradient(180deg,#f87171,#ef4444); box-shadow: 0 3px 0 0 #b91c1c, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-cyan   { background: linear-gradient(180deg,#22d3ee,#06b6d4); box-shadow: 0 3px 0 0 #0e7490, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-indigo { background: linear-gradient(180deg,#818cf8,#6366f1); box-shadow: 0 3px 0 0 #4338ca, 0 4px 6px rgba(0,0,0,.3); }
 </style>
 <script id="tailwind-config">
     tailwind.config = {
@@ -95,36 +113,36 @@
     <nav class="flex flex-col gap-1 flex-1">
         <div class="px-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.main">Principal</div>
         <a class="flex items-center gap-3 py-3 px-4 bg-secondary-container text-on-secondary-container rounded-lg mx-2 transition-all" href="/admin/">
-            <span class="material-symbols-outlined">home</span>
+            <div class="nav-key k-orange"><span class="material-symbols-outlined">home</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Inicio</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/users">
-            <span class="material-symbols-outlined">groups</span>
+            <div class="nav-key k-blue"><span class="material-symbols-outlined">groups</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.users">Usuarios</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/recursos">
-            <span class="material-symbols-outlined">inventory_2</span>
+            <div class="nav-key k-green"><span class="material-symbols-outlined">inventory_2</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.resources">Recursos</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/mapa-recursos">
-            <span class="material-symbols-outlined">travel_explore</span>
+            <div class="nav-key k-teal"><span class="material-symbols-outlined">travel_explore</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.resourceMap">Mapa Recursos</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/ai-informes">
-            <span class="material-symbols-outlined">smart_toy</span>
+            <div class="nav-key k-purple"><span class="material-symbols-outlined">smart_toy</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.aiHistory">Historial IA</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/auditoria">
-            <span class="material-symbols-outlined">security</span>
+            <div class="nav-key k-red"><span class="material-symbols-outlined">security</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.audit">Auditoría</span>
         </a>
         <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.application">Aplicación</div>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/mapa?auth=1">
-            <span class="material-symbols-outlined">satellite_alt</span>
+            <div class="nav-key k-cyan"><span class="material-symbols-outlined">satellite_alt</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.satelliteMap">Mapa Satelital</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/">
-            <span class="material-symbols-outlined">language</span>
+            <div class="nav-key k-indigo"><span class="material-symbols-outlined">language</span></div>
             <span class="font-label-technical text-[12px]" data-i18n="nav.website">Sitio Web</span>
         </a>
     </nav>
@@ -162,7 +180,13 @@
 <main class="ml-0 md:ml-64 flex-1 min-h-screen relative flex flex-col">
     <!-- Map Background -->
     <div class="absolute inset-0 z-0 map-grid">
+        {% set _bandera_codes = {'argentina': 'ar', 'paraguay': 'py', 'chile': 'cl'} %}
+        {% set _pais_actual = current_user.paises_list[0] if current_user.paises_list|length == 1 else None %}
+        {% if _pais_actual and _bandera_codes.get(_pais_actual) %}
+        <img alt="Bandera {{ _pais_actual|capitalize }}" class="w-full h-full object-cover opacity-20 saturate-50 contrast-125" src="https://flagcdn.com/w2560/{{ _bandera_codes[_pais_actual] }}.png">
+        {% else %}
         <img alt="Sentinel View" class="w-full h-full object-cover opacity-40 saturate-[0.1] contrast-125" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAUhI6B-TpVmHVenDgunMBwKa1OzOppG_q2hodpw9enzHAGB69uhllgKsv9dAmrYYXXelvAFuYrat_6SiROi52SXm_3hBhU5wIiN6fJQTSrYzkMTYdzwIa-dhNWx4dwmFRvqvyUZoNJImZwSAlvDKJWTcTs8KqmDSQZDSjhaRiBWa-JIgzDfhPTDufVjmiw3g3DtA241IZGEu14nmxfhALsxeBh95YTVnCPiTfqkTTso-ijuXi_4hLZ_ea-mtxvPmq5ZekJqSQax1Ew">
+        {% endif %}
         <!-- Hotspots dinámicos basados en focos_hoy -->
         {% if focos_hoy and focos_hoy > 0 %}
         <div class="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -205,11 +229,11 @@
               </button>
             </div>
             <div class="glass-panel p-3 md:p-4 rounded-xl flex flex-wrap items-center gap-3 md:gap-6 flex-1">
-                {% set _banderas = {'argentina': '🇦🇷', 'paraguay': '🇵🇾', 'chile': '🇨🇱'} %}
-                {% set _pais_actual = current_user.paises_list[0] if current_user.paises_list|length == 1 else None %}
-                {% if _pais_actual and _banderas.get(_pais_actual) %}
+                {% if _pais_actual and _bandera_codes.get(_pais_actual) %}
                 <div class="flag-wave-wrap">
-                    <span class="flag-wave" style="font-size:2.4rem">{{ _banderas[_pais_actual] }}</span>
+                    <img class="flag-wave" src="https://flagcdn.com/w160/{{ _bandera_codes[_pais_actual] }}.png"
+                         alt="{{ _pais_actual|capitalize }}"
+                         style="width:56px;height:auto;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,.45)">
                 </div>
                 <div class="flex flex-col">
                     <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Cobertura</span>

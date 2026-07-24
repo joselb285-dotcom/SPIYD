@@ -80,6 +80,21 @@
     .btn-key-icon.key-icon-secondary:hover { color: #a1d494; }
     .btn-key-icon.key-icon-tertiary:hover { color: #e7bf99; }
     .btn-key-icon.key-icon-error:hover { color: #ffb4ab; }
+
+    /* ── 3D sidebar icon keys ── */
+    .nav-key {
+      width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; color: #fff;
+      transition: transform .1s ease, box-shadow .1s ease; transform: translateY(0);
+    }
+    .nav-key .material-symbols-outlined { font-size: 18px; }
+    a:hover .nav-key { transform: translateY(-1px); }
+    a:active .nav-key { transform: translateY(2px); }
+    .nav-key.k-orange { background: linear-gradient(180deg,#fb923c,#f97316); box-shadow: 0 3px 0 0 #c2410c, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-blue   { background: linear-gradient(180deg,#60a5fa,#3b82f6); box-shadow: 0 3px 0 0 #1d4ed8, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-gray   { background: linear-gradient(180deg,#a1a1aa,#71717a); box-shadow: 0 3px 0 0 #3f3f46, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-cyan   { background: linear-gradient(180deg,#22d3ee,#06b6d4); box-shadow: 0 3px 0 0 #0e7490, 0 4px 6px rgba(0,0,0,.3); }
+    .nav-key.k-indigo { background: linear-gradient(180deg,#818cf8,#6366f1); box-shadow: 0 3px 0 0 #4338ca, 0 4px 6px rgba(0,0,0,.3); }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -99,28 +114,28 @@
     <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
        {% if request.endpoint in ('superadmin.dashboard','superadmin.admin_new','superadmin.admin_edit','superadmin.user_new','superadmin.user_edit') %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
        href="/superadmin/">
-      <span class="material-symbols-outlined">home</span>
+      <div class="nav-key k-orange"><span class="material-symbols-outlined">home</span></div>
       <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Inicio</span>
     </a>
     <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all text-on-surface-variant hover:bg-surface-variant/30"
        href="/admin/configuracion">
-      <span class="material-symbols-outlined">settings</span>
+      <div class="nav-key k-gray"><span class="material-symbols-outlined">tune</span></div>
       <span class="font-label-technical text-[12px]">Configuración global</span>
     </a>
     <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.accesses">Accesos</div>
     <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all"
        href="/admin/" target="_blank">
-      <span class="material-symbols-outlined">admin_panel_settings</span>
+      <div class="nav-key k-blue"><span class="material-symbols-outlined">admin_panel_settings</span></div>
       <span class="font-label-technical text-[12px]" data-i18n="nav.adminPanel2">Panel Admin</span>
     </a>
     <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all"
        href="/mapa?auth=1">
-      <span class="material-symbols-outlined">satellite_alt</span>
+      <div class="nav-key k-cyan"><span class="material-symbols-outlined">satellite_alt</span></div>
       <span class="font-label-technical text-[12px]" data-i18n="nav.viewMap">Ver Mapa</span>
     </a>
     <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all"
        href="/">
-      <span class="material-symbols-outlined">public</span>
+      <div class="nav-key k-indigo"><span class="material-symbols-outlined">public</span></div>
       <span class="font-label-technical text-[12px]" data-i18n="nav.website">Sitio Web</span>
     </a>
   </nav>
@@ -148,10 +163,12 @@
       </div>
     </div>
     <div class="flex items-center gap-3">
-      {% set _banderas = {'argentina': '🇦🇷', 'paraguay': '🇵🇾', 'chile': '🇨🇱'} %}
-      {% if current_user.paises_list|length == 1 and _banderas.get(current_user.paises_list[0]) %}
+      {% set _bandera_codes = {'argentina': 'ar', 'paraguay': 'py', 'chile': 'cl'} %}
+      {% if current_user.paises_list|length == 1 and _bandera_codes.get(current_user.paises_list[0]) %}
       <span class="flag-wave-wrap" title="{{ current_user.paises_list[0]|capitalize }}">
-        <span class="flag-wave">{{ _banderas[current_user.paises_list[0]] }}</span>
+        <img class="flag-wave" src="https://flagcdn.com/w80/{{ _bandera_codes[current_user.paises_list[0]] }}.png"
+             alt="{{ current_user.paises_list[0]|capitalize }}"
+             style="width:28px;height:auto;border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.4)">
       </span>
       {% endif %}
       <span class="text-[11px] text-on-surface-variant font-label-technical hidden sm:flex items-center gap-1.5">

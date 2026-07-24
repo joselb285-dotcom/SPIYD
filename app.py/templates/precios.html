@@ -170,7 +170,7 @@ const PLANS = [
     features: [
       '1 área de cobertura (hasta 50.000 km²)',
       'Alertas por email y SMS',
-      'Dashboard básico',
+      'Inicio básico',
       'Reportes PDF mensuales',
       'Datos históricos 12 meses',
       'Soporte email 5×8',
@@ -186,7 +186,7 @@ const PLANS = [
     features: [
       'Hasta 5 áreas (500.000 km²)',
       'Alertas en tiempo real < 15 min',
-      'Dashboard avanzado + histórico 5 años',
+      'Inicio avanzado + histórico 5 años',
       'Análisis IA con recomendaciones',
       'API RESTful + Webhooks',
       'Reportes ejecutivos semanales',
@@ -274,7 +274,7 @@ function App() {
                 Editando
               </div>
             )}
-            {[['Hero','/'],['Dashboard','/mapa'],['Mapa','/mapa']].map(([l,h])=>(
+            {[['Hero','/'],['Inicio','/mapa'],['Mapa','/mapa']].map(([l,h])=>(
               <a key={l} href={h} style={{ color:'rgba(255,255,255,.4)',fontSize:'.75rem',textDecoration:'none',padding:'5px 12px',borderRadius:99,transition:'color .15s' }}
                 onMouseEnter={e=>e.target.style.color='white'} onMouseLeave={e=>e.target.style.color='rgba(255,255,255,.4)'}>{l}</a>
             ))}
@@ -443,7 +443,7 @@ function App() {
               </button>
               <a href="/mapa" style={{ display:'inline-flex',alignItems:'center',gap:8,background:'transparent',color:'white',fontFamily:'Poppins',fontSize:'.85rem',fontWeight:500,padding:'.9rem 2rem',borderRadius:99,border:'1px solid rgba(255,255,255,.22)',textDecoration:'none',transition:'border-color .2s' }}
                 onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.5)'} onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,.22)'}>
-                <E id="cta_btn2">Ver dashboard demo</E>
+                <E id="cta_btn2">Ver inicio demo</E>
               </a>
             </div>
           </div>
