@@ -199,6 +199,12 @@
             <td class="px-6 py-3 pl-14">
               <div class="text-[13px] font-bold text-on-surface">{{ u.username }}</div>
               <div class="text-[11px] text-on-surface-variant">{{ u.email }}</div>
+              {% if u.trial_expires_at %}
+              <div class="text-[10px] text-tertiary mt-0.5">⏳ Prueba hasta {{ u.trial_expires_at.strftime('%d/%m/%Y') }}</div>
+              {% endif %}
+              {% if u.ai_informes_max is not none %}
+              <div class="text-[10px] text-on-surface-variant mt-0.5">IA: {{ ai_counts.get(u.id, 0) }}/{{ u.ai_informes_max }}</div>
+              {% endif %}
             </td>
             <td class="px-6 py-3">
               {% if not u.email_verified %}

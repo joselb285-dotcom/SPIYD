@@ -61,7 +61,10 @@ login_manager.login_message_category = 'warning'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    user = db.session.get(User, int(user_id))
+    if user and user.trial_expires_at and datetime.utcnow() > user.trial_expires_at:
+        return None
+    return user
 
 @login_manager.unauthorized_handler
 def unauthorized():
@@ -101,6 +104,8 @@ with app.app_context():
         ('"user"',      "email_verify_token",  "VARCHAR(64)"),
         ('"user"',      "totp_secret",         "VARCHAR(32)"),
         ('"user"',      "totp_enabled",        "BOOLEAN DEFAULT FALSE"),
+        ('"user"',      "trial_expires_at",    "TIMESTAMP"),
+        ('"user"',      "ai_informes_max",     "INTEGER"),
     ]
     for _tbl, _col, _type in _new_cols:
         try:
@@ -938,10 +943,19 @@ def _llamar_ia(system_prompt, user_prompt, model="claude-sonnet-4-6", max_tokens
         return None, (jsonify({"error": f"Error al consultar la IA: {str(e)}"}), 502)
 
 
+def _ai_quota_exceeded(user):
+    """True si el usuario alcanzó su límite de informes IA (ai_informes_max=None => sin límite)."""
+    if user.ai_informes_max is None:
+        return False
+    return AiInforme.query.filter_by(user_id=user.id).count() >= user.ai_informes_max
+
+
 @app.route("/ai-risk-analysis", methods=["POST"])
 @login_required
 @limiter.limit("10 per hour")
 def ai_risk_analysis():
+    if _ai_quota_exceeded(current_user):
+        return jsonify({"error": "Alcanzaste el máximo de informes IA permitidos para tu cuenta."}), 403
     body         = request.get_json(silent=True) or {}
     weather_data = body.get("weather", [])
     if not isinstance(weather_data, list) or len(weather_data) > 500:
@@ -1152,6 +1166,8 @@ def _recursos_para_ia(lat_ref=None, lon_ref=None, max_items=30):
 @login_required
 @limiter.limit("20 per hour")
 def ai_foco_analysis():
+    if _ai_quota_exceeded(current_user):
+        return jsonify({"error": "Alcanzaste el máximo de informes IA permitidos para tu cuenta."}), 403
     body      = request.get_json(silent=True) or {}
     lat       = float(body.get("lat", -34))
     lon       = float(body.get("lon", -64))
@@ -1311,6 +1327,8 @@ Generá exactamente estas 7 secciones numeradas en español técnico-operativo (
 @login_required
 @limiter.limit("10 per hour")
 def ai_zona_analysis():
+    if _ai_quota_exceeded(current_user):
+        return jsonify({"error": "Alcanzaste el máximo de informes IA permitidos para tu cuenta."}), 403
     body        = request.get_json(silent=True) or {}
     s           = float(body.get("s", -35))
     w           = float(body.get("w", -65))

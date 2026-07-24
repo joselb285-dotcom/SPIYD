@@ -51,6 +51,16 @@
           <td>
             <div style="font-weight:600">{{ user.username }}</div>
             <div style="font-size:0.78rem;color:var(--muted)">{{ user.email }}</div>
+            {% if user.trial_expires_at %}
+            <div style="font-size:0.72rem;color:var(--orange);margin-top:2px">
+              <i class="fas fa-hourglass-half"></i> Prueba hasta {{ user.trial_expires_at.strftime('%d/%m/%Y') }}
+            </div>
+            {% endif %}
+            {% if user.ai_informes_max is not none %}
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
+              <i class="fas fa-robot"></i> IA: {{ ai_counts.get(user.id, 0) }}/{{ user.ai_informes_max }}
+            </div>
+            {% endif %}
           </td>
           <td>
             <span class="badge-role badge-{{ user.role }}">{{ user.role_label }}</span>

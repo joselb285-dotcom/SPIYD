@@ -42,6 +42,20 @@ def _procesar_logo(file_storage):
     return f"data:{mime};base64,{base64.b64encode(data).decode()}"
 
 
+def _parse_trial_fields(form):
+    """Lee trial_expires_at (date) y ai_informes_max (int) de un form. Vacío = sin límite."""
+    trial_str = form.get('trial_expires_at', '').strip()
+    trial_expires_at = None
+    if trial_str:
+        try:
+            trial_expires_at = datetime.strptime(trial_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+        except ValueError:
+            pass
+    ai_max_str = form.get('ai_informes_max', '').strip()
+    ai_informes_max = int(ai_max_str) if ai_max_str.isdigit() else None
+    return trial_expires_at, ai_informes_max
+
+
 def superadmin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -85,11 +99,18 @@ def dashboard():
     admins = sum(1 for a in admin_list if a.role == 'admin')
     superadmins = sum(1 for a in admin_list if a.role == 'superadmin')
 
+    all_ids = [u.id for u in all_users]
+    ai_counts = dict(
+        db.session.query(AiInforme.user_id, func.count(AiInforme.id))
+        .filter(AiInforme.user_id.in_(all_ids)).group_by(AiInforme.user_id).all()
+    ) if all_ids else {}
+
     return render_template('superadmin/dashboard.html',
         admin_list=admin_list,
         user_counts=user_counts,
         users_by_admin=users_by_admin,
         unassigned_users=unassigned_users,
+        ai_counts=ai_counts,
         total_users=total_users,
         active_users=active_users,
         pending_verif=pending_verif,
@@ -124,19 +145,23 @@ def user_new():
             if region_tipo == 'pais':
                 region_nombre = None
             logo = _procesar_logo(request.files.get('institucion_logo'))
+            trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user = User(
                 username=username, email=email, role=role or 'user',
                 pais=pais, region_tipo=region_tipo, region_nombre=region_nombre,
                 institucion_nombre=request.form.get('institucion_nombre', '').strip() or None,
                 institucion_titulo=request.form.get('institucion_titulo', '').strip() or None,
                 institucion_logo=logo,
+                trial_expires_at=trial_expires_at, ai_informes_max=ai_informes_max,
                 email_verified=False, email_verify_token=secrets.token_urlsafe(32),
             )
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            enviar_email_verificacion(user, request.url_root)
-            flash(f'Usuario {username} creado exitosamente. Se envió un email de verificación.', 'success')
+            if enviar_email_verificacion(user, request.url_root):
+                flash(f'Usuario {username} creado exitosamente. Se envió un email de verificación.', 'success')
+            else:
+                flash(f'Usuario {username} creado, pero el email de verificación no pudo enviarse (revisá la configuración SMTP). Podés verificarlo manualmente.', 'warning')
             return redirect(url_for('superadmin.dashboard'))
     return render_template('superadmin/user_form.html', user=None, action='new', roles=ROLES,
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
@@ -166,12 +191,15 @@ def user_edit(user_id):
             if region_tipo == 'pais':
                 region_nombre = None
             nuevo_logo = _procesar_logo(request.files.get('institucion_logo'))
+            trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user.email = email
             user.role = role
             user.active = active
             user.pais = pais
             user.region_tipo = region_tipo
             user.region_nombre = region_nombre
+            user.trial_expires_at = trial_expires_at
+            user.ai_informes_max = ai_informes_max
             user.institucion_nombre = request.form.get('institucion_nombre', '').strip() or None
             user.institucion_titulo = request.form.get('institucion_titulo', '').strip() or None
             if nuevo_logo:
@@ -183,8 +211,10 @@ def user_edit(user_id):
             db.session.commit()
             flash(f'Usuario {user.username} actualizado', 'success')
             return redirect(url_for('superadmin.dashboard'))
+    ai_informes_count = AiInforme.query.filter_by(user_id=user.id).count()
     return render_template('superadmin/user_form.html', user=user, action='edit', roles=ROLES,
-                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY,
+                           ai_informes_count=ai_informes_count)
 
 
 @superadmin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
@@ -267,8 +297,10 @@ def admin_new():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            enviar_email_verificacion(user, request.url_root)
-            flash(f'Administrador {username} creado exitosamente. Se envió un email de verificación.', 'success')
+            if enviar_email_verificacion(user, request.url_root):
+                flash(f'Administrador {username} creado exitosamente. Se envió un email de verificación.', 'success')
+            else:
+                flash(f'Administrador {username} creado, pero el email de verificación no pudo enviarse (revisá la configuración SMTP). Podés verificarlo manualmente.', 'warning')
             return redirect(url_for('superadmin.dashboard'))
     return render_template('superadmin/admin_form.html', admin=None, action='new',
                            roles=ADMIN_ROLES,

@@ -45,6 +45,20 @@ def _own_id():
     return None if current_user.role == 'superadmin' else current_user.id
 
 
+def _parse_trial_fields(form):
+    """Lee trial_expires_at (date) y ai_informes_max (int) de un form. Vacío = sin límite."""
+    trial_str = form.get('trial_expires_at', '').strip()
+    trial_expires_at = None
+    if trial_str:
+        try:
+            trial_expires_at = datetime.strptime(trial_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
+        except ValueError:
+            pass
+    ai_max_str = form.get('ai_informes_max', '').strip()
+    ai_informes_max = int(ai_max_str) if ai_max_str.isdigit() else None
+    return trial_expires_at, ai_informes_max
+
+
 def _audit(action, target_type, target_id, detail=''):
     try:
         db.session.add(AuditLog(
@@ -153,8 +167,13 @@ def users():
             (User.username.ilike(f'%{search}%')) | (User.email.ilike(f'%{search}%'))
         )
     pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=30, error_out=False)
+    ids = [u.id for u in pagination.items]
+    ai_counts = dict(
+        db.session.query(AiInforme.user_id, func.count(AiInforme.id))
+        .filter(AiInforme.user_id.in_(ids)).group_by(AiInforme.user_id).all()
+    ) if ids else {}
     return render_template('admin/users.html', users=pagination.items,
-                           pagination=pagination, search=search)
+                           pagination=pagination, search=search, ai_counts=ai_counts)
 
 
 @admin_bp.route('/users/new', methods=['GET', 'POST'])
@@ -178,15 +197,19 @@ def user_new():
             if region_tipo == 'pais':
                 region_nombre = None
             admin_id = current_user.id if current_user.role != 'superadmin' else None
+            trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user = User(username=username, email=email, role='user',
                         pais=pais, region_tipo=region_tipo, region_nombre=region_nombre,
                         created_by_admin=admin_id,
+                        trial_expires_at=trial_expires_at, ai_informes_max=ai_informes_max,
                         email_verified=False, email_verify_token=secrets.token_urlsafe(32))
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            enviar_email_verificacion(user, request.url_root)
-            flash(f'Usuario {username} creado exitosamente. Se envió un email de verificación.', 'success')
+            if enviar_email_verificacion(user, request.url_root):
+                flash(f'Usuario {username} creado exitosamente. Se envió un email de verificación.', 'success')
+            else:
+                flash(f'Usuario {username} creado, pero el email de verificación no pudo enviarse (revisá la configuración SMTP). Podés verificarlo manualmente desde la lista de usuarios.', 'warning')
             return redirect(url_for('admin.users'))
     return render_template('admin/user_form.html', user=None, action='new',
                            provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
@@ -213,19 +236,24 @@ def user_edit(user_id):
             region_nombre = request.form.get('region_nombre', '').strip() or None
             if region_tipo == 'pais':
                 region_nombre = None
+            trial_expires_at, ai_informes_max = _parse_trial_fields(request.form)
             user.email = email
             user.active = active
             user.pais = pais
             user.region_tipo = region_tipo
             user.region_nombre = region_nombre
+            user.trial_expires_at = trial_expires_at
+            user.ai_informes_max = ai_informes_max
             if new_password:
                 user.set_password(new_password)
             _audit('edit_user', 'User', user_id, f'email={email} active={active} pais={pais}')
             db.session.commit()
             flash(f'Usuario {user.username} actualizado', 'success')
             return redirect(url_for('admin.users'))
+    ai_informes_count = AiInforme.query.filter_by(user_id=user.id).count()
     return render_template('admin/user_form.html', user=user, action='edit',
-                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY)
+                           provincias=PROVINCIAS_ARG, departamentos=DEPARTAMENTOS_PRY,
+                           ai_informes_count=ai_informes_count)
 
 
 @admin_bp.route('/recursos')

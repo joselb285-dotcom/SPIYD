@@ -145,6 +145,30 @@
       </div>
       {% endif %}
 
+      <hr class="border-outline-variant/20">
+      <p class="text-[11px] text-on-surface-variant -mt-2">Acceso de prueba (opcional — dejar vacío para sin límite)</p>
+
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Fecha de vencimiento de la prueba
+        </label>
+        <input type="date" name="trial_expires_at"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface focus:outline-none focus:border-primary/50"
+               value="{% if user and user.trial_expires_at %}{{ user.trial_expires_at.strftime('%Y-%m-%d') }}{% endif %}">
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5 font-label-technical">
+          Máximo de informes IA
+        </label>
+        <input type="number" min="0" name="ai_informes_max" placeholder="Sin límite"
+               class="w-full bg-surface-container-high border border-outline-variant/30 rounded-lg px-3 py-2.5 text-[14px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary/50"
+               value="{% if user and user.ai_informes_max is not none %}{{ user.ai_informes_max }}{% endif %}">
+        {% if action == 'edit' %}
+        <p class="text-[11px] text-on-surface-variant mt-1">Ya generó {{ ai_informes_count }} informe{{ 's' if ai_informes_count != 1 else '' }}.</p>
+        {% endif %}
+      </div>
+
       <div class="flex gap-3 pt-2">
         <button type="submit"
                 class="bg-secondary-container text-on-secondary-container px-5 py-2.5 rounded-lg text-[13px] font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">

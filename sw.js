@@ -20,7 +20,7 @@ self.addEventListener('activate', e => {
 // API paths that must never be cached
 const API_PREFIXES = [
   '/nasa-focos', '/smn-alertas', '/inpe-focos', '/goes-focos',
-  '/admin', '/ai-', '/zona-clima', '/fwi-grid', '/wind-data',
+  '/admin', '/superadmin', '/ai-', '/zona-clima', '/fwi-grid', '/wind-data',
   '/ai-foco-analysis', '/ai-zona-analysis', '/login', '/logout'
 ];
 

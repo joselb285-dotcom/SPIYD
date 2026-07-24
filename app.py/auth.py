@@ -56,6 +56,9 @@ def login():
         if user and user.check_password(password) and not user.email_verified:
             flash('Verificá tu email antes de iniciar sesión. Revisá tu casilla de correo.', 'error')
             return render_template('auth/login.html')
+        if user and user.check_password(password) and user.trial_expires_at and datetime.utcnow() > user.trial_expires_at:
+            flash('Tu período de prueba venció. Contactá a tu administrador.', 'error')
+            return render_template('auth/login.html')
         if user and user.check_password(password) and user.active:
             if user.role == 'superadmin':
                 session['pending_2fa_uid'] = user.id

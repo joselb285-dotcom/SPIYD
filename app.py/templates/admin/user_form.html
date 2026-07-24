@@ -93,6 +93,24 @@
         </div>
         {% endif %}
 
+        <hr style="border-color:var(--border);margin:20px 0">
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Acceso de prueba (opcional — dejar vacío para sin límite)</div>
+
+        <div class="mb-3">
+          <label class="form-label">Fecha de vencimiento de la prueba</label>
+          <input class="form-control" type="date" name="trial_expires_at"
+                 value="{% if user and user.trial_expires_at %}{{ user.trial_expires_at.strftime('%Y-%m-%d') }}{% endif %}">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Máximo de informes IA</label>
+          <input class="form-control" type="number" min="0" name="ai_informes_max" placeholder="Sin límite"
+                 value="{% if user and user.ai_informes_max is not none %}{{ user.ai_informes_max }}{% endif %}">
+          {% if action == 'edit' %}
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Ya generó {{ ai_informes_count }} informe{{ 's' if ai_informes_count != 1 else '' }}.</div>
+          {% endif %}
+        </div>
+
         <div class="d-flex gap-3 mt-4">
           <button type="submit" class="btn-spiyd">
             <i class="fas fa-{{ 'user-plus' if action == 'new' else 'floppy-disk' }}"></i>
