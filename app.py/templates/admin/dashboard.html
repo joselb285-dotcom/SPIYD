@@ -28,6 +28,37 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(143,144,151,0.3); border-radius: 2px; }
     .dash-map-tip { background: rgba(10,11,16,0.95); color: #e4e2e4; border: 1px solid rgba(249,115,22,0.5); font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 5px 9px; border-radius: 6px; white-space: nowrap; }
     .dash-map-tip::before { display: none; }
+
+    /* ── Country flag banner ── */
+    .flag-wave-wrap { perspective: 300px; display: inline-flex; align-items: center; }
+    .flag-wave {
+        display: inline-block; line-height: 1; transform-origin: left center;
+        animation: flagWave 2.4s ease-in-out infinite;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.45));
+    }
+    @keyframes flagWave {
+        0%, 100% { transform: rotateY(0deg) rotateZ(0deg) scaleX(1); }
+        25%      { transform: rotateY(18deg) rotateZ(3deg) scaleX(0.94); }
+        50%      { transform: rotateY(-14deg) rotateZ(-3deg) scaleX(1.04); }
+        75%      { transform: rotateY(10deg) rotateZ(2deg) scaleX(0.97); }
+    }
+
+    /* ── 3D keycap buttons ── */
+    .btn-key {
+        position: relative; border: none; cursor: pointer; font-weight: 700;
+        transition: transform .08s ease, box-shadow .08s ease; transform: translateY(0);
+    }
+    .btn-key:active { transform: translateY(3px); }
+    .btn-key.key-orange { background: linear-gradient(180deg,#fb923c,#f97316); color:#1a1004; box-shadow: 0 4px 0 0 #c2410c, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-orange:active { box-shadow: 0 1px 0 0 #c2410c, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-green { background: linear-gradient(180deg,#4ade80,#22c55e); color:#052e13; box-shadow: 0 4px 0 0 #15803d, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-green:active { box-shadow: 0 1px 0 0 #15803d, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-blue { background: linear-gradient(180deg,#60a5fa,#3b82f6); color:#04122e; box-shadow: 0 4px 0 0 #1d4ed8, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-blue:active { box-shadow: 0 1px 0 0 #1d4ed8, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-red { background: linear-gradient(180deg,#f87171,#ef4444); color:#2a0a0a; box-shadow: 0 4px 0 0 #b91c1c, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-red:active { box-shadow: 0 1px 0 0 #b91c1c, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-dark { background: linear-gradient(180deg,#52525b,#3f3f46); color:#e4e4e7; box-shadow: 0 4px 0 0 #18181b, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-dark:active { box-shadow: 0 1px 0 0 #18181b, 0 2px 4px rgba(0,0,0,.35); }
 </style>
 <script id="tailwind-config">
     tailwind.config = {
@@ -64,19 +95,19 @@
     <nav class="flex flex-col gap-1 flex-1">
         <div class="px-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.main">Principal</div>
         <a class="flex items-center gap-3 py-3 px-4 bg-secondary-container text-on-secondary-container rounded-lg mx-2 transition-all" href="/admin/">
-            <span class="material-symbols-outlined">dashboard</span>
-            <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Dashboard</span>
+            <span class="material-symbols-outlined">home</span>
+            <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Inicio</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/users">
-            <span class="material-symbols-outlined">group</span>
+            <span class="material-symbols-outlined">groups</span>
             <span class="font-label-technical text-[12px]" data-i18n="nav.users">Usuarios</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/recursos">
-            <span class="material-symbols-outlined">database</span>
+            <span class="material-symbols-outlined">inventory_2</span>
             <span class="font-label-technical text-[12px]" data-i18n="nav.resources">Recursos</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/mapa-recursos">
-            <span class="material-symbols-outlined">map</span>
+            <span class="material-symbols-outlined">travel_explore</span>
             <span class="font-label-technical text-[12px]" data-i18n="nav.resourceMap">Mapa Recursos</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/ai-informes">
@@ -84,7 +115,7 @@
             <span class="font-label-technical text-[12px]" data-i18n="nav.aiHistory">Historial IA</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/admin/auditoria">
-            <span class="material-symbols-outlined">shield</span>
+            <span class="material-symbols-outlined">security</span>
             <span class="font-label-technical text-[12px]" data-i18n="nav.audit">Auditoría</span>
         </a>
         <div class="px-4 mt-4 mb-2 opacity-40 font-label-technical text-[10px] uppercase tracking-widest" data-i18n="nav.application">Aplicación</div>
@@ -93,7 +124,7 @@
             <span class="font-label-technical text-[12px]" data-i18n="nav.satelliteMap">Mapa Satelital</span>
         </a>
         <a class="flex items-center gap-3 py-3 px-4 text-on-surface-variant hover:bg-surface-variant/30 rounded-lg mx-2 transition-all" href="/">
-            <span class="material-symbols-outlined">public</span>
+            <span class="material-symbols-outlined">language</span>
             <span class="font-label-technical text-[12px]" data-i18n="nav.website">Sitio Web</span>
         </a>
     </nav>
@@ -174,6 +205,18 @@
               </button>
             </div>
             <div class="glass-panel p-3 md:p-4 rounded-xl flex flex-wrap items-center gap-3 md:gap-6 flex-1">
+                {% set _banderas = {'argentina': '🇦🇷', 'paraguay': '🇵🇾', 'chile': '🇨🇱'} %}
+                {% set _pais_actual = current_user.paises_list[0] if current_user.paises_list|length == 1 else None %}
+                {% if _pais_actual and _banderas.get(_pais_actual) %}
+                <div class="flag-wave-wrap">
+                    <span class="flag-wave" style="font-size:2.4rem">{{ _banderas[_pais_actual] }}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-label-technical text-[10px] text-on-surface-variant uppercase">Cobertura</span>
+                    <span class="text-lg font-bold">{{ _pais_actual|capitalize }}</span>
+                </div>
+                <div class="w-px h-8 bg-outline-variant/30"></div>
+                {% endif %}
                 <div class="flex flex-col">
                     <span class="font-label-technical text-[10px] text-on-surface-variant uppercase" data-i18n="dash.system">Sistema</span>
                     <div class="flex items-center gap-2">
@@ -192,15 +235,15 @@
                 </div>
                 <div class="w-px h-8 bg-outline-variant/30"></div>
                 <div class="flex items-center gap-3">
-                    <a href="/admin/users/new" class="bg-primary text-on-primary-fixed font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:opacity-90 transition-all text-sm">
+                    <a href="/admin/users/new" class="btn-key key-orange py-2 px-4 rounded-lg flex items-center gap-2 text-sm">
                         <span class="material-symbols-outlined text-sm">person_add</span>
                         <span data-i18n="dash.newUser">Nuevo Usuario</span>
                     </a>
-                    <a href="/mapa?auth=1" class="bg-secondary/20 border border-secondary/30 text-secondary font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-secondary/30 transition-all text-sm">
+                    <a href="/mapa?auth=1" class="btn-key key-green py-2 px-4 rounded-lg flex items-center gap-2 text-sm">
                         <span class="material-symbols-outlined text-sm">satellite_alt</span>
                         <span data-i18n="dash.viewMap">Ver Mapa</span>
                     </a>
-                    <button id="btnResumen" onclick="enviarResumen()" class="bg-primary/20 border border-primary/30 text-primary font-bold py-2 px-4 rounded-lg flex items-center gap-2 hover:bg-primary/30 transition-all text-sm">
+                    <button id="btnResumen" onclick="enviarResumen()" class="btn-key key-blue py-2 px-4 rounded-lg flex items-center gap-2 text-sm">
                         <span class="material-symbols-outlined text-sm">send</span>
                         <span data-i18n="dash.summary">Resumen</span>
                     </button>
@@ -221,22 +264,22 @@
             <div class="w-full lg:w-80 flex flex-col gap-4 md:gap-6 pointer-events-auto lg:overflow-y-auto lg:pr-2 custom-scrollbar">
                 <!-- Stat Cards -->
                 <div class="grid grid-cols-2 gap-3">
-                    <a href="/admin/users" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent">
+                    <a href="/admin/users" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent;border-left:3px solid #60a5fa">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.users">Usuarios</p>
                         <p class="text-2xl font-bold">{{ active_users }}</p>
                         <p class="text-[10px] text-on-surface-variant">de {{ total_users }}</p>
                     </a>
-                    <a href="/mapa?auth=1" class="glass-panel p-4 rounded-2xl text-center hover:border-error/40 transition-all" style="text-decoration:none;border:1px solid transparent">
+                    <a href="/mapa?auth=1" class="glass-panel p-4 rounded-2xl text-center hover:border-error/40 transition-all" style="text-decoration:none;border:1px solid transparent;border-left:3px solid #ef4444">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.hotspotsToday">Focos Hoy</p>
                         <p class="text-2xl font-bold text-error">{{ focos_hoy }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ focos_mes }} este mes</p>
                     </a>
-                    <a href="/admin/auditoria" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent">
+                    <a href="/admin/auditoria" class="glass-panel p-4 rounded-2xl text-center hover:border-primary/40 transition-all" style="text-decoration:none;border:1px solid transparent;border-left:3px solid #f97316">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.smnAlerts">Alertas SMN</p>
                         <p class="text-2xl font-bold text-primary">{{ smn_total }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ smn_hoy }} hoy</p>
                     </a>
-                    <a href="/admin/ai-informes" class="glass-panel p-4 rounded-2xl text-center hover:border-purple-400/40 transition-all" style="text-decoration:none;border:1px solid transparent">
+                    <a href="/admin/ai-informes" class="glass-panel p-4 rounded-2xl text-center hover:border-purple-400/40 transition-all" style="text-decoration:none;border:1px solid transparent;border-left:3px solid #a78bfa">
                         <p class="font-label-technical text-[10px] text-on-surface-variant mb-1 uppercase" data-i18n="dash.aiReports">Informes IA</p>
                         <p class="text-2xl font-bold" style="color:#a78bfa">{{ ai_total }}</p>
                         <p class="text-[10px] text-on-surface-variant">{{ ai_mes }} este mes</p>
@@ -441,16 +484,14 @@
 
         <!-- Bottom Toolbar -->
         <footer class="flex justify-center mt-4 pointer-events-auto">
-            <div class="glass-panel p-2 rounded-full flex flex-wrap items-center gap-1 justify-center">
-                <a href="/admin/users" class="px-4 py-2 hover:bg-surface-variant/30 rounded-full transition-colors text-on-surface-variant hover:text-primary font-label-technical text-[11px] flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">group</span> <span data-i18n="dash.manageUsers">Gestionar Usuarios</span>
+            <div class="glass-panel p-2 rounded-full flex flex-wrap items-center gap-2 justify-center">
+                <a href="/admin/users" class="btn-key key-dark px-4 py-2 rounded-full font-label-technical text-[11px] flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">groups</span> <span data-i18n="dash.manageUsers">Gestionar Usuarios</span>
                 </a>
-                <div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
-                <a href="/admin/users/new" class="px-4 py-2 hover:bg-surface-variant/30 rounded-full transition-colors text-on-surface-variant hover:text-primary font-label-technical text-[11px] flex items-center gap-2">
+                <a href="/admin/users/new" class="btn-key key-orange px-4 py-2 rounded-full font-label-technical text-[11px] flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">person_add</span> <span data-i18n="dash.newUser">Nuevo Usuario</span>
                 </a>
-                <div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
-                <a href="/logout" class="bg-error/10 text-error px-6 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-error/20 transition-all font-label-technical text-[11px]">
+                <a href="/logout" class="btn-key key-red px-6 py-2 rounded-full font-label-technical text-[11px] flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">logout</span>
                     <span data-i18n="nav.logout">Cerrar Sesión</span>
                 </a>

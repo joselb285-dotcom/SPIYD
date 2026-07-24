@@ -50,6 +50,36 @@
       50%      { transform: rotateY(-14deg) rotateZ(-3deg) scaleX(1.04); }
       75%      { transform: rotateY(10deg) rotateZ(2deg) scaleX(0.97); }
     }
+
+    /* ── 3D keycap buttons ── */
+    .btn-key {
+      position: relative; border: none; cursor: pointer; font-weight: 700;
+      transition: transform .08s ease, box-shadow .08s ease;
+      transform: translateY(0);
+    }
+    .btn-key:active { transform: translateY(3px); }
+    .btn-key.key-orange { background: linear-gradient(180deg,#fb923c,#f97316); color:#1a1004; box-shadow: 0 4px 0 0 #c2410c, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-orange:active { box-shadow: 0 1px 0 0 #c2410c, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-green { background: linear-gradient(180deg,#4ade80,#22c55e); color:#052e13; box-shadow: 0 4px 0 0 #15803d, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-green:active { box-shadow: 0 1px 0 0 #15803d, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-red { background: linear-gradient(180deg,#f87171,#ef4444); color:#2a0a0a; box-shadow: 0 4px 0 0 #b91c1c, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-red:active { box-shadow: 0 1px 0 0 #b91c1c, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-blue { background: linear-gradient(180deg,#60a5fa,#3b82f6); color:#04122e; box-shadow: 0 4px 0 0 #1d4ed8, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-blue:active { box-shadow: 0 1px 0 0 #1d4ed8, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key.key-dark { background: linear-gradient(180deg,#52525b,#3f3f46); color:#e4e4e7; box-shadow: 0 4px 0 0 #18181b, 0 6px 10px rgba(0,0,0,.35); }
+    .btn-key.key-dark:active { box-shadow: 0 1px 0 0 #18181b, 0 2px 4px rgba(0,0,0,.35); }
+    .btn-key-icon {
+      position: relative; border: none; cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; border-radius: 8px;
+      transition: transform .08s ease, box-shadow .08s ease; transform: translateY(0);
+      background: linear-gradient(180deg,#3f3f46,#27272a); color:#d4d4d8;
+      box-shadow: 0 3px 0 0 #18181b, 0 4px 6px rgba(0,0,0,.3);
+    }
+    .btn-key-icon:active { transform: translateY(2px); box-shadow: 0 1px 0 0 #18181b, 0 1px 2px rgba(0,0,0,.3); }
+    .btn-key-icon.key-icon-primary:hover { color: #b9c7e4; }
+    .btn-key-icon.key-icon-secondary:hover { color: #a1d494; }
+    .btn-key-icon.key-icon-tertiary:hover { color: #e7bf99; }
+    .btn-key-icon.key-icon-error:hover { color: #ffb4ab; }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -69,8 +99,8 @@
     <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all
        {% if request.endpoint in ('superadmin.dashboard','superadmin.admin_new','superadmin.admin_edit','superadmin.user_new','superadmin.user_edit') %}bg-secondary-container text-on-secondary-container{% else %}text-on-surface-variant hover:bg-surface-variant/30{% endif %}"
        href="/superadmin/">
-      <span class="material-symbols-outlined">dashboard</span>
-      <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Dashboard</span>
+      <span class="material-symbols-outlined">home</span>
+      <span class="font-label-technical text-[12px]" data-i18n="nav.dashboard">Inicio</span>
     </a>
     <a class="flex items-center gap-3 py-3 px-4 rounded-lg mx-2 transition-all text-on-surface-variant hover:bg-surface-variant/30"
        href="/admin/configuracion">
