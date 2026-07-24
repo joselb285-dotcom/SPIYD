@@ -12,10 +12,10 @@
   <meta name="apple-mobile-web-app-title" content="SPIYD">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-velocity/dist/leaflet-velocity.min.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-velocity@2.1.4/dist/leaflet-velocity.min.css"/>
 
   <style>
     * { box-sizing: border-box; }
@@ -834,11 +834,10 @@
 
   <div id="mapa"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-  <script src="https://unpkg.com/leaflet-velocity/dist/leaflet-velocity.min.js"></script>
-  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script src="https://unpkg.com/leaflet-velocity@2.1.4/dist/leaflet-velocity.min.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
   <script>
     // Limpiar ?auth=1 de la URL si viene del login redirect
@@ -1252,10 +1251,49 @@
       return lat >= -27.7 && lat <= -19.2 && lng >= -62.7 && lng <= -54.2;
     }
 
+    // ── Geometría GeoJSON sin dependencias externas (reemplaza turf.js) ───────
+    function _puntoEnAnillo(lng, lat, anillo) {
+      let dentro = false;
+      for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+        const [xi, yi] = anillo[i], [xj, yj] = anillo[j];
+        const cruza = ((yi > lat) !== (yj > lat)) &&
+          (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+        if (cruza) dentro = !dentro;
+      }
+      return dentro;
+    }
+    function _puntoEnPoligono(lng, lat, anillos) {
+      if (!_puntoEnAnillo(lng, lat, anillos[0])) return false;
+      for (let i = 1; i < anillos.length; i++) {
+        if (_puntoEnAnillo(lng, lat, anillos[i])) return false; // cae en un agujero
+      }
+      return true;
+    }
+    function puntoEnFeature(lng, lat, feature) {
+      const geom = feature && feature.geometry;
+      if (!geom) return false;
+      if (geom.type === 'Polygon') return _puntoEnPoligono(lng, lat, geom.coordinates);
+      if (geom.type === 'MultiPolygon') return geom.coordinates.some(p => _puntoEnPoligono(lng, lat, p));
+      return false;
+    }
+    function bboxDeFeature(feature) {
+      let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+      (function recorrer(coords) {
+        if (typeof coords[0] === 'number') {
+          const [lng, lat] = coords;
+          if (lng < w) w = lng; if (lng > e) e = lng;
+          if (lat < s) s = lat; if (lat > n) n = lat;
+        } else {
+          coords.forEach(recorrer);
+        }
+      })(feature.geometry.coordinates);
+      return [w, s, e, n];
+    }
+
     function estaEnArg(lat, lng) {
       if (estaEnParaguay(lat, lng)) return true;
       if (!geojsonArg) return true;
-      return geojsonArg.features.some(f => turf.booleanPointInPolygon(turf.point([lng,lat]), f));
+      return geojsonArg.features.some(f => puntoEnFeature(lng, lat, f));
     }
     function nomFeat(p) { return p.nombre||p.name||p.NAME||''; }
 
@@ -1592,7 +1630,7 @@
         if (!geojsonArg) { mostrarToast('Los límites provinciales todavía están cargando, probá de nuevo en unos segundos.'); return; }
         const feat = geojsonArg.features.find(f => nomFeat(f.properties) === provSel);
         if (!feat) { mostrarToast('No se encontró la provincia seleccionada.'); return; }
-        const [w, s, e, n] = turf.bbox(feat);
+        const [w, s, e, n] = bboxDeFeature(feat);
         bbox = { s, w, n, e };
         etiqueta = provSel;
       } else {
