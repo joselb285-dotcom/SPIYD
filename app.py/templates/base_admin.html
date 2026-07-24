@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <script src="/theme.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SPIYD Admin{% endblock %}</title>
@@ -26,6 +27,25 @@
       --gold: #facc15;
       --orange: #f97316;
       --green: #22c55e; --red: #ef4444; --yellow: #f59e0b;
+      --hover-bg: rgba(255,255,255,0.06);
+      --hover-bg-soft: rgba(255,255,255,0.02);
+      --input-bg: rgba(255,255,255,0.04);
+      --input-bg-focus: rgba(255,255,255,0.06);
+      --select-option-bg: hsl(0 0% 9%);
+    }
+    html.light {
+      --bg: #f2f3f7;
+      --surface: #ffffff;
+      --sidebar: #ffffff;
+      --card: #ffffff;
+      --border: rgba(0,0,0,0.09);
+      --text: #14161c;
+      --muted: #6b7280;
+      --hover-bg: rgba(0,0,0,0.045);
+      --hover-bg-soft: rgba(0,0,0,0.025);
+      --input-bg: rgba(0,0,0,0.035);
+      --input-bg-focus: rgba(0,0,0,0.05);
+      --select-option-bg: #ffffff;
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
@@ -51,7 +71,7 @@
     }
     .sidebar-logo-name {
       font-family: 'Syne', system-ui, sans-serif;
-      font-size: 1rem; font-weight: 800; color: white; letter-spacing: -.02em;
+      font-size: 1rem; font-weight: 800; color: var(--text); letter-spacing: -.02em;
     }
     .sidebar-logo-sub {
       font-size: 0.6rem; color: var(--muted); letter-spacing: .05em;
@@ -63,7 +83,7 @@
       color: var(--muted); text-decoration: none; font-size: 0.88rem; font-weight: 500;
       transition: all .15s;
     }
-    .sidebar-link:hover, .sidebar-link.active { background: rgba(255,255,255,0.06); color: var(--text); }
+    .sidebar-link:hover, .sidebar-link.active { background: var(--hover-bg); color: var(--text); }
     .sidebar-link.active { color: var(--accent-a); background: rgba(249,115,22,0.1); }
     .sidebar-link i { width: 16px; text-align: center; }
     .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border); }
@@ -101,9 +121,9 @@
     .data-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .data-card-header h6 { margin: 0; font-weight: 700; font-size: 0.95rem; }
     .table { color: var(--text); margin: 0; }
-    .table th { color: var(--muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border-color: var(--border); padding: 10px 16px; background: rgba(255,255,255,0.02); }
+    .table th { color: var(--muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border-color: var(--border); padding: 10px 16px; background: var(--hover-bg-soft); }
     .table td { border-color: var(--border); padding: 12px 16px; vertical-align: middle; font-size: 0.88rem; }
-    .table tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .table tbody tr:hover { background: var(--hover-bg-soft); }
 
     /* ── BADGES ── */
     .badge-role { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
@@ -120,22 +140,22 @@
     .btn-spiyd { background: var(--orange); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s; }
     .btn-spiyd:hover { opacity: .85; color: #fff; }
     .btn-spiyd-outline { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 18px; font-size: 0.88rem; font-weight: 500; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
-    .btn-spiyd-outline:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+    .btn-spiyd-outline:hover { background: var(--hover-bg); color: var(--text); }
     .btn-icon { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; color: var(--muted); cursor: pointer; transition: all .15s; font-size: 0.82rem; }
-    .btn-icon:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .btn-icon:hover { background: var(--hover-bg); color: var(--text); }
     .btn-icon.danger:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.08); }
 
     /* ── FORMS ── */
     .form-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
     .form-label { font-size: 0.82rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
     .form-control, .form-select {
-      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      background: var(--input-bg); border: 1px solid var(--border);
       color: var(--text); border-radius: 8px; padding: 9px 13px; font-size: 0.9rem;
     }
-    .form-control:focus, .form-select:focus { background: rgba(255,255,255,0.06); border-color: var(--accent-a); color: var(--text); box-shadow: 0 0 0 2px rgba(249,115,22,0.15); outline: none; }
-    .form-select option { background: hsl(0 0% 9%); }
+    .form-control:focus, .form-select:focus { background: var(--input-bg-focus); border-color: var(--accent-a); color: var(--text); box-shadow: 0 0 0 2px rgba(249,115,22,0.15); outline: none; }
+    .form-select option { background: var(--select-option-bg); }
     .form-control::placeholder { color: var(--muted); }
-    .form-check-input { background-color: rgba(255,255,255,0.06); border-color: var(--border); }
+    .form-check-input { background-color: var(--input-bg-focus); border-color: var(--border); }
     .form-check-input:checked { background-color: var(--accent-a); border-color: var(--accent-a); }
 
     /* ── ALERTS ── */
@@ -288,6 +308,10 @@
       <span style="font-size:0.82rem;color:var(--muted)">
         <i class="fas fa-circle" style="color:var(--green);font-size:8px"></i> <span data-i18n="nav.systemActive">Sistema activo</span>
       </span>
+      <button id="themeToggleBtn" onclick="onThemeToggleClick()" title="Cambiar tema"
+              style="background:transparent;border:1px solid var(--border);border-radius:8px;padding:6px 9px;color:var(--muted);cursor:pointer;display:flex;align-items:center">
+        <i id="themeToggleIcon" class="fas fa-moon"></i>
+      </button>
       <div style="display:flex;align-items:center;gap:2px;border-left:1px solid var(--border);padding-left:10px">
         <button class="spiyd-lang-btn" data-lang="es" onclick="spiydI18n.setLang('es')"
                 style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:var(--muted);padding:2px 5px;border-radius:4px;transition:all .15s">ES</button>
@@ -326,6 +350,15 @@ function closeSidebar() {
     document.getElementById('sidebar').classList.remove('is-open');
     document.getElementById('sidebarOverlay').style.display = 'none';
 }
+function syncThemeIcon() {
+    const icon = document.getElementById('themeToggleIcon');
+    if (icon) icon.className = 'fas ' + (spiydTheme.get() === 'light' ? 'fa-sun' : 'fa-moon');
+}
+function onThemeToggleClick() {
+    spiydTheme.toggle();
+    syncThemeIcon();
+}
+syncThemeIcon();
 // Badges sidebar — polling cada 5 min
 function actualizarBadgesAdmin() {
     fetch('/admin/api/alert-counts').then(r=>r.json()).then(d=>{

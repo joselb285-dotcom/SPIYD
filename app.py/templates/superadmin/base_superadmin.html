@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html class="dark" lang="es">
+<html lang="es">
 <head>
+  <script src="/theme.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SPIYD SuperAdmin{% endblock %}</title>
@@ -17,13 +18,13 @@
       darkMode: "class",
       theme: { extend: {
         "colors": {
-          "secondary": "#a1d494","primary": "#b9c7e4","tertiary": "#e7bf99","error": "#ffb4ab",
-          "surface": "#131315","surface-container": "#1f1f21","surface-container-high": "#2a2a2c",
-          "surface-container-highest": "#343536","surface-container-lowest": "#0e0e10",
-          "surface-variant": "#343536","on-surface": "#e4e2e4","on-surface-variant": "#c5c6cd",
-          "outline-variant": "#44474d","primary-container": "#0a192f",
-          "secondary-container": "#23501e","on-secondary-container": "#90c283",
-          "on-primary-fixed": "#0d1c32","error-container": "#93000a","on-error-container": "#ffdad6"
+          "secondary": "var(--secondary)","primary": "var(--primary)","tertiary": "var(--tertiary)","error": "var(--error)",
+          "surface": "var(--surface)","surface-container": "var(--surface-container)","surface-container-high": "var(--surface-container-high)",
+          "surface-container-highest": "var(--surface-container-highest)","surface-container-lowest": "var(--surface-container-lowest)",
+          "surface-variant": "var(--surface-variant)","on-surface": "var(--on-surface)","on-surface-variant": "var(--on-surface-variant)",
+          "outline-variant": "var(--outline-variant)","primary-container": "var(--primary-container)",
+          "secondary-container": "var(--secondary-container)","on-secondary-container": "var(--on-secondary-container)",
+          "on-primary-fixed": "var(--on-primary-fixed)","error-container": "var(--error-container)","on-error-container": "var(--on-error-container)"
         },
         "fontFamily": { "label-technical": ["JetBrains Mono"], "headline-lg": ["Space Grotesk"] },
         "spacing": { "glass-padding": "20px","gutter": "16px" }
@@ -31,13 +32,37 @@
     }
   </script>
   <style>
-    body { background-color: #020617; background-image: radial-gradient(circle at 50% 50%, #0a192f 0%, #020617 100%); color: #e4e2e4; font-family: 'Inter', sans-serif; }
-    .glass-panel { background: rgba(19,19,21,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(143,144,151,0.2); box-shadow: inset 0 1px 1px rgba(255,255,255,0.05); }
+    :root, html.dark {
+      --secondary: #a1d494; --primary: #b9c7e4; --tertiary: #e7bf99; --error: #ffb4ab;
+      --surface: #131315; --surface-container: #1f1f21; --surface-container-high: #2a2a2c;
+      --surface-container-highest: #343536; --surface-container-lowest: #0e0e10;
+      --surface-variant: #343536; --on-surface: #e4e2e4; --on-surface-variant: #c5c6cd;
+      --outline-variant: #44474d; --primary-container: #0a192f;
+      --secondary-container: #23501e; --on-secondary-container: #90c283;
+      --on-primary-fixed: #0d1c32; --error-container: #93000a; --on-error-container: #ffdad6;
+      --page-bg-solid: #020617; --page-bg-a: #0a192f; --page-bg-b: #020617;
+      --glass-bg: rgba(19,19,21,0.6); --glass-border: rgba(143,144,151,0.2); --glass-highlight: rgba(255,255,255,0.05);
+      --select-option-bg: #1f1f21;
+    }
+    html.light {
+      --secondary: #2e6b1f; --primary: #35507e; --tertiary: #8a4b17; --error: #ba1a1a;
+      --surface: #fbfbfe; --surface-container: #f0f0f5; --surface-container-high: #e6e6ee;
+      --surface-container-highest: #dcdce6; --surface-container-lowest: #ffffff;
+      --surface-variant: #e1e2ec; --on-surface: #1a1b20; --on-surface-variant: #45464f;
+      --outline-variant: #c5c6d0; --primary-container: #dbe1ff;
+      --secondary-container: #c4efb2; --on-secondary-container: #0c2000;
+      --on-primary-fixed: #dbe1ff; --error-container: #ffdad6; --on-error-container: #410002;
+      --page-bg-solid: #eef1f8; --page-bg-a: #ffffff; --page-bg-b: #eef1f8;
+      --glass-bg: rgba(255,255,255,0.65); --glass-border: rgba(0,0,0,0.08); --glass-highlight: rgba(255,255,255,0.6);
+      --select-option-bg: #ffffff;
+    }
+    body { background-color: var(--page-bg-solid); background-image: radial-gradient(circle at 50% 50%, var(--page-bg-a) 0%, var(--page-bg-b) 100%); color: var(--on-surface); font-family: 'Inter', sans-serif; }
+    .glass-panel { background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 1px var(--glass-highlight); }
     .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     .custom-scrollbar::-webkit-scrollbar { width: 4px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(143,144,151,0.3); border-radius: 2px; }
-    select option { background: #1f1f21; }
+    select option { background: var(--select-option-bg); }
     .flag-wave-wrap { perspective: 300px; display: inline-flex; align-items: center; }
     .flag-wave {
       display: inline-block; font-size: 1.35rem; line-height: 1;
@@ -175,13 +200,17 @@
         <span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>
         <span data-i18n="nav.systemActive">Sistema activo</span>
       </span>
+      <button id="themeToggleBtn" onclick="onThemeToggleClick()" title="Cambiar tema"
+              style="background:transparent;border:1px solid rgba(68,71,77,0.5);border-radius:8px;padding:5px 8px;color:var(--on-surface-variant);cursor:pointer;display:flex;align-items:center">
+        <span id="themeToggleIcon" class="material-symbols-outlined" style="font-size:18px">light_mode</span>
+      </button>
       <div style="display:flex;align-items:center;gap:2px;border-left:1px solid rgba(68,71,77,0.5);padding-left:10px">
         <button class="spiyd-lang-btn" data-lang="es" onclick="spiydI18n.setLang('es')"
-                style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:#c5c6cd;padding:2px 5px;border-radius:4px;transition:all .15s">ES</button>
+                style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:var(--on-surface-variant);padding:2px 5px;border-radius:4px;transition:all .15s">ES</button>
         <button class="spiyd-lang-btn" data-lang="en" onclick="spiydI18n.setLang('en')"
-                style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:#c5c6cd;padding:2px 5px;border-radius:4px;transition:all .15s">EN</button>
+                style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:var(--on-surface-variant);padding:2px 5px;border-radius:4px;transition:all .15s">EN</button>
         <button class="spiyd-lang-btn" data-lang="pt" onclick="spiydI18n.setLang('pt')"
-                style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:#c5c6cd;padding:2px 5px;border-radius:4px;transition:all .15s">PT</button>
+                style="background:transparent;border:none;cursor:pointer;font-size:0.72rem;color:var(--on-surface-variant);padding:2px 5px;border-radius:4px;transition:all .15s">PT</button>
       </div>
     </div>
   </div>
@@ -216,6 +245,15 @@ function closeSidebar() {
     document.getElementById('sidebar').style.transform = '';
     document.getElementById('sidebarOverlay').classList.add('hidden');
 }
+function syncThemeIcon() {
+    const icon = document.getElementById('themeToggleIcon');
+    if (icon) icon.textContent = spiydTheme.get() === 'light' ? 'dark_mode' : 'light_mode';
+}
+function onThemeToggleClick() {
+    spiydTheme.toggle();
+    syncThemeIcon();
+}
+syncThemeIcon();
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
