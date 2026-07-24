@@ -116,6 +116,9 @@
                 <span class="w-1.5 h-1.5 rounded-full bg-error"></span> Inactivo
               </span>
             {% endif %}
+            {% if not a.email_verified %}
+              <div class="mt-1"><span class="px-2 py-0.5 rounded text-[9px] font-bold bg-tertiary/20 text-tertiary">Email sin verificar</span></div>
+            {% endif %}
           </td>
           <td class="px-6 py-4 text-center text-[11px] text-on-surface-variant font-label-technical">
             {{ a.last_login.strftime('%d/%m %H:%M') if a.last_login else '—' }}
@@ -127,6 +130,15 @@
                  title="Editar">
                 <span class="material-symbols-outlined" style="font-size:16px">edit</span>
               </a>
+              {% if not a.email_verified %}
+              <form method="post" action="/superadmin/users/{{ a.id }}/verify" style="margin:0">
+                <button type="submit"
+                        class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-secondary hover:border-secondary/40 transition-all inline-flex"
+                        title="Verificar email manualmente">
+                  <span class="material-symbols-outlined" style="font-size:16px">verified</span>
+                </button>
+              </form>
+              {% endif %}
               <form method="post" action="/superadmin/admins/{{ a.id }}/toggle" style="margin:0">
                 <button type="submit"
                         class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-tertiary hover:border-tertiary/40 transition-all inline-flex"
@@ -206,6 +218,13 @@
                    class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-all inline-flex" title="Editar">
                   <span class="material-symbols-outlined" style="font-size:16px">edit</span>
                 </a>
+                {% if not u.email_verified %}
+                <form method="post" action="/superadmin/users/{{ u.id }}/verify" style="margin:0">
+                  <button type="submit" class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-secondary hover:border-secondary/40 transition-all inline-flex" title="Verificar email manualmente">
+                    <span class="material-symbols-outlined" style="font-size:16px">verified</span>
+                  </button>
+                </form>
+                {% endif %}
                 <form method="post" action="/superadmin/users/{{ u.id }}/toggle" style="margin:0">
                   <button type="submit" class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-tertiary hover:border-tertiary/40 transition-all inline-flex"
                           title="{{ 'Desactivar' if u.active else 'Activar' }}">
@@ -246,6 +265,9 @@
           <td class="px-6 py-3">
             <div class="text-[13px] font-bold text-on-surface">{{ u.username }}</div>
             <div class="text-[11px] text-on-surface-variant">{{ u.email }}</div>
+            {% if not u.email_verified %}
+            <span class="px-2 py-0.5 rounded text-[9px] font-bold bg-tertiary/20 text-tertiary">Email sin verificar</span>
+            {% endif %}
           </td>
           <td class="px-6 py-3 text-right">
             <div class="flex items-center justify-end gap-1">
@@ -253,6 +275,13 @@
                  class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-all inline-flex" title="Editar">
                 <span class="material-symbols-outlined" style="font-size:16px">edit</span>
               </a>
+              {% if not u.email_verified %}
+              <form method="post" action="/superadmin/users/{{ u.id }}/verify" style="margin:0">
+                <button type="submit" class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-secondary hover:border-secondary/40 transition-all inline-flex" title="Verificar email manualmente">
+                  <span class="material-symbols-outlined" style="font-size:16px">verified</span>
+                </button>
+              </form>
+              {% endif %}
               <form method="post" action="/superadmin/users/{{ u.id }}/delete" style="margin:0"
                     onsubmit="return confirm('¿Eliminar a {{ u.username }}? Esta acción no se puede deshacer.')">
                 <button type="submit" class="p-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:text-error hover:border-error/40 transition-all inline-flex" title="Eliminar">

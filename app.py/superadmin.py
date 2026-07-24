@@ -217,6 +217,18 @@ def user_toggle(user_id):
     return redirect(url_for('superadmin.dashboard'))
 
 
+@superadmin_bp.route('/users/<int:user_id>/verify', methods=['POST'])
+@login_required
+@superadmin_required
+def user_verify(user_id):
+    user = db.get_or_404(User, user_id)
+    user.email_verified = True
+    user.email_verify_token = None
+    db.session.commit()
+    flash(f'{user.username} verificado manualmente', 'success')
+    return redirect(url_for('superadmin.dashboard'))
+
+
 # ── Gestión de Administradores ───────────────────────────────────────────────
 
 

@@ -628,6 +628,22 @@ def configuracion():
     return render_template('admin/configuracion.html', campos=CAMPOS, valores=valores)
 
 
+@admin_bp.route('/users/<int:user_id>/verify', methods=['POST'])
+@login_required
+@admin_required
+def user_verify(user_id):
+    user = db.get_or_404(User, user_id)
+    if current_user.role != 'superadmin' and user.created_by_admin != current_user.id:
+        flash('No tenés permiso para verificar este usuario', 'error')
+        return redirect(url_for('admin.users'))
+    user.email_verified = True
+    user.email_verify_token = None
+    _audit('verify_user', 'User', user_id, f'username={user.username}')
+    db.session.commit()
+    flash(f'Usuario {user.username} verificado manualmente', 'success')
+    return redirect(url_for('admin.users'))
+
+
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 @admin_required
