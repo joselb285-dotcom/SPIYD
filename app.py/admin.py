@@ -638,13 +638,15 @@ def alert_counts():
 @login_required
 @admin_required
 def configuracion():
-    if current_user.role != 'superadmin':
-        flash('Acceso restringido a superadministradores', 'error')
-        return redirect(url_for('admin.dashboard'))
     from app import get_cfg, set_cfg
+    from superadmin import _procesar_logo
+    es_superadmin = current_user.role == 'superadmin'
+
     CAMPOS = [
         ('SUMMARY_ENABLED',    'Resumen diario activo',          'bool',     'true'),
         ('SUMMARY_HOUR_UTC',   'Hora de envío (UTC)',             'number',   '11'),
+    ]
+    CAMPOS_SUPERADMIN = [
         ('TELEGRAM_ENABLED',   'Telegram activo',                 'bool',     'true'),
         ('TELEGRAM_BOT_TOKEN', 'Telegram Bot Token',              'password', ''),
         ('TELEGRAM_CHAT_ID',   'Telegram Chat ID',                'text',     ''),
@@ -657,6 +659,9 @@ def configuracion():
         ('NASA_MAP_KEY',       'NASA FIRMS API Key',              'password', ''),
         ('ANTHROPIC_API_KEY',  'Anthropic API Key (Claude IA)',   'password', ''),
     ]
+    if es_superadmin:
+        CAMPOS = CAMPOS + CAMPOS_SUPERADMIN
+
     if request.method == 'POST':
         for key, _, tipo, _ in CAMPOS:
             if tipo == 'bool':
@@ -665,10 +670,20 @@ def configuracion():
                 val = request.form.get(key, '').strip()
                 if val:
                     set_cfg(key, val)
+
+        nuevo_logo = _procesar_logo(request.files.get('institucion_logo'))
+        if nuevo_logo:
+            current_user.institucion_logo = nuevo_logo
+            db.session.commit()
+        elif 'quitar_logo' in request.form:
+            current_user.institucion_logo = None
+            db.session.commit()
+
         flash('Configuración guardada correctamente', 'success')
         return redirect(url_for('admin.configuracion'))
     valores = {key: get_cfg(key, default) for key, _, _, default in CAMPOS}
-    return render_template('admin/configuracion.html', campos=CAMPOS, valores=valores)
+    return render_template('admin/configuracion.html', campos=CAMPOS, valores=valores,
+                           es_superadmin=es_superadmin)
 
 
 @admin_bp.route('/users/<int:user_id>/verify', methods=['POST'])

@@ -4,7 +4,38 @@
 {% block breadcrumb %}Configuración{% endblock %}
 
 {% block content %}
-<form method="POST" action="/admin/configuracion">
+<form method="POST" action="/admin/configuracion" enctype="multipart/form-data">
+
+  <!-- Logo institucional -->
+  <div class="data-card mb-4">
+    <div class="data-card-header">
+      <h6><i class="fas fa-image me-2" style="color:var(--gold)"></i>Logo Institucional</h6>
+    </div>
+    <div style="padding:20px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        {% if current_user.institucion_logo %}
+          <img src="{{ current_user.institucion_logo }}" alt="logo" style="width:100%;height:100%;object-fit:cover">
+        {% else %}
+          <i class="fas fa-building" style="color:var(--muted);font-size:1.4rem"></i>
+        {% endif %}
+      </div>
+      <div style="flex:1;min-width:220px">
+        <label class="form-label">Reemplazar logo (PNG, JPG, WEBP o GIF, máx. 300KB)</label>
+        <input type="file" name="institucion_logo" accept="image/png,image/jpeg,image/webp,image/gif" class="form-control">
+        {% if current_user.institucion_logo %}
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="quitar_logo" id="chk_quitar_logo">
+          <label class="form-check-label" for="chk_quitar_logo" style="color:var(--muted);font-size:.82rem">
+            Quitar logo actual
+          </label>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <div style="padding:0 24px 16px;font-size:.8rem;color:var(--muted)">
+      <i class="fas fa-info-circle me-1"></i>Este logo se muestra en el panel y reemplaza el ícono institucional por defecto.
+    </div>
+  </div>
 
   <!-- Resumen diario -->
   <div class="data-card mb-4">
@@ -36,6 +67,7 @@
     </div>
   </div>
 
+  {% if es_superadmin %}
   <!-- Telegram -->
   <div class="data-card mb-4">
     <div class="data-card-header">
@@ -156,6 +188,7 @@
 
     </div>
   </div>
+  {% endif %}
 
   <!-- Acciones -->
   <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px">

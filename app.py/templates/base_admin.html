@@ -149,6 +149,19 @@
     .search-box input { padding-left: 36px; }
     .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.85rem; }
 
+    .flag-wave-wrap { perspective: 300px; display: inline-flex; align-items: center; }
+    .flag-wave {
+      display: inline-block; font-size: 1.35rem; line-height: 1;
+      transform-origin: left center; animation: flagWave 2.4s ease-in-out infinite;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));
+    }
+    @keyframes flagWave {
+      0%, 100% { transform: rotateY(0deg) rotateZ(0deg) scaleX(1); }
+      25%      { transform: rotateY(18deg) rotateZ(3deg) scaleX(0.94); }
+      50%      { transform: rotateY(-14deg) rotateZ(-3deg) scaleX(1.04); }
+      75%      { transform: rotateY(10deg) rotateZ(2deg) scaleX(0.97); }
+    }
+
     #menuBtn { display: none; }
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -198,11 +211,9 @@
     <span id="badge-focos" style="display:none;margin-left:auto;background:rgba(239,68,68,0.2);color:#ef4444;border-radius:99px;font-size:0.68rem;font-weight:700;padding:1px 7px;"></span>
   </a>
 
-  {% if current_user.role == 'superadmin' %}
   <a href="/admin/configuracion" class="sidebar-link {% if 'configuracion' in request.endpoint %}active{% endif %}">
     <i class="fas fa-sliders"></i> <span data-i18n="nav.settings">Configuración</span>
   </a>
-  {% endif %}
 
   <div class="sidebar-section" data-i18n="nav.application">Aplicación</div>
   <a href="/mapa?auth=1" class="sidebar-link">
@@ -248,6 +259,12 @@
       </div>
     </div>
     <div class="d-flex align-items-center gap-3">
+      {% set _banderas = {'argentina': '🇦🇷', 'paraguay': '🇵🇾', 'chile': '🇨🇱'} %}
+      {% if current_user.paises_list|length == 1 and _banderas.get(current_user.paises_list[0]) %}
+      <span class="flag-wave-wrap" title="{{ current_user.paises_list[0]|capitalize }}">
+        <span class="flag-wave">{{ _banderas[current_user.paises_list[0]] }}</span>
+      </span>
+      {% endif %}
       <span style="font-size:0.82rem;color:var(--muted)">
         <i class="fas fa-circle" style="color:var(--green);font-size:8px"></i> <span data-i18n="nav.systemActive">Sistema activo</span>
       </span>
