@@ -643,6 +643,120 @@ def obtener_grilla_clima():
         return data
 
 
+# ── Pronóstico multi-fuente (regla 30-30-30, 4 días) ──────────────────────────
+# Open-Meteo permite pedir, en una sola request, el mismo pronóstico calculado
+# por ~12 modelos meteorológicos nacionales independientes. Cada uno cuenta
+# como una "fuente" distinta para el consenso de la regla 30-30-30, sin
+# necesitar API keys adicionales y con cobertura global (sirve para
+# Argentina, Paraguay, Chile o cualquier otro punto).
+OPEN_METEO_MODELS = [
+    'ecmwf_ifs04',          # ECMWF (Europa)
+    'gfs_seamless',         # NOAA/NWS GFS (EEUU)
+    'icon_seamless',        # DWD ICON (Alemania)
+    'gem_seamless',         # Environment Canada GEM
+    'meteofrance_seamless', # Météo-France ARPEGE/AROME
+    'jma_seamless',         # Agencia Meteorológica de Japón
+    'ukmo_seamless',        # UK Met Office
+    'bom_access_global',    # Bureau of Meteorology (Australia)
+    'cma_grapes_global',    # China Meteorological Administration
+    'knmi_seamless',        # KNMI (Países Bajos)
+    'dmi_seamless',         # DMI (Dinamarca)
+    'metno_seamless',       # MET Norway
+]
+CLIMA_MULTI_TTL = 3600  # 1h — el pronóstico no cambia minuto a minuto
+
+
+def fetch_multimodel_forecast(lat, lon):
+    """Pronóstico de hoy + 4 días combinando ~12 modelos meteorológicos vía Open-Meteo,
+    para calcular el consenso de la regla 30-30-30 (temp>=30°C, humedad<=30%, viento>=30km/h)."""
+    models_param = ",".join(OPEN_METEO_MODELS)
+    url = (f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+           f"&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m"
+           f"&models={models_param}&forecast_days=5&wind_speed_unit=kmh&timezone=auto")
+    r = requests.get(url, timeout=25)
+    r.raise_for_status()
+    data = r.json()
+    hourly = data.get('hourly', {})
+    times = hourly.get('time', [])
+    if not times:
+        return None
+
+    fuentes_detectadas = [m for m in OPEN_METEO_MODELS if f'temperature_2m_{m}' in hourly]
+    usar_planas = not fuentes_detectadas and 'temperature_2m' in hourly
+    if usar_planas:
+        fuentes_detectadas = ['open-meteo']
+
+    fechas_idx = {}
+    for i, t in enumerate(times):
+        fechas_idx.setdefault(t[:10], []).append(i)
+
+    dias = []
+    for fecha in sorted(fechas_idx.keys())[:5]:
+        idxs = fechas_idx[fecha]
+        temps_max, hums_min, vientos_max = [], [], []
+        fuentes_en_riesgo = 0
+        for modelo in fuentes_detectadas:
+            suf = '' if usar_planas else f'_{modelo}'
+            t_arr = hourly.get(f'temperature_2m{suf}')
+            h_arr = hourly.get(f'relative_humidity_2m{suf}')
+            v_arr = hourly.get(f'wind_speed_10m{suf}')
+            if not t_arr or not h_arr or not v_arr:
+                continue
+            t_vals = [t_arr[i] for i in idxs if i < len(t_arr) and t_arr[i] is not None]
+            h_vals = [h_arr[i] for i in idxs if i < len(h_arr) and h_arr[i] is not None]
+            v_vals = [v_arr[i] for i in idxs if i < len(v_arr) and v_arr[i] is not None]
+            if not t_vals or not h_vals or not v_vals:
+                continue
+            t_max, h_min, v_max = max(t_vals), min(h_vals), max(v_vals)
+            temps_max.append(t_max); hums_min.append(h_min); vientos_max.append(v_max)
+            if t_max >= 30 and h_min <= 30 and v_max >= 30:
+                fuentes_en_riesgo += 1
+        if not temps_max:
+            continue
+
+        def _resumen(vals, nd=1):
+            return {'min': round(min(vals), nd), 'max': round(max(vals), nd),
+                    'prom': round(sum(vals) / len(vals), nd)}
+
+        dias.append({
+            'fecha': fecha,
+            'fuentes_total': len(temps_max),
+            'fuentes_en_riesgo': fuentes_en_riesgo,
+            'consenso_30_30_30': fuentes_en_riesgo >= (len(temps_max) / 2.0),
+            'temp_max': _resumen(temps_max),
+            'humedad_min': _resumen(hums_min, 0),
+            'viento_max': _resumen(vientos_max),
+        })
+    if not dias:
+        return None
+    return {'lat': lat, 'lon': lon, 'fuentes': fuentes_detectadas,
+            'fuentes_total': len(fuentes_detectadas), 'dias': dias}
+
+
+@app.route('/foco-clima-4d')
+@login_required
+def foco_clima_4d():
+    import json
+    try:
+        lat = float(request.args.get('lat'))
+        lon = float(request.args.get('lon'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'lat/lon inválidos'}), 400
+    cache_key = f"clima_multi:{round(lat, 1)}:{round(lon, 1)}"
+    shared = _shared_cache_get(cache_key, CLIMA_MULTI_TTL)
+    if shared is not None:
+        return shared, 200, {'Content-Type': 'application/json; charset=utf-8'}
+    try:
+        resultado = fetch_multimodel_forecast(lat, lon)
+        if not resultado:
+            return jsonify({'error': 'Sin datos de pronóstico disponibles para este punto'}), 502
+        payload = json.dumps(resultado)
+        _shared_cache_set(cache_key, payload)
+        return payload, 200, {'Content-Type': 'application/json; charset=utf-8'}
+    except Exception as ex:
+        return jsonify({'error': str(ex)}), 502
+
+
 # ── Fuentes de agua (Overpass / OSM) ─────────────────────────────────────────
 
 @app.route("/water-sources")

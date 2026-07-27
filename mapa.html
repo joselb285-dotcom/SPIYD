@@ -1788,10 +1788,14 @@
             Fecha: ${f.acq_date||'N/D'} ${f.acq_time||''}<br>
             Satélite: ${f.satellite||'N/D'}
             ${avisoF30}
-            <div style="margin-top:7px;">
+            <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px;">
               <button onclick="analizarFoco(${focoId})"
                 style="width:100%;padding:5px 0;background:linear-gradient(135deg,#6a1b9a,#ad1457);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;">
                 🤖 Analizar este foco con IA
+              </button>
+              <button onclick="verPronostico30(${focoId})"
+                style="width:100%;padding:5px 0;background:linear-gradient(135deg,#01579b,#00838f);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;">
+                🌦 Pronóstico 4 días (10+ fuentes)
               </button>
             </div>
           </div>`);
@@ -2473,10 +2477,14 @@
           ${f.frp ? 'FRP: <b>'+f.frp+' MW</b><br>' : ''}
           Fecha/Hora: ${f.datahora || 'N/D'}<br>
           <small style="color:#888;">Lat ${f.lat.toFixed(4)} | Lon ${f.lon.toFixed(4)}</small>
-          <div style="margin-top:7px;">
+          <div style="margin-top:7px;display:flex;flex-direction:column;gap:5px;">
             <button onclick="analizarFoco(${inpeId})"
               style="width:100%;padding:5px 0;background:linear-gradient(135deg,#4a148c,#880e4f);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;">
               🤖 Analizar este foco con IA
+            </button>
+            <button onclick="verPronostico30(${inpeId})"
+              style="width:100%;padding:5px 0;background:linear-gradient(135deg,#01579b,#00838f);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:11px;font-family:monospace;font-weight:700;">
+              🌦 Pronóstico 4 días (10+ fuentes)
             </button>
           </div>
         </div>`);
@@ -2799,6 +2807,77 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         informePopup.setContent(`<div style="font-family:monospace;padding:14px;color:#e53935;">Error de conexión.</div>`);
         div.innerHTML = '<span style="color:#e53935;">Error de conexión al analizar foco.</span>';
       }
+    }
+
+    // ── Pronóstico multi-fuente (regla 30-30-30, hoy + 4 días) ────────────────
+    async function verPronostico30(focoId) {
+      const d = focoDataMap[focoId];
+      if (!d) return;
+
+      if (informePopup) mapa.closePopup(informePopup);
+      informePopup = L.popup({
+        maxWidth: 420, minWidth: 340, className: 'informe-popup',
+        autoPan: true, autoPanPadding: [60,60], closeButton: true, offset: L.point(0,-6)
+      })
+        .setLatLng([d.lat, d.lon])
+        .setContent(`<div style="font-family:monospace;padding:14px 16px;">
+          <div style="padding:9px 12px;background:linear-gradient(135deg,#01579b,#00838f);color:#fff;font-size:11px;font-weight:700;margin:-14px -16px 12px;">
+            🌦 Consultando pronóstico multi-fuente…
+          </div>
+          <div class="ia-loading"><div class="spinner"></div> Consultando ~12 modelos meteorológicos (Open-Meteo)…</div>
+        </div>`)
+        .openOn(mapa);
+
+      try {
+        const data = await fetch(`${BACKEND}/foco-clima-4d?lat=${d.lat}&lon=${d.lon}`).then(r => r.json());
+        if (data.error) {
+          informePopup.setContent(`<div style="font-family:monospace;padding:14px;color:#ff8a80;">❌ ${data.error}</div>`);
+          return;
+        }
+        informePopup.setContent(renderPronostico30HTML(data, d));
+      } catch (e) {
+        informePopup.setContent(`<div style="font-family:monospace;padding:14px;color:#e53935;">Error de conexión al pedir el pronóstico.</div>`);
+      }
+    }
+
+    function renderPronostico30HTML(data, d) {
+      const dias = data.dias || [];
+      const filas = dias.map((dia, i) => {
+        const fecha = new Date(dia.fecha + 'T12:00:00');
+        const etiqueta = i === 0 ? 'Hoy' : fecha.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+        const icono = dia.consenso_30_30_30 ? '🔴' : (dia.fuentes_en_riesgo > 0 ? '🟡' : '🟢');
+        return `<tr style="border-bottom:1px solid rgba(255,255,255,.08);">
+          <td style="padding:4px 6px;">${etiqueta}</td>
+          <td style="padding:4px 6px;text-align:center;">${icono} ${dia.fuentes_en_riesgo}/${dia.fuentes_total}</td>
+          <td style="padding:4px 6px;text-align:center;">${dia.temp_max.prom}°C</td>
+          <td style="padding:4px 6px;text-align:center;">${dia.humedad_min.prom}%</td>
+          <td style="padding:4px 6px;text-align:center;">${dia.viento_max.prom} km/h</td>
+        </tr>`;
+      }).join('');
+
+      return `<div style="font-family:monospace;padding:14px 16px;min-width:360px;">
+        <div style="padding:9px 12px;background:linear-gradient(135deg,#01579b,#00838f);color:#fff;font-size:11px;font-weight:700;margin:-14px -16px 10px;">
+          🌦 Pronóstico 5 días · Regla 30-30-30
+        </div>
+        <div style="font-size:10px;color:#888;margin-bottom:8px;">
+          ${d.lat.toFixed(4)}°S ${Math.abs(d.lon).toFixed(4)}°O · ${data.fuentes_total} fuentes meteorológicas
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:10.5px;">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,.2);color:#888;">
+              <th style="padding:4px 6px;text-align:left;">Día</th>
+              <th style="padding:4px 6px;">Consenso 30-30-30</th>
+              <th style="padding:4px 6px;">Temp máx</th>
+              <th style="padding:4px 6px;">Humedad mín</th>
+              <th style="padding:4px 6px;">Viento máx</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+        <div style="font-size:9px;color:#666;margin-top:8px;">
+          🔴 Mayoría de fuentes en riesgo &nbsp; 🟡 Riesgo parcial &nbsp; 🟢 Sin riesgo · Valores promedio entre ${data.fuentes_total} fuentes.
+        </div>
+      </div>`;
     }
 
     // ── Contadores globales ──────────────────────────────────────────────────
