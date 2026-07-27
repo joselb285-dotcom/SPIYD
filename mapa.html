@@ -955,13 +955,13 @@
     }
 
     // ── Mapa ────────────────────────────────────────────────────────────────
+    // La restricción por país solo aplica a qué focos se muestran (focoPermitidoPorPais);
+    // la navegación del mapa (pan/zoom) queda libre para todo el mundo.
     const regionBounds = getRegionBounds(USER_REGION);
     const defaultCenter = regionBounds
       ? [(regionBounds[0][0]+regionBounds[1][0])/2, (regionBounds[0][1]+regionBounds[1][1])/2]
       : [-38.4, -63.6];
-    const mapa = L.map('mapa', regionBounds
-      ? { maxBounds: regionBounds, maxBoundsViscosity: 0.85, minZoom: 5 }
-      : {}).setView(defaultCenter, 4);
+    const mapa = L.map('mapa').setView(defaultCenter, 4);
     if (regionBounds) mapa.fitBounds(regionBounds);
 
     const basemaps = {
