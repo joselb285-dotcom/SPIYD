@@ -1,5 +1,6 @@
 import os
 import smtplib
+import socket
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -29,7 +30,15 @@ def enviar_email(destinatarios, asunto, html):
         msg['From'] = smtp_from
         msg['To'] = ', '.join(destinatarios)
         msg.attach(MIMEText(html, 'html'))
-        with smtplib.SMTP(smtp_host, smtp_port) as s:
+        # Fuerza IPv4: algunos hosts (Railway) no tienen salida IPv6 y el SMTP
+        # falla con "Network is unreachable" si el hostname resuelve a AAAA.
+        try:
+            smtp_ip = socket.getaddrinfo(smtp_host, smtp_port, socket.AF_INET, socket.SOCK_STREAM)[0][4][0]
+        except socket.gaierror:
+            smtp_ip = smtp_host
+        with smtplib.SMTP(timeout=15) as s:
+            s.connect(smtp_ip, smtp_port)
+            s._host = smtp_host  # server_hostname correcto para verificar el cert TLS
             s.starttls()
             s.login(smtp_user, smtp_pass)
             s.sendmail(smtp_from, destinatarios, msg.as_string())
