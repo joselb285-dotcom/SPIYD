@@ -1,5 +1,7 @@
-const CACHE = 'spiyd-v1';
+const CACHE = 'spiyd-v2';
 const PRECACHE = ['/mapa', '/manifest.json', '/pwa-icon.svg', '/i18n.js', '/pwa-install.js'];
+// Archivos que cambian seguido — siempre priorizar la red, caché solo como fallback offline.
+const NETWORK_FIRST = ['/i18n.js', '/theme.js', '/pwa-install.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -28,6 +30,19 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const path = new URL(e.request.url).pathname;
   if (API_PREFIXES.some(p => path.startsWith(p))) return;
+
+  if (NETWORK_FIRST.includes(path)) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then(cached => {
