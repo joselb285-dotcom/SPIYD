@@ -860,6 +860,9 @@
 
     // ── Región del usuario ───────────────────────────────────────────────────
     const USER_REGION = __USER_REGION__;
+    const PAISES_USUARIO = (USER_REGION && USER_REGION.pais)
+      ? USER_REGION.pais.split(',').map(p => p.trim()).filter(Boolean)
+      : []; // vacío = sin restricción, ve todos los países
 
     // Botón "volver al panel" — según el rol del usuario logueado.
     (function () {
@@ -879,10 +882,7 @@
     // Sismos/Volcanes: cobertura de la cordillera (Chile + oeste de Argentina).
     // Se ocultan si el usuario está restringido a un país sin esa cobertura (ej. solo Paraguay).
     (function () {
-      const paises = (USER_REGION && USER_REGION.pais)
-        ? USER_REGION.pais.split(',').map(p => p.trim()).filter(Boolean)
-        : [];
-      const tieneCobertura = paises.length === 0 || paises.includes('argentina') || paises.includes('chile');
+      const tieneCobertura = PAISES_USUARIO.length === 0 || PAISES_USUARIO.includes('argentina') || PAISES_USUARIO.includes('chile');
       if (!tieneCobertura) {
         ['grpSismosVolcanes', 'grpSeccionSismos', 'grpSeccionVolcanes'].forEach(id => {
           const el = document.getElementById(id);
@@ -1329,6 +1329,15 @@
       if (!geojsonArg) return true;
       return geojsonArg.features.some(f => puntoEnFeature(lng, lat, f));
     }
+    // Filtra focos por el/los país(es) configurado(s) para el usuario (admin/superadmin).
+    // Sin restricción (PAISES_USUARIO vacío) o con ambos países tildados: se ve todo, como hoy.
+    function focoPermitidoPorPais(lat, lng) {
+      if (!estaEnArg(lat, lng)) return false; // fuera del área total de cobertura (AR+PY)
+      if (PAISES_USUARIO.length === 0) return true;
+      const enParaguay = estaEnParaguay(lat, lng);
+      if (enParaguay) return PAISES_USUARIO.includes('paraguay');
+      return PAISES_USUARIO.includes('argentina');
+    }
     function nomFeat(p) { return p.nombre||p.name||p.NAME||''; }
 
     // ── Icono llama SVG ──────────────────────────────────────────────────────
@@ -1750,7 +1759,7 @@
         all.forEach(f => {
           const lat = parseFloat(f.latitude), lng = parseFloat(f.longitude);
           if (isNaN(lat)||isNaN(lng)) return;
-          if (!estaEnArg(lat, lng)) return;
+          if (!focoPermitidoPorPais(lat, lng)) return;
           const conf = f.confidence || f.confidence_day || f.confidence_night || '0';
           if (!isNaN(parseFloat(conf)) && parseFloat(conf) < 30) return;
 
@@ -2420,7 +2429,7 @@
       btn.disabled=true; btn.textContent='⏳ Consultando INPE…';
       try {
         const data = await fetch(`${BACKEND}/inpe-focos?periodo=10`).then(r=>r.json());
-        datosINPE = data.focos || [];
+        datosINPE = (data.focos || []).filter(f => focoPermitidoPorPais(f.lat, f.lon));
         renderizarINPE(datosINPE);
         renderizarPanelINPE(datosINPE);
         btn.classList.add('active');
@@ -2984,7 +2993,7 @@ ${sectionsHTML.replace(/background:rgba\([^)]+\)/g,'background:#f3f3f3').replace
         const otrosSatPts = [...firePts, ...datosINPE];
         const focos = parseCSV(txt).filter(f => {
           const lat=parseFloat(f.latitude), lon=parseFloat(f.longitude);
-          if (isNaN(lat) || isNaN(lon) || !estaEnArg(lat,lon)) return false;
+          if (isNaN(lat) || isNaN(lon) || !focoPermitidoPorPais(lat,lon)) return false;
           if (!otrosSatPts.length) return false;
           return otrosSatPts.some(o => haversineKm(lat, lon, o.lat, o.lon) <= MULTISAT_UMBRAL_KM);
         });
