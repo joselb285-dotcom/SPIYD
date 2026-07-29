@@ -106,6 +106,10 @@ with app.app_context():
         ('"user"',      "totp_enabled",        "BOOLEAN DEFAULT FALSE"),
         ('"user"',      "trial_expires_at",    "TIMESTAMP"),
         ('"user"',      "ai_informes_max",     "INTEGER"),
+        ("recurso",       "longitud_pista_m",  "INTEGER"),
+        ("recurso",       "superficie_pista",  "VARCHAR(50)"),
+        ("unidad_recurso", "cantidad",         "INTEGER DEFAULT 1"),
+        ("unidad_recurso", "capacidad_litros", "INTEGER"),
     ]
     for _tbl, _col, _type in _new_cols:
         try:
@@ -1179,8 +1183,33 @@ def _recursos_para_ia(lat_ref=None, lon_ref=None, max_items=30):
                 partes.append(f"  Contacto: {r.contacto_nombre}")
             if r.horario:
                 partes.append(f"  Horario: {r.horario}")
+            if r.longitud_pista_m:
+                sup = f" ({r.superficie_pista})" if r.superficie_pista else ""
+                partes.append(f"  Pista: {r.longitud_pista_m} m{sup}")
             if r.descripcion:
                 partes.append(f"  Descripción: {r.descripcion}")
+            if r.notas:
+                partes.append(f"  Notas: {r.notas}")
+            unidades_activas = [u for u in r.unidades if u.activo]
+            if unidades_activas:
+                partes.append("  Unidades disponibles:")
+                for u in unidades_activas:
+                    det = [f"{u.cantidad}x {u.tipo_label}"]
+                    if u.nombre:
+                        det.append(u.nombre)
+                    if u.capacidad_litros:
+                        det.append(f"{u.capacidad_litros} L")
+                    elif u.capacidad:
+                        det.append(u.capacidad)
+                    if u.tiempo_recarga_min is not None:
+                        det.append(f"recarga {u.tiempo_recarga_min} min")
+                    if u.tiempo_respuesta_min is not None:
+                        det.append(f"respuesta {u.tiempo_respuesta_min} min")
+                    partes.append(f"    • {' — '.join(det)}")
+            herramientas_activas = [h for h in r.herramientas if h.activo]
+            if herramientas_activas:
+                herr_txt = ", ".join(f"{h.cantidad}x {h.tipo_label}" for h in herramientas_activas)
+                partes.append(f"  Herramientas: {herr_txt}")
             lines.append("\n".join(partes))
         return "\n\n".join(lines)
     except Exception:

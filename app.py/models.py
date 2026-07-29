@@ -90,15 +90,17 @@ class AiInforme(db.Model):
 
 
 TIPOS_RECURSO = [
-    ('bomberos',       'Cuartel de Bomberos'),
-    ('defensa_civil',  'Defensa Civil'),
-    ('hospital',       'Hospital'),
-    ('caps',           'CAPS / Centro de Salud'),
-    ('avion',          'Avión / Aeronave'),
-    ('gubernamental',  'Ente Gubernamental'),
-    ('policia',        'Policía / Seguridad'),
-    ('municipio',      'Municipio / Intendencia'),
-    ('otro',           'Otro'),
+    ('bomberos',        'Cuartel de Bomberos'),
+    ('defensa_civil',   'Defensa Civil'),
+    ('hospital',        'Hospital'),
+    ('caps',            'CAPS / Centro de Salud'),
+    ('avion',           'Avión / Aeronave'),
+    ('pista_aterrizaje','Pista de Aterrizaje'),
+    ('helipuerto',      'Helipuerto'),
+    ('gubernamental',   'Ente Gubernamental'),
+    ('policia',         'Policía / Seguridad'),
+    ('municipio',       'Municipio / Intendencia'),
+    ('otro',            'Otro'),
 ]
 
 TIPOS_UNIDAD = [
@@ -111,6 +113,22 @@ TIPOS_UNIDAD = [
     ('helicoptero_rescate',    'Helicóptero de Rescate / Sanitario'),
     ('motobomba',              'Motobomba'),
     ('otro_vehiculo',          'Otro Vehículo'),
+]
+
+TIPOS_HERRAMIENTA = [
+    ('pala',               'Pala'),
+    ('rastrillo',          'Rastrillo Forestal'),
+    ('motosierra',         'Motosierra'),
+    ('mochila_extintora',  'Mochila Extintora'),
+    ('batefuego',          'Batefuego / Sofocador'),
+    ('extintor',           'Extintor'),
+    ('motobomba_portatil', 'Motobomba Portátil'),
+    ('manguera',           'Manguera'),
+    ('generador',          'Generador Eléctrico'),
+    ('radio_comunicacion', 'Radio de Comunicación'),
+    ('equipo_proteccion',  'Equipo de Protección Personal (EPP)'),
+    ('dron',               'Dron de Monitoreo'),
+    ('otro',               'Otra Herramienta'),
 ]
 
 class Recurso(db.Model):
@@ -129,11 +147,15 @@ class Recurso(db.Model):
     contacto_nombre = db.Column(db.String(100))
     horario = db.Column(db.String(100))
     notas = db.Column(db.Text)
+    longitud_pista_m = db.Column(db.Integer)   # pistas de aterrizaje / helipuertos
+    superficie_pista = db.Column(db.String(50))  # asfalto, tierra, césped, cemento...
     activo = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     unidades = db.relationship('UnidadRecurso', backref='recurso', lazy='dynamic',
                                cascade='all, delete-orphan', passive_deletes=True)
+    herramientas = db.relationship('HerramientaRecurso', backref='recurso', lazy='dynamic',
+                                   cascade='all, delete-orphan', passive_deletes=True)
 
     @property
     def tipo_label(self):
@@ -147,7 +169,9 @@ class UnidadRecurso(db.Model):
     tipo_unidad = db.Column(db.String(50), nullable=False)
     nombre = db.Column(db.String(100))
     descripcion = db.Column(db.Text)
+    cantidad = db.Column(db.Integer, default=1)
     capacidad = db.Column(db.String(100))
+    capacidad_litros = db.Column(db.Integer)  # capacidad numérica de agua/retardante/combustible
     tiempo_recarga_min = db.Column(db.Integer)
     tiempo_respuesta_min = db.Column(db.Integer)
     activo = db.Column(db.Boolean, default=True)
@@ -156,6 +180,21 @@ class UnidadRecurso(db.Model):
     @property
     def tipo_label(self):
         return dict(TIPOS_UNIDAD).get(self.tipo_unidad, self.tipo_unidad)
+
+
+class HerramientaRecurso(db.Model):
+    __tablename__ = 'herramienta_recurso'
+    id = db.Column(db.Integer, primary_key=True)
+    recurso_id = db.Column(db.Integer, db.ForeignKey('recurso.id', ondelete='CASCADE'), nullable=False)
+    tipo_herramienta = db.Column(db.String(50), nullable=False)
+    cantidad = db.Column(db.Integer, default=1)
+    notas = db.Column(db.String(200))
+    activo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def tipo_label(self):
+        return dict(TIPOS_HERRAMIENTA).get(self.tipo_herramienta, self.tipo_herramienta)
 
 
 class FocoLog(db.Model):

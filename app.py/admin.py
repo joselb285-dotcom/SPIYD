@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from sqlalchemy import func, or_
 import csv, io, math, secrets
-from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog, UnidadRecurso, TIPOS_UNIDAD
+from models import db, User, UsageLog, SmnAlerta, AiInforme, FocoLog, Recurso, TIPOS_RECURSO, AuditLog, UnidadRecurso, TIPOS_UNIDAD, HerramientaRecurso, TIPOS_HERRAMIENTA
 from superadmin import PROVINCIAS_ARG, DEPARTAMENTOS_PRY
 from email_utils import enviar_email_verificacion
 from datetime import datetime, timedelta
@@ -300,6 +300,12 @@ def recursos():
                            pais_filter=pais_filter, search=search)
 
 
+def _parse_pista_fields(f):
+    longitud = f.get('longitud_pista_m', '').strip()
+    return (int(longitud) if longitud.isdigit() else None,
+            f.get('superficie_pista', '').strip() or None)
+
+
 @admin_bp.route('/recursos/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -314,6 +320,7 @@ def recurso_new():
         except ValueError:
             flash('Coordenadas inválidas', 'error')
             return render_template('admin/recurso_form.html', recurso=None, action='new', tipos=TIPOS_RECURSO)
+        longitud_pista, superficie_pista = _parse_pista_fields(f)
         recurso = Recurso(
             tipo=f.get('tipo', 'otro'),
             nombre=f.get('nombre', '').strip(),
@@ -328,6 +335,8 @@ def recurso_new():
             contacto_nombre=f.get('contacto_nombre', '').strip() or None,
             horario=f.get('horario', '').strip() or None,
             notas=f.get('notas', '').strip() or None,
+            longitud_pista_m=longitud_pista,
+            superficie_pista=superficie_pista,
             activo='activo' in f,
             created_by=current_user.id,
         )
@@ -357,7 +366,8 @@ def recurso_edit(recurso_id):
         except ValueError:
             flash('Coordenadas inválidas', 'error')
             return render_template('admin/recurso_form.html', recurso=recurso, action='edit',
-                                   tipos=TIPOS_RECURSO, tipos_unidad=TIPOS_UNIDAD)
+                                   tipos=TIPOS_RECURSO, tipos_unidad=TIPOS_UNIDAD, tipos_herramienta=TIPOS_HERRAMIENTA)
+        longitud_pista, superficie_pista = _parse_pista_fields(f)
         recurso.tipo = f.get('tipo', recurso.tipo)
         recurso.nombre = f.get('nombre', '').strip()
         recurso.descripcion = f.get('descripcion', '').strip() or None
@@ -372,13 +382,15 @@ def recurso_edit(recurso_id):
         recurso.contacto_nombre = f.get('contacto_nombre', '').strip() or None
         recurso.horario = f.get('horario', '').strip() or None
         recurso.notas = f.get('notas', '').strip() or None
+        recurso.longitud_pista_m = longitud_pista
+        recurso.superficie_pista = superficie_pista
         recurso.activo = 'activo' in f
         _audit('edit_recurso', 'Recurso', recurso_id, f'nombre={recurso.nombre} activo={recurso.activo}')
         db.session.commit()
         flash(f'Recurso "{recurso.nombre}" actualizado', 'success')
         return redirect(url_for('admin.recursos'))
     return render_template('admin/recurso_form.html', recurso=recurso, action='edit',
-                           tipos=TIPOS_RECURSO, tipos_unidad=TIPOS_UNIDAD)
+                           tipos=TIPOS_RECURSO, tipos_unidad=TIPOS_UNIDAD, tipos_herramienta=TIPOS_HERRAMIENTA)
 
 
 @admin_bp.route('/recursos/<int:recurso_id>/delete', methods=['POST'])
@@ -438,9 +450,23 @@ def mapa_recursos():
         ai_q2 = ai_q2.filter_by(user_id=own)
     ai_recientes = ai_q2.order_by(AiInforme.timestamp.desc()).limit(50).all()
 
+    def _resumen_unidades(r):
+        activas = [u for u in r.unidades if u.activo]
+        if not activas:
+            return None
+        return ', '.join(f'{u.cantidad or 1}x {u.tipo_label}' for u in activas)
+
+    def _resumen_herramientas(r):
+        activas = [h for h in r.herramientas if h.activo]
+        if not activas:
+            return None
+        return ', '.join(f'{h.cantidad or 1}x {h.tipo_label}' for h in activas)
+
     recursos_json = [{'id': r.id, 'tipo': r.tipo, 'tipo_label': r.tipo_label,
                       'nombre': r.nombre, 'lat': r.lat, 'lon': r.lon,
-                      'localidad': r.localidad, 'telefono': r.telefono, 'horario': r.horario}
+                      'localidad': r.localidad, 'telefono': r.telefono, 'horario': r.horario,
+                      'unidades': _resumen_unidades(r), 'herramientas': _resumen_herramientas(r),
+                      'longitud_pista_m': r.longitud_pista_m, 'superficie_pista': r.superficie_pista}
                      for r in recursos_activos]
     ai_json = [{'lat': a.lat, 'lon': a.lon, 'tipo_foco': a.tipo_foco,
                 'severidad': a.severidad,
@@ -467,7 +493,9 @@ def unidad_new(recurso_id):
         tipo_unidad=f.get('tipo_unidad', 'otro_vehiculo'),
         nombre=f.get('nombre', '').strip() or None,
         descripcion=f.get('descripcion', '').strip() or None,
+        cantidad=int(f['cantidad']) if f.get('cantidad', '').isdigit() else 1,
         capacidad=f.get('capacidad', '').strip() or None,
+        capacidad_litros=int(f['capacidad_litros']) if f.get('capacidad_litros', '').isdigit() else None,
         tiempo_recarga_min=int(f['tiempo_recarga_min']) if f.get('tiempo_recarga_min', '').isdigit() else None,
         tiempo_respuesta_min=int(f['tiempo_respuesta_min']) if f.get('tiempo_respuesta_min', '').isdigit() else None,
         activo='activo' in f,
@@ -493,6 +521,47 @@ def unidad_delete(unidad_id):
     db.session.delete(unidad)
     db.session.commit()
     flash('Unidad eliminada', 'success')
+    return redirect(url_for('admin.recurso_edit', recurso_id=recurso_id))
+
+
+@admin_bp.route('/recursos/<int:recurso_id>/herramientas/new', methods=['POST'])
+@login_required
+@admin_required
+def herramienta_new(recurso_id):
+    recurso = db.get_or_404(Recurso, recurso_id)
+    own = _own_id()
+    if own and recurso.created_by != own:
+        flash('No tenés permiso para modificar este recurso', 'error')
+        return redirect(url_for('admin.recursos'))
+    f = request.form
+    herramienta = HerramientaRecurso(
+        recurso_id=recurso_id,
+        tipo_herramienta=f.get('tipo_herramienta', 'otro'),
+        cantidad=int(f['cantidad']) if f.get('cantidad', '').isdigit() else 1,
+        notas=f.get('notas', '').strip() or None,
+        activo='activo' in f,
+    )
+    db.session.add(herramienta)
+    _audit('add_herramienta', 'Recurso', recurso_id, f'tipo={herramienta.tipo_herramienta} cantidad={herramienta.cantidad}')
+    db.session.commit()
+    flash('Herramienta agregada', 'success')
+    return redirect(url_for('admin.recurso_edit', recurso_id=recurso_id))
+
+
+@admin_bp.route('/herramientas/<int:herramienta_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def herramienta_delete(herramienta_id):
+    herramienta = db.get_or_404(HerramientaRecurso, herramienta_id)
+    recurso_id = herramienta.recurso_id
+    own = _own_id()
+    if own and herramienta.recurso.created_by != own:
+        flash('No tenés permiso para modificar este recurso', 'error')
+        return redirect(url_for('admin.recursos'))
+    _audit('delete_herramienta', 'Recurso', recurso_id, f'tipo={herramienta.tipo_herramienta}')
+    db.session.delete(herramienta)
+    db.session.commit()
+    flash('Herramienta eliminada', 'success')
     return redirect(url_for('admin.recurso_edit', recurso_id=recurso_id))
 
 
@@ -529,11 +598,13 @@ def export_recursos_csv():
     si = io.StringIO()
     cw = csv.writer(si)
     cw.writerow(['id', 'tipo', 'nombre', 'pais', 'provincia_departamento', 'localidad',
-                 'direccion', 'lat', 'lon', 'telefono', 'email', 'contacto_nombre', 'horario', 'activo'])
+                 'direccion', 'lat', 'lon', 'telefono', 'email', 'contacto_nombre', 'horario',
+                 'longitud_pista_m', 'superficie_pista', 'activo'])
     for r in recursos:
         cw.writerow([r.id, r.tipo, r.nombre, r.pais or '', r.provincia_departamento or '',
                      r.localidad or '', r.direccion or '', r.lat or '', r.lon or '',
-                     r.telefono or '', r.email or '', r.contacto_nombre or '', r.horario or '', r.activo])
+                     r.telefono or '', r.email or '', r.contacto_nombre or '', r.horario or '',
+                     r.longitud_pista_m or '', r.superficie_pista or '', r.activo])
     return Response(si.getvalue().encode('utf-8-sig'), mimetype='text/csv',
                     headers={'Content-Disposition': 'attachment;filename=recursos.csv'})
 

@@ -12,7 +12,7 @@
         <div class="row g-4 mb-4">
           <div class="col-md-5">
             <label class="form-label">Tipo de recurso *</label>
-            <select name="tipo" class="form-select" required>
+            <select name="tipo" id="selectTipoRecurso" class="form-select" required onchange="onTipoRecursoChange()">
               {% for val, label in tipos %}
                 <option value="{{ val }}" {% if recurso and recurso.tipo == val %}selected{% elif not recurso and val == 'bomberos' %}selected{% endif %}>
                   {{ label }}
@@ -42,6 +42,23 @@
                     placeholder="Capacidad, dotación, tipo de unidades...">{{ recurso.descripcion if recurso and recurso.descripcion else '' }}</textarea>
         </div>
 
+        <div class="mb-4" id="divPista" style="display:none">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <label class="form-label">Longitud de pista (metros)</label>
+              <input type="number" name="longitud_pista_m" class="form-control" min="0"
+                     value="{{ recurso.longitud_pista_m if recurso and recurso.longitud_pista_m is not none else '' }}"
+                     placeholder="Ej: 850">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Superficie</label>
+              <input type="text" name="superficie_pista" class="form-control"
+                     value="{{ recurso.superficie_pista if recurso and recurso.superficie_pista else '' }}"
+                     placeholder="Tierra, césped, asfalto, cemento...">
+            </div>
+          </div>
+        </div>
+
         <div class="row g-4 mb-4">
           <div class="col-md-4">
             <label class="form-label">País</label>
@@ -49,6 +66,7 @@
               <option value="">— Sin especificar —</option>
               <option value="argentina" {% if recurso and recurso.pais == 'argentina' %}selected{% endif %}>Argentina</option>
               <option value="paraguay" {% if recurso and recurso.pais == 'paraguay' %}selected{% endif %}>Paraguay</option>
+              <option value="chile" {% if recurso and recurso.pais == 'chile' %}selected{% endif %}>Chile</option>
             </select>
           </div>
           <div class="col-md-4">
@@ -154,16 +172,17 @@
         <table class="table table-sm" style="font-size:0.85rem">
           <thead>
             <tr style="color:var(--muted)">
-              <th>Tipo</th><th>Nombre</th><th>Capacidad</th>
+              <th>Cant.</th><th>Tipo</th><th>Nombre</th><th>Capacidad</th>
               <th>Recarga (min)</th><th>Respuesta (min)</th><th>Activo</th><th></th>
             </tr>
           </thead>
           <tbody>
           {% for u in unidades_list %}
             <tr>
+              <td>{{ u.cantidad or 1 }}</td>
               <td>{{ u.tipo_label }}</td>
               <td>{{ u.nombre or '—' }}</td>
-              <td>{{ u.capacidad or '—' }}</td>
+              <td>{% if u.capacidad_litros %}{{ u.capacidad_litros }} L{% elif u.capacidad %}{{ u.capacidad }}{% else %}—{% endif %}</td>
               <td>{{ u.tiempo_recarga_min if u.tiempo_recarga_min is not none else '—' }}</td>
               <td>{{ u.tiempo_respuesta_min if u.tiempo_respuesta_min is not none else '—' }}</td>
               <td>
@@ -191,7 +210,7 @@
       <form method="post" action="/admin/recursos/{{ recurso.id }}/unidades/new">
         <h6 style="color:var(--text-secondary);margin-bottom:1rem">Agregar unidad</h6>
         <div class="row g-3 mb-3">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label class="form-label">Tipo de unidad *</label>
             <select name="tipo_unidad" class="form-select" required>
               {% for val, label in tipos_unidad %}
@@ -199,13 +218,21 @@
               {% endfor %}
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-2">
+            <label class="form-label">Cantidad</label>
+            <input type="number" name="cantidad" class="form-control" min="1" value="1">
+          </div>
+          <div class="col-md-3">
             <label class="form-label">Nombre / Identificación</label>
             <input type="text" name="nombre" class="form-control" placeholder="Ej: Unidad 03, LV-KAB">
           </div>
-          <div class="col-md-4">
-            <label class="form-label">Capacidad</label>
-            <input type="text" name="capacidad" class="form-control" placeholder="Ej: 8.000 L, 6 personas">
+          <div class="col-md-2">
+            <label class="form-label">Capacidad (litros)</label>
+            <input type="number" name="capacidad_litros" class="form-control" min="0" placeholder="8000">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Capacidad (texto)</label>
+            <input type="text" name="capacidad" class="form-control" placeholder="Ej: 6 personas">
           </div>
         </div>
         <div class="row g-3 mb-3">
@@ -230,6 +257,81 @@
         </div>
         <button type="submit" class="btn-spiyd-outline">
           <i class="fas fa-plus"></i> Agregar unidad
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Herramientas del recurso ────────────────────────────── -->
+    <div class="form-card mt-4">
+      <h5 style="color:var(--text-primary);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px">
+        <i class="fas fa-tools" style="color:var(--orange)"></i> Herramientas disponibles
+      </h5>
+
+      {% set herramientas_list = recurso.herramientas.all() %}
+      {% if herramientas_list %}
+      <div class="table-responsive mb-4">
+        <table class="table table-sm" style="font-size:0.85rem">
+          <thead>
+            <tr style="color:var(--muted)">
+              <th>Cant.</th><th>Tipo</th><th>Notas</th><th>Activo</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for h in herramientas_list %}
+            <tr>
+              <td>{{ h.cantidad or 1 }}</td>
+              <td>{{ h.tipo_label }}</td>
+              <td>{{ h.notas or '—' }}</td>
+              <td>
+                {% if h.activo %}<span style="color:var(--green)">Sí</span>
+                {% else %}<span style="color:var(--muted)">No</span>{% endif %}
+              </td>
+              <td>
+                <form method="post" action="/admin/herramientas/{{ h.id }}/delete"
+                      onsubmit="return confirm('¿Eliminar esta herramienta?')">
+                  <button type="submit" class="btn btn-link btn-sm p-0" style="color:var(--red)">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.2rem">Sin herramientas registradas aún.</p>
+      {% endif %}
+
+      <!-- Formulario para agregar nueva herramienta -->
+      <form method="post" action="/admin/recursos/{{ recurso.id }}/herramientas/new">
+        <h6 style="color:var(--text-secondary);margin-bottom:1rem">Agregar herramienta</h6>
+        <div class="row g-3 mb-3">
+          <div class="col-md-4">
+            <label class="form-label">Tipo de herramienta *</label>
+            <select name="tipo_herramienta" class="form-select" required>
+              {% for val, label in tipos_herramienta %}
+                <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Cantidad</label>
+            <input type="number" name="cantidad" class="form-control" min="1" value="1">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Notas</label>
+            <input type="text" name="notas" class="form-control" placeholder="Estado, marca, observaciones...">
+          </div>
+          <div class="col-md-2 d-flex align-items-end pb-1">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="activo" id="herramientaActivo" checked>
+              <label class="form-check-label" for="herramientaActivo" style="font-size:0.8rem">Activo</label>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn-spiyd-outline">
+          <i class="fas fa-plus"></i> Agregar herramienta
         </button>
       </form>
     </div>
@@ -263,5 +365,12 @@ map.on('click', function(e) {
   if (marker) marker.setLatLng([lat, lng]);
   else marker = L.marker([lat, lng]).addTo(map);
 });
+
+function onTipoRecursoChange() {
+  const tipo = document.getElementById('selectTipoRecurso').value;
+  document.getElementById('divPista').style.display =
+    (tipo === 'pista_aterrizaje' || tipo === 'helipuerto') ? 'block' : 'none';
+}
+onTipoRecursoChange();
 </script>
 {% endblock %}
