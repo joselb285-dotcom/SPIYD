@@ -149,6 +149,34 @@
                     placeholder="Capacidad de respuesta, equipamiento especial, protocolos, etc.">{{ recurso.notas if recurso and recurso.notas else '' }}</textarea>
         </div>
 
+        {% if action == 'new' %}
+        <hr style="border-color:var(--border);margin:8px 0 24px">
+
+        <!-- Unidades (vehículos, motobombas, cisternas, aviones, helicópteros...) -->
+        <div class="mb-4">
+          <h6 style="color:var(--text-secondary);margin-bottom:0.75rem;display:flex;align-items:center;gap:8px">
+            <i class="fas fa-truck" style="color:var(--orange)"></i> Unidades (vehículos, motobombas, cisternas, aviones, helicópteros...)
+            <span style="font-size:0.72rem;color:var(--muted);font-weight:400">(opcional)</span>
+          </h6>
+          <div id="unidadesRows"></div>
+          <button type="button" class="btn-spiyd-outline btn-sm" onclick="agregarFilaUnidad()">
+            <i class="fas fa-plus"></i> Agregar unidad
+          </button>
+        </div>
+
+        <!-- Herramientas -->
+        <div class="mb-4">
+          <h6 style="color:var(--text-secondary);margin-bottom:0.75rem;display:flex;align-items:center;gap:8px">
+            <i class="fas fa-tools" style="color:var(--orange)"></i> Herramientas disponibles
+            <span style="font-size:0.72rem;color:var(--muted);font-weight:400">(opcional)</span>
+          </h6>
+          <div id="herramientasRows"></div>
+          <button type="button" class="btn-spiyd-outline btn-sm" onclick="agregarFilaHerramienta()">
+            <i class="fas fa-plus"></i> Agregar herramienta
+          </button>
+        </div>
+        {% endif %}
+
         <div class="d-flex gap-3 mt-2">
           <button type="submit" class="btn-spiyd">
             <i class="fas fa-{{ 'plus' if action == 'new' else 'floppy-disk' }}"></i>
@@ -372,5 +400,83 @@ function onTipoRecursoChange() {
     (tipo === 'pista_aterrizaje' || tipo === 'helipuerto') ? 'block' : 'none';
 }
 onTipoRecursoChange();
+
+{% if action == 'new' %}
+const TIPOS_UNIDAD_JS = {{ tipos_unidad | tojson }};
+const TIPOS_HERRAMIENTA_JS = {{ tipos_herramienta | tojson }};
+
+function agregarFilaUnidad() {
+  const wrap = document.getElementById('unidadesRows');
+  const row = document.createElement('div');
+  row.className = 'row g-2 mb-2 align-items-end';
+  row.innerHTML = `
+    <div class="col-md-3">
+      <label class="form-label" style="font-size:0.75rem">Tipo de unidad</label>
+      <select name="unidad_tipo[]" class="form-select form-select-sm">
+        <option value="">— Sin usar esta fila —</option>
+        ${TIPOS_UNIDAD_JS.map(([val, label]) => `<option value="${val}">${label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="col-md-1">
+      <label class="form-label" style="font-size:0.75rem">Cant.</label>
+      <input type="number" name="unidad_cantidad[]" class="form-control form-control-sm" min="1" value="1">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" style="font-size:0.75rem">Nombre / ID</label>
+      <input type="text" name="unidad_nombre[]" class="form-control form-control-sm" placeholder="LV-KAB">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" style="font-size:0.75rem">Capacidad (litros)</label>
+      <input type="number" name="unidad_capacidad_litros[]" class="form-control form-control-sm" min="0" placeholder="8000">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" style="font-size:0.75rem">Recarga (min)</label>
+      <input type="number" name="unidad_tiempo_recarga[]" class="form-control form-control-sm" min="0" placeholder="45">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label" style="font-size:0.75rem">Resp. (min)</label>
+      <input type="number" name="unidad_tiempo_respuesta[]" class="form-control form-control-sm" min="0" placeholder="15">
+    </div>
+    <div class="col-md-1">
+      <input type="hidden" name="unidad_capacidad[]" value="">
+      <button type="button" class="btn btn-link btn-sm p-0" style="color:var(--red)" onclick="this.closest('.row').remove()" title="Quitar">
+        <i class="fas fa-trash-alt"></i>
+      </button>
+    </div>`;
+  wrap.appendChild(row);
+}
+
+function agregarFilaHerramienta() {
+  const wrap = document.getElementById('herramientasRows');
+  const row = document.createElement('div');
+  row.className = 'row g-2 mb-2 align-items-end';
+  row.innerHTML = `
+    <div class="col-md-4">
+      <label class="form-label" style="font-size:0.75rem">Tipo de herramienta</label>
+      <select name="herramienta_tipo[]" class="form-select form-select-sm">
+        <option value="">— Sin usar esta fila —</option>
+        ${TIPOS_HERRAMIENTA_JS.map(([val, label]) => `<option value="${val}">${label}</option>`).join('')}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" style="font-size:0.75rem">Cantidad</label>
+      <input type="number" name="herramienta_cantidad[]" class="form-control form-control-sm" min="1" value="1">
+    </div>
+    <div class="col-md-5">
+      <label class="form-label" style="font-size:0.75rem">Notas</label>
+      <input type="text" name="herramienta_notas[]" class="form-control form-control-sm" placeholder="Estado, marca...">
+    </div>
+    <div class="col-md-1">
+      <button type="button" class="btn btn-link btn-sm p-0" style="color:var(--red)" onclick="this.closest('.row').remove()" title="Quitar">
+        <i class="fas fa-trash-alt"></i>
+      </button>
+    </div>`;
+  wrap.appendChild(row);
+}
+
+// Arranca con una fila de cada uno para que se note que existen sin tener que buscar el botón "+"
+agregarFilaUnidad();
+agregarFilaHerramienta();
+{% endif %}
 </script>
 {% endblock %}

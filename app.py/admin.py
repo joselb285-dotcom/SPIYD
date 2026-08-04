@@ -306,6 +306,50 @@ def _parse_pista_fields(f):
             f.get('superficie_pista', '').strip() or None)
 
 
+def _parse_unidades_nuevas(f):
+    """Filas del repeater 'Unidades' del form de alta de recurso (arrays paralelos)."""
+    tipos = f.getlist('unidad_tipo[]')
+    cantidades = f.getlist('unidad_cantidad[]')
+    nombres = f.getlist('unidad_nombre[]')
+    caps_litros = f.getlist('unidad_capacidad_litros[]')
+    caps_texto = f.getlist('unidad_capacidad[]')
+    recargas = f.getlist('unidad_tiempo_recarga[]')
+    respuestas = f.getlist('unidad_tiempo_respuesta[]')
+    filas = []
+    for i, tipo in enumerate(tipos):
+        tipo = tipo.strip()
+        if not tipo:
+            continue
+        filas.append(dict(
+            tipo_unidad=tipo,
+            cantidad=int(cantidades[i]) if i < len(cantidades) and cantidades[i].strip().isdigit() else 1,
+            nombre=(nombres[i].strip() or None) if i < len(nombres) else None,
+            capacidad_litros=int(caps_litros[i]) if i < len(caps_litros) and caps_litros[i].strip().isdigit() else None,
+            capacidad=(caps_texto[i].strip() or None) if i < len(caps_texto) else None,
+            tiempo_recarga_min=int(recargas[i]) if i < len(recargas) and recargas[i].strip().isdigit() else None,
+            tiempo_respuesta_min=int(respuestas[i]) if i < len(respuestas) and respuestas[i].strip().isdigit() else None,
+        ))
+    return filas
+
+
+def _parse_herramientas_nuevas(f):
+    """Filas del repeater 'Herramientas' del form de alta de recurso (arrays paralelos)."""
+    tipos = f.getlist('herramienta_tipo[]')
+    cantidades = f.getlist('herramienta_cantidad[]')
+    notas = f.getlist('herramienta_notas[]')
+    filas = []
+    for i, tipo in enumerate(tipos):
+        tipo = tipo.strip()
+        if not tipo:
+            continue
+        filas.append(dict(
+            tipo_herramienta=tipo,
+            cantidad=int(cantidades[i]) if i < len(cantidades) and cantidades[i].strip().isdigit() else 1,
+            notas=(notas[i].strip() or None) if i < len(notas) else None,
+        ))
+    return filas
+
+
 @admin_bp.route('/recursos/new', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -319,7 +363,8 @@ def recurso_new():
             lon_val = float(lon_str) if lon_str else None
         except ValueError:
             flash('Coordenadas inválidas', 'error')
-            return render_template('admin/recurso_form.html', recurso=None, action='new', tipos=TIPOS_RECURSO)
+            return render_template('admin/recurso_form.html', recurso=None, action='new', tipos=TIPOS_RECURSO,
+                                   tipos_unidad=TIPOS_UNIDAD, tipos_herramienta=TIPOS_HERRAMIENTA)
         longitud_pista, superficie_pista = _parse_pista_fields(f)
         recurso = Recurso(
             tipo=f.get('tipo', 'otro'),
@@ -341,10 +386,16 @@ def recurso_new():
             created_by=current_user.id,
         )
         db.session.add(recurso)
+        db.session.flush()  # asigna recurso.id sin cerrar la transacción
+        for fila in _parse_unidades_nuevas(f):
+            db.session.add(UnidadRecurso(recurso_id=recurso.id, activo=True, **fila))
+        for fila in _parse_herramientas_nuevas(f):
+            db.session.add(HerramientaRecurso(recurso_id=recurso.id, activo=True, **fila))
         db.session.commit()
         flash(f'Recurso "{recurso.nombre}" creado', 'success')
         return redirect(url_for('admin.recursos'))
-    return render_template('admin/recurso_form.html', recurso=None, action='new', tipos=TIPOS_RECURSO)
+    return render_template('admin/recurso_form.html', recurso=None, action='new', tipos=TIPOS_RECURSO,
+                           tipos_unidad=TIPOS_UNIDAD, tipos_herramienta=TIPOS_HERRAMIENTA)
 
 
 @admin_bp.route('/recursos/<int:recurso_id>/edit', methods=['GET', 'POST'])
